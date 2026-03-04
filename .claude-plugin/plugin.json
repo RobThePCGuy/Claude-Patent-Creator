@@ -2,7 +2,9 @@
   "name": "claude-patent-creator-standalone",
   "version": "1.0.0",
   "description": "Complete self-contained patent creation system - NO MCP server required. Uses Claude Code skills, agents, commands, and hooks.",
-  "author": "Project Owner",
+  "author": {
+    "name": "RobThePCGuy"
+  },
   "keywords": [
     "patent",
     "uspto",
@@ -15,7 +17,5 @@
     "diagrams"
   ],
   "commands": "./commands",
-  "agents": "./agents",
-  "skills": "./skills",
-  "hooks": "./hooks/hooks.json"
+  "skills": "./skills"
 }
