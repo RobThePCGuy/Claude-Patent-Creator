@@ -84,9 +84,9 @@ try:
     logger = get_logger()
     BEST_PRACTICES_AVAILABLE = True
 except ImportError:
-    logger = None
-    track_performance = None
-    log_operation_result = None
+    logger = None  # type: ignore[assignment]
+    track_performance = None  # type: ignore[assignment]
+    log_operation_result = None  # type: ignore[assignment]
     BEST_PRACTICES_AVAILABLE = False
 
 # Validation models (lightweight — just pydantic)
@@ -105,16 +105,16 @@ try:
         PYDANTIC_AVAILABLE,
     )
 except ImportError:
-    validate_input = None
-    SearchMPEPInput = None
-    SearchBigQueryInput = None
-    SearchUSPTOInput = None
-    GetPatentInput = None
-    CPCSearchInput = None
-    ReviewClaimsInput = None
-    ReviewSpecificationInput = None
-    CheckFormalitiesInput = None
-    RenderDiagramInput = None
+    validate_input = None  # type: ignore[assignment]
+    SearchMPEPInput = None  # type: ignore[assignment]
+    SearchBigQueryInput = None  # type: ignore[assignment]
+    SearchUSPTOInput = None  # type: ignore[assignment]
+    GetPatentInput = None  # type: ignore[assignment]
+    CPCSearchInput = None  # type: ignore[assignment]
+    ReviewClaimsInput = None  # type: ignore[assignment]
+    ReviewSpecificationInput = None  # type: ignore[assignment]
+    CheckFormalitiesInput = None  # type: ignore[assignment]
+    RenderDiagramInput = None  # type: ignore[assignment]
     PYDANTIC_AVAILABLE = False
 
 # Analyzer classes (lightweight — no ML at import time)
@@ -123,9 +123,9 @@ try:
     from formalities_checker import FormalitiesChecker
     from specification_analyzer import SpecificationAnalyzer
 except ImportError:
-    ClaimsAnalyzer = None
-    FormalitiesChecker = None
-    SpecificationAnalyzer = None
+    ClaimsAnalyzer = None  # type: ignore[assignment]
+    FormalitiesChecker = None  # type: ignore[assignment]
+    SpecificationAnalyzer = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------
