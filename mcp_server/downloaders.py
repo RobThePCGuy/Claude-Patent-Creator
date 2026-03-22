@@ -2,6 +2,7 @@
 
 import socket
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Optional
@@ -32,6 +33,15 @@ class FileDownloader:
         Returns:
             True if download succeeded, False otherwise
         """
+        # Validate URL scheme for security
+        parsed_url = urllib.parse.urlparse(url)
+        if parsed_url.scheme not in ("http", "https"):
+            print(
+                f"Error: Invalid URL scheme '{parsed_url.scheme}'. Only HTTP and HTTPS are allowed.",
+                file=sys.stderr,
+            )
+            return False
+
         print(f"\nDownloading {file_description} from {url}", file=sys.stderr)
         if timeout_seconds > 120:
             print("This may take several minutes depending on your connection...", file=sys.stderr)
@@ -73,10 +83,14 @@ class FileDownloader:
             print(
                 "Your connection may be too slow or the server is not responding", file=sys.stderr
             )
+            if dest_path.exists():
+                dest_path.unlink()
             return False
 
         except Exception as e:
             print(f"\n[X] Download failed: {e}", file=sys.stderr)
+            if dest_path.exists():
+                dest_path.unlink()
             if manual_instructions:
                 print("\nManual download instructions:", file=sys.stderr)
                 print(manual_instructions, file=sys.stderr)

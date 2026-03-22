@@ -55,6 +55,23 @@ class Patent:
         }
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    """Safely convert a value to int, returning default for empty/None/non-numeric values.
+
+    TSV fields may contain empty strings, None, or non-numeric text, all of which
+    would cause int() to raise ValueError or TypeError.
+    """
+    if value is None:
+        return default
+    s = str(value).strip()
+    if not s:
+        return default
+    try:
+        return int(s)
+    except (ValueError, TypeError):
+        return default
+
+
 class PatentTSVParser:
     """Parse PatentsView TSV files"""
 
@@ -191,7 +208,7 @@ class PatentTSVParser:
                 for row in reader:
                     key = row.get(key_col, "").strip()
                     value = row.get(value_col, "").strip()
-                    sort_key = int(row.get(sort_col, 0)) if sort_col else 0
+                    sort_key = _safe_int(row.get(sort_col), 0) if sort_col else 0
                     if key and value:
                         rows.append((key, value, sort_key))
 
@@ -228,7 +245,7 @@ class PatentTSVParser:
                     key = row.get(key_col, "").strip()
                     first = row.get(first_col, "").strip()
                     last = row.get(last_col, "").strip()
-                    sort_key = int(row.get(sort_col, 0)) if sort_col else 0
+                    sort_key = _safe_int(row.get(sort_col), 0) if sort_col else 0
 
                     if key and (first or last):
                         name = f"{first} {last}".strip()
@@ -257,7 +274,7 @@ class PatentTSVParser:
 
                 for row in reader:
                     key = row.get("patent_id", "").strip()
-                    seq = int(row.get("assignee_sequence", 999))
+                    seq = _safe_int(row.get("assignee_sequence"), 999)
 
                     # Only take first assignee (sequence 0)
                     if key and seq == 0:

@@ -34,7 +34,7 @@ class BaseAnalyzer(ABC):
     - Summary generation
     """
 
-    SEVERITY_ORDER = {"CRITICAL": 0, "IMPORTANT": 1, "MINOR": 2}
+    SEVERITY_ORDER = {"CRITICAL": 0, "IMPORTANT": 1, "WARNING": 2, "MINOR": 3, "INFO": 4}
 
     def __init__(self):
         """Initialize analyzer with empty issues list"""

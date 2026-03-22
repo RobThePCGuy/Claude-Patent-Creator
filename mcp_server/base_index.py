@@ -233,7 +233,7 @@ class HybridRAGIndex(ABC):
 
             # Add vector search results with RRF scoring
             for rank, (idx, dist) in enumerate(zip(indices[0], distances[0])):
-                if idx >= len(self.chunks):  # Skip invalid indices
+                if idx < 0 or idx >= len(self.chunks):  # Skip invalid indices
                     continue
 
                 rrf_contribution = query_weight * (1.0 / (60 + rank + 1))
@@ -296,6 +296,9 @@ class HybridRAGIndex(ABC):
         sorted_candidates = sorted(
             candidates.items(), key=lambda x: x[1]["rrf_score"], reverse=True
         )
+
+        if not sorted_candidates:
+            return []
 
         # Rerank top candidates with cross-encoder
         rerank_candidates = sorted_candidates[: top_k * 2]  # Rerank 2x more than needed

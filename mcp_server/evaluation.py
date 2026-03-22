@@ -206,7 +206,10 @@ class MPEPEvaluator:
         ]:
             baseline_val = baseline["metrics"][metric]
             current_val = current["metrics"][metric]
-            improvement = ((current_val - baseline_val) / baseline_val) * 100
+            if baseline_val == 0:
+                improvement = float('inf') if current_val > 0 else 0.0
+            else:
+                improvement = ((current_val - baseline_val) / baseline_val) * 100
 
             comparison["improvements"][metric] = {
                 "baseline": baseline_val,
