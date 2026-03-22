@@ -86,6 +86,8 @@ class SpecificationAnalyzer(BaseAnalyzer):
             Dictionary with analysis results including input validation warnings
         """
         self.issues = []
+        self.spec_paragraphs = {}
+        self.spec_index = defaultdict(list)
 
         # Validate input completeness
         warnings = []
@@ -297,7 +299,7 @@ class SpecificationAnalyzer(BaseAnalyzer):
 
         # Pattern for "a/an/the [element]" constructions
         element_pattern = re.compile(
-            r"\b(?:a|an|the|said)\s+([a-z][a-z\s-]{2,40}?)(?=\s+(?:configured|comprising|wherein|that|for|to|with|is|are|,|;|\.))",
+            r"\b(?:a|an|the|said)\s+([a-z][a-z\s-]{2,40}?)(?=\s+(?:configured|comprising|wherein|that|for|to|with|is|are|which|having|including|and|connected|coupled|adapted|operable|operatively|communicatively)|(?=[,;.]))",
             re.IGNORECASE,
         )
 
@@ -346,20 +348,22 @@ class SpecificationAnalyzer(BaseAnalyzer):
         # Try partial matches (substring search)
         matching_paras = set()
 
-        # Search for element in paragraph text
+        # Search for element in paragraph text using word boundaries
         for para_num, para_text in self.spec_paragraphs.items():
-            if element_lower in para_text.lower():
+            if re.search(r'\b' + re.escape(element_lower) + r'\b', para_text.lower()):
                 matching_paras.add(para_num)
 
         # Try searching for individual words in multi-word elements
         if not matching_paras and " " in element:
             words = element.lower().split()
+            significant_words = [word for word in words if len(word) > 3]
             # Require at least 2 significant words to match
-            for para_num, para_text in self.spec_paragraphs.items():
-                para_lower = para_text.lower()
-                matches = sum(1 for word in words if len(word) > 3 and word in para_lower)
-                if matches >= min(2, len(words)):
-                    matching_paras.add(para_num)
+            if significant_words:
+                for para_num, para_text in self.spec_paragraphs.items():
+                    para_lower = para_text.lower()
+                    matches = sum(1 for word in significant_words if re.search(r'\b' + re.escape(word) + r'\b', para_lower))
+                    if matches >= min(2, len(significant_words)):
+                        matching_paras.add(para_num)
 
         return sorted(list(matching_paras))
 
@@ -436,18 +440,19 @@ class SpecificationAnalyzer(BaseAnalyzer):
         }
 
     def _calculate_coverage(self, claims: List[Dict]) -> Dict:
-        """Calculate what percentage of claims have specification support"""
-        if not claims:
+        """Calculate what percentage of independent claims have specification support"""
+        independent_claims = [c for c in claims if c["is_independent"]]
+        if not independent_claims:
             return {"percentage": 0, "supported_claims": 0, "total_claims": 0}
 
-        # Count claims with no critical issues
+        # Count independent claims with no critical issues
         claims_with_critical = set(i.claim_number for i in self.issues if isinstance(i, SupportIssue) and i.severity == "CRITICAL")  # type: ignore[attr-defined]
-        supported_claims = len(claims) - len(claims_with_critical)
+        supported_claims = len(independent_claims) - len(claims_with_critical)
 
         return {
-            "percentage": int((supported_claims / len(claims)) * 100),
+            "percentage": int((supported_claims / len(independent_claims)) * 100),
             "supported_claims": supported_claims,
-            "total_claims": len(claims),
+            "total_claims": len(independent_claims),
             "unsupported_claims": list(claims_with_critical),
         }
 

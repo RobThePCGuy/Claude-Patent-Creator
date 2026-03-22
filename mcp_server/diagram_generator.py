@@ -6,8 +6,15 @@ Renders technical diagrams from DOT code with patent-style annotations
 
 import os
 import re
-import xml.etree.ElementTree as ET
 from pathlib import Path
+
+# Use defusedxml for secure XML parsing (prevents XML bombs and XXE attacks)
+try:
+    from defusedxml import ElementTree as ET
+except ImportError:
+    # Fallback to standard library if defusedxml not available
+    # Note: This is less secure and should only be used for trusted, locally-generated files
+    from xml.etree import ElementTree as ET
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
@@ -142,7 +149,7 @@ class PatentDiagramGenerator:
             label = step["label"].replace('"', '\\"')
             shape = step.get("shape", "box")
 
-            dot_lines.append(f'    {node_id} [label="{label}", shape={shape}];')
+            dot_lines.append(f'    "{node_id}" [label="{label}", shape={shape}];')
 
         dot_lines.append("")
 
@@ -152,7 +159,7 @@ class PatentDiagramGenerator:
             next_nodes = step.get("next", [])
 
             for next_node in next_nodes:
-                dot_lines.append(f"    {node_id} -> {next_node};")
+                dot_lines.append(f'    "{node_id}" -> "{next_node}";')
 
         dot_lines.append("}")
 
@@ -216,7 +223,7 @@ class PatentDiagramGenerator:
             block_type = block.get("type", "default")
             style = block_styles.get(block_type, block_styles["default"])
 
-            dot_lines.append(f'    {block_id} [label="{label}", {style}];')
+            dot_lines.append(f'    "{block_id}" [label="{label}", {style}];')
 
         dot_lines.append("")
 
@@ -226,9 +233,9 @@ class PatentDiagramGenerator:
             label = conn[2] if len(conn) > 2 and conn[2] else ""
 
             if label:
-                dot_lines.append(f'    {from_id} -> {to_id} [label="{label}"];')
+                dot_lines.append(f'    "{from_id}" -> "{to_id}" [label="{label}"];')
             else:
-                dot_lines.append(f"    {from_id} -> {to_id};")
+                dot_lines.append(f'    "{from_id}" -> "{to_id}";')
 
         dot_lines.append("}")
 
@@ -278,7 +285,12 @@ class PatentDiagramGenerator:
             for pattern, ref_num in reference_map.items():
                 if pattern.lower() in text_content.lower():
                     # Add reference number in parentheses
-                    if text_elem.text:
+                    # Graphviz puts text in <tspan> children, so check those first
+                    tspans = text_elem.findall("svg:tspan", ns) if ns else text_elem.findall("tspan")
+                    if tspans:
+                        last_tspan = tspans[-1]
+                        last_tspan.text = f"{last_tspan.text or ''} ({ref_num})"
+                    elif text_elem.text:
                         text_elem.text = f"{text_elem.text} ({ref_num})"
                     break
 
