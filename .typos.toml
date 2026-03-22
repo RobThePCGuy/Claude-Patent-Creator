@@ -1,0 +1,64 @@
+[default]
+extend-ignore-re = [
+  # Ignore hex strings
+  "[0-9a-fA-F]{8,}",
+  # Ignore UUIDs
+  "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+  # Ignore URLs
+  "https?://[^\\s]+",
+]
+
+[files]
+extend-exclude = [
+  "*.log",
+  "*.csv",
+  "*.json",
+  "*.xml",
+  "*.pyc",
+  "*.pyo",
+  "*.so",
+  "*.dll",
+  "*.dylib",
+  "*.egg",
+  "*.egg-info",
+  "__pycache__",
+  ".git",
+  ".venv",
+  "venv",
+  "env",
+  "ENV",
+  ".pytest_cache",
+  ".coverage",
+  "htmlcov",
+  "dist",
+  "build",
+  "*.pdf",
+  "*.pkl",
+  "*.index",
+  "*.faiss",
+  ".ruff_cache",
+  ".mypy_cache",
+]
+
+[default.extend-words]
+# Patent-specific terms
+MPEP = "MPEP"
+USPTO = "USPTO"
+EPO = "EPO"
+WIPO = "WIPO"
+CPC = "CPC"
+IPC = "IPC"
+PEDS = "PEDS"
+
+# Technical terms
+FAISS = "FAISS"
+embeddings = "embeddings"
+vectorization = "vectorization"
+tokenization = "tokenization"
+BigQuery = "BigQuery"
+HyDE = "HyDE"
+
+# API and protocol names
+PatentsView = "PatentsView"
+MCP = "MCP"
+FastMCP = "FastMCP"
