@@ -6,7 +6,7 @@ Based on research from plint, cgupatent/antecedent-check, and PEDANTIC
 """
 
 import re
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Optional, Set, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
 
@@ -236,7 +236,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
                     )
                 )
 
-    def _build_element_registry(self, claim: Dict, all_claims: List[Dict], visited: Set[int] = None) -> Set[str]:
+    def _build_element_registry(self, claim: Dict, all_claims: List[Dict], visited: Optional[Set[int]] = None) -> Set[str]:
         """Build set of all known elements from claim and its dependencies"""
         if visited is None:
             visited = set()
