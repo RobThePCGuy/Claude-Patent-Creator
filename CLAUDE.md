@@ -271,6 +271,36 @@ export CLAUDE_CODE_GIT_BASH_PATH=C:/Program Files/Git/bin/bash.exe
 CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe
 ```
 
+### Debugging MCP Server Issues
+
+**Enable debug logging:**
+```bash
+PATENT_LOG_LEVEL=DEBUG patent-creator health
+```
+
+**Claude Code MCP logs:**
+```
+# Linux/macOS
+~/.config/claude/logs/mcp.log
+
+# Windows
+%APPDATA%\claude\logs\mcp.log
+```
+
+**Run Claude Code in debug mode:**
+```bash
+claude --debug
+```
+
+**MCP config file location** (for manual fixes):
+```
+# Linux/macOS
+~/.config/claude/mcp_config.json
+
+# Windows
+%APPDATA%\claude\mcp_config.json
+```
+
 ---
 
 ## Quick Reference

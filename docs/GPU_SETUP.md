@@ -264,6 +264,22 @@ GPU detected: NVIDIA GeForce RTX 5090 Laptop GPU (23.9GB VRAM)
 - Added Windows FAISS limitations
 - Added RTX 5090 compatibility notes
 
+## Troubleshooting: CUDA Out of Memory
+
+If you hit OOM errors during index building with large MPEP datasets:
+
+**Option 1: Force CPU for indexing**
+```bash
+CUDA_VISIBLE_DEVICES="" patent-creator rebuild-index
+```
+This runs index building on CPU (slower but no VRAM limit). GPU is still used for searches afterward.
+
+**Option 2: Reduce batch size**
+```bash
+EMBED_BATCH_SIZE=16 patent-creator rebuild-index
+```
+Default batch size may be too large for GPUs with less VRAM. Try 16 or 8.
+
 ## Support
 
 If you encounter issues:
