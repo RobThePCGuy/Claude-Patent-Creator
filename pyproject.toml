@@ -53,7 +53,7 @@ gpu = [
 ]
 llm = [
     # API-based HyDE query expansion and RAG evaluation
-    "anthropic>=0.72.1", # Claude API for HyDE
+    "anthropic>=0.94.0", # Claude API for HyDE
     "openai>=2.8.0",     # OpenAI API for HyDE
     "ragas>=0.3.8",      # RAG evaluation metrics
     "datasets>=4.4.1",   # HuggingFace datasets for evaluation
