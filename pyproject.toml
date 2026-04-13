@@ -38,7 +38,7 @@ dependencies = [
     "xmltodict>=0.14.1",                   # XML to dict parsing for EPO OPS API responses
     "db-dtypes>=1.1.1",                    # Required by BigQuery for certain data types
     "pydantic>=2.10.0",                    # Data validation and settings management
-    "pydantic-settings>=2.0.0",            # Settings management from environment variables
+    "pydantic-settings>=2.11.0",            # Settings management from environment variables
     "defusedxml>=0.7.1",                   # Secure XML parsing
 ]
 
