@@ -69,7 +69,7 @@ Repository = "https://github.com/RobThePCGuy/Claude-Patent-Creator"
 Issues = "https://github.com/RobThePCGuy/Claude-Patent-Creator/issues"
 
 [build-system]
-requires = ["setuptools>=68.0.0", "wheel"]
+requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
