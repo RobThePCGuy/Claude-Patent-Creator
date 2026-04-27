@@ -34,10 +34,10 @@ dependencies = [
     "graphviz>=0.21",                      # Diagram generation
     "pillow>=12.0.0",                      # Image processing (Oct 2025)
     "transformers>=4.57.6,<5.0.0",         # HuggingFace transformers (verified Jan 2025)
-    "google-cloud-bigquery>=3.38.0",       # BigQuery patent search 100M+ (verified Jan 2025)
+    "google-cloud-bigquery>=3.41.0",       # BigQuery patent search 100M+ (verified Jan 2025)
     "xmltodict>=1.0.4",                   # XML to dict parsing for EPO OPS API responses
     "db-dtypes>=1.1.1",                    # Required by BigQuery for certain data types
-    "pydantic>=2.10.0",                    # Data validation and settings management
+    "pydantic>=2.12.5",                    # Data validation and settings management
     "pydantic-settings>=2.11.0",            # Settings management from environment variables
     "defusedxml>=0.7.1",                   # Secure XML parsing
 ]
@@ -54,7 +54,7 @@ gpu = [
 llm = [
     # API-based HyDE query expansion and RAG evaluation
     "anthropic>=0.94.0", # Claude API for HyDE
-    "openai>=2.8.0",     # OpenAI API for HyDE
+    "openai>=2.31.0",     # OpenAI API for HyDE
     "ragas>=0.3.8",      # RAG evaluation metrics
     "datasets>=4.4.1",   # HuggingFace datasets for evaluation
 ]
