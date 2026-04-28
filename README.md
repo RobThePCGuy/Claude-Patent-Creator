@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/robthepcguy-claude-patent-creator-badge.png)](https://mseep.ai/app/robthepcguy-claude-patent-creator)
+
 # Claude Patent Creator
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
