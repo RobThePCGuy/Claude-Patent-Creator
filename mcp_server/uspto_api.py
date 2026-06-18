@@ -254,6 +254,12 @@ class USPTOClient:
                     f"Response text: {response.text[:200]}"
                 )
 
+            # Normalize the current USPTO ODP search envelope
+            # (patentFileWrapperDataBag/count) to the documented client contract
+            # (results/totalHits) before logging, empty-result diagnostics, and the
+            # return so every consumer sees a stable response shape.
+            result = self._normalize_search_response(result)
+
             # Log successful response
             if logger:
                 result_count = len(result.get("results", [])) if isinstance(result, dict) else 0
@@ -323,6 +329,17 @@ class USPTOClient:
                 )
             # Catch-all for other request errors
             raise USPTOAPIError(f"Request failed: {e}\n" f"URL: {url}\n" f"Method: {method}")
+
+    @staticmethod
+    def _normalize_search_response(result: dict[str, Any]) -> dict[str, Any]:
+        """Normalize current USPTO ODP search envelope to the client contract."""
+        if not isinstance(result, dict) or "patentFileWrapperDataBag" not in result:
+            return result
+
+        normalized = dict(result)
+        normalized.setdefault("results", result.get("patentFileWrapperDataBag") or [])
+        normalized.setdefault("totalHits", result.get("count", 0))
+        return normalized
 
     def search_patents(
         self,
