@@ -17,18 +17,30 @@ LEGACY_NAMES = [
     "Quadro P2000",
     "Tesla P100-PCIE-16GB",
     "NVIDIA GeForce MX150",
+    # Maxwell mobile parts (common in laptops, frequently paired with old
+    # drivers that can't report compute_cap — exactly the fallback path).
+    "NVIDIA GeForce GTX 965M",
+    "NVIDIA GeForce GTX 960M",
+    "NVIDIA GeForce GTX 860M",
+    "NVIDIA GeForce GTX 850M",
+    "NVIDIA GeForce 940MX",
+    "NVIDIA GeForce 940M",
 ]
 
 MODERN_NAMES = [
     "NVIDIA GeForce RTX 5090",
     "NVIDIA GeForce RTX 4090",
+    "NVIDIA GeForce RTX 4060 Laptop GPU",  # 'x060' must not trip the 9x0M pattern
     "NVIDIA GeForce RTX 3090",
+    "NVIDIA GeForce RTX 3090 Ti",
     "NVIDIA GeForce RTX 2080 Ti",
     "NVIDIA GeForce GTX 1660 Ti",  # Turing sm_75 — must NOT be treated as legacy
     "NVIDIA GeForce GTX 1650",  # Turing sm_75
+    "NVIDIA GeForce MX450",  # Turing — newer than the Pascal MX1/2/3xx
     "Tesla T4",
     "NVIDIA A100-SXM4-40GB",
     "NVIDIA H100 PCIe",
+    "NVIDIA L4",
     "Quadro RTX 4000",
     "NVIDIA RTX A6000",
 ]

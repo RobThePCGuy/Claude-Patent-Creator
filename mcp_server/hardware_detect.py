@@ -80,10 +80,12 @@ def get_nvidia_gpu_names():
 # intentionally NOT matched, so modern cards keep the cu128 wheel.
 _LEGACY_NVIDIA_PATTERNS = (
     r"gtx\s*7(45|50)",  # Maxwell GTX 745 / 750 / 750 Ti
-    r"gtx\s*9\d0",  # Maxwell GTX 950 / 960 / 970 / 980 (Ti)
+    r"gtx\s*8\d0",  # Maxwell GTX 8xxM mobile (840M / 850M / 860M / 870M / 880M)
+    r"gtx\s*9\d{2}",  # Maxwell GTX 9-series incl. mobile (950 / 970 / 960M / 965M)
     r"gtx\s*10[1-8]0",  # Pascal GTX 1050 / 1060 / 1070 / 1080 (Ti)
     r"\bgt\s*10[0-3]0",  # Pascal GT 1010 / 1030
-    r"\bmx[1-3]\d0\b",  # Pascal MX150 / MX250 / MX350
+    r"\bmx[1-3]\d0\b",  # Pascal MX150 / MX250 / MX350 (MX450+ is Turing — excluded)
+    r"\b9[0-6]0mx?\b",  # Maxwell/Pascal mobile reported without GTX (940M / 940MX)
     r"titan\s*xp\b",  # Pascal Titan Xp
     r"titan\s*x\b",  # Maxwell / Pascal Titan X
     r"titan\s*v\b",  # Volta Titan V
