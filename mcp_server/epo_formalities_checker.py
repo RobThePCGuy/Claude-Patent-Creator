@@ -417,7 +417,7 @@ class EPOFormalitiesChecker(BaseAnalyzer):
         claim_matches = claim_pattern.findall(specification)
 
         # Deduplicate and count unique claim numbers
-        claim_numbers = sorted(set(int(n) for n in claim_matches))
+        claim_numbers = sorted({int(n) for n in claim_matches})
         total_claims = len(claim_numbers)
 
         result = {

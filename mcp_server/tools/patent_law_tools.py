@@ -10,7 +10,6 @@ This tool adds jurisdiction-aware filtering on top of the same RAG pipeline.
 
 from typing import Any, Optional
 
-
 # Jurisdiction -> source filter mapping
 JURISDICTION_SOURCES = {
     "US": ["MPEP", "35_USC", "37_CFR", "SUBSEQUENT"],

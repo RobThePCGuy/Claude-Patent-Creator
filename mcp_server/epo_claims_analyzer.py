@@ -14,7 +14,7 @@ would require comparison between filed and amended versions.
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 try:
     from analyzer_base import BaseAnalyzer, BaseIssue

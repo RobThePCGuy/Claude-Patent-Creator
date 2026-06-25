@@ -102,10 +102,9 @@ def _download_file(url: str, dest_path: Path, description: str, timeout: int = 1
         # Ensure parent directory exists
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-        total_size = int(response.headers.get("content-length", 0))
         downloaded = 0
 
-        with open(dest_path, "wb") as f:
+        with dest_path.open("wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
                 downloaded += len(chunk)

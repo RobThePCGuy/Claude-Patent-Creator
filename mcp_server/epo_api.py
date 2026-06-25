@@ -157,12 +157,11 @@ class EPOClient:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
-        if self.key and self.secret:
-            if logger:
-                logger.info(
-                    "epo_client_initialized",
-                    extra={"credentials_configured": True},
-                )
+        if self.key and self.secret and logger:
+            logger.info(
+                "epo_client_initialized",
+                extra={"credentials_configured": True},
+            )
 
     def _authenticate(self) -> None:
         """Get or refresh OAuth2 access token.
@@ -337,22 +336,20 @@ class EPOClient:
                 )
 
             # Handle authentication errors (token may have expired)
-            if response.status_code == 400:
-                # Check if it is a token expiry issue
-                if "invalid_access_token" in response.text.lower():
-                    if logger:
-                        logger.info("epo_api_token_expired_refreshing")
-                    self._access_token = None
-                    self._authenticate()
-                    # Retry the request once with new token
-                    headers["Authorization"] = f"Bearer {self._access_token}"
-                    response = self.session.get(
-                        url,
-                        headers=headers,
-                        params=params,
-                        timeout=self.DEFAULT_TIMEOUT,
-                    )
-                    duration_ms = (time.perf_counter() - start_time) * 1000
+            if response.status_code == 400 and "invalid_access_token" in response.text.lower():
+                if logger:
+                    logger.info("epo_api_token_expired_refreshing")
+                self._access_token = None
+                self._authenticate()
+                # Retry the request once with new token
+                headers["Authorization"] = f"Bearer {self._access_token}"
+                response = self.session.get(
+                    url,
+                    headers=headers,
+                    params=params,
+                    timeout=self.DEFAULT_TIMEOUT,
+                )
+                duration_ms = (time.perf_counter() - start_time) * 1000
 
             if response.status_code == 404:
                 if logger:
@@ -605,10 +602,7 @@ class EPOClient:
         cql_operators = ["=", " and ", " or ", " not ", "ti=", "ta=", "in=", "pa=",
                          "pd=", "cl=", "ic=", "cc=", "ct=", "ab="]
         is_cql = any(op in query.lower() for op in cql_operators)
-        if not is_cql:
-            search_query = f'ta="{query}"'
-        else:
-            search_query = query
+        search_query = f'ta="{query}"' if not is_cql else query
 
         # Clamp range to API limits
         range_begin = max(1, range_begin)
@@ -1184,7 +1178,7 @@ class EPOClient:
         except Exception as e:
             if logger:
                 logger.error(
-                    f"epo_extract_fulltext_error",
+                    "epo_extract_fulltext_error",
                     extra={"text_type": text_type, "error": str(e)},
                 )
             return f"Error extracting {text_type}: {e}"

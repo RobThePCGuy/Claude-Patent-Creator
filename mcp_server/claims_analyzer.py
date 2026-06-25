@@ -177,7 +177,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
         # Enable with: PATENT_ENABLE_ANTECEDENT_CHECK=1
         import os
 
-        if not os.environ.get("PATENT_ENABLE_ANTECEDENT_CHECK", "").strip() in ("1", "true", "yes"):
+        if os.environ.get("PATENT_ENABLE_ANTECEDENT_CHECK", "").strip() not in ("1", "true", "yes"):
             return
 
         claim_text = claim["text"]

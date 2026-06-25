@@ -48,13 +48,14 @@ class HyDEQueryExpander:
         where using it for HyDE would silently consume API quota.
         """
         # Only use API if explicitly opted in (ANTHROPIC_API_KEY alone is not enough)
-        if os.getenv("HYDE_BACKEND", "").lower() == "api":
-            if os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"):
-                try:
-                    self._init_api_backend()
-                    return
-                except Exception:
-                    pass
+        if os.getenv("HYDE_BACKEND", "").lower() == "api" and (
+            os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+        ):
+            try:
+                self._init_api_backend()
+                return
+            except Exception:
+                pass
 
         # Try local model (good quality, slower)
         try:

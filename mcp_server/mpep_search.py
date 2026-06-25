@@ -872,7 +872,13 @@ class MPEPIndex:
             _log_warning("Subsequent Publications not found (run --download-updates to add)")
 
         # 5. Process EPC (European Patent Convention + Implementing Regulations)
-        from epo_downloaders import EPC_FILE, EPO_GUIDELINES_FILE, PCT_GUIDELINES_FILE, PCT_RULES_FILE, PCT_TREATY_FILE
+        from epo_downloaders import (
+            EPC_FILE,
+            EPO_GUIDELINES_FILE,
+            PCT_GUIDELINES_FILE,
+            PCT_RULES_FILE,
+            PCT_TREATY_FILE,
+        )
 
         epc_file = MPEP_DIR / EPC_FILE
         if epc_file.exists():

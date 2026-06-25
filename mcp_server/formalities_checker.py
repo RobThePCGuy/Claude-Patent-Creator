@@ -440,13 +440,7 @@ class FormalitiesChecker(BaseAnalyzer):
         # For each figure, check if any reference numerals are discussed
         # Look for patterns like "Referring to FIG. N" followed by numeral references
         for fig_num in sorted(referenced_figures):
-            # Find sections that discuss this figure
-            fig_ref_pattern = re.compile(
-                rf"(?i)(?:Referring\s+to|shown\s+in|illustrated\s+in|depicted\s+in|see)\s+"
-                rf"FIG(?:URE)?\.?\s*{re.escape(fig_num)}\b",
-            )
-
-            # Also check for "FIG. N" appearing with numerals nearby
+            # Check for "FIG. N" appearing with numerals nearby
             fig_mention_pattern = re.compile(
                 rf"(?i)FIG(?:URE)?\.?\s*{re.escape(fig_num)}\b"
             )

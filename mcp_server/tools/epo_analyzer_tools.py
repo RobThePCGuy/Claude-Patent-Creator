@@ -18,7 +18,6 @@ Dependencies:
     - mpep_index for retrieving relevant legal guidance
 """
 
-import re
 from typing import Any, Optional
 
 

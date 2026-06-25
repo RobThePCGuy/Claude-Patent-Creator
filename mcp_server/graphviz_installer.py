@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 
@@ -145,7 +146,7 @@ class GraphvizInstaller:
 
         current_path = os.environ.get("PATH", "")
         for candidate in candidates:
-            if os.path.isdir(candidate) and candidate not in current_path:
+            if Path(candidate).is_dir() and candidate not in current_path:
                 os.environ["PATH"] = candidate + os.pathsep + current_path
                 current_path = os.environ["PATH"]
 

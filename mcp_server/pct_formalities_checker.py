@@ -412,10 +412,7 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             r"(?i)(?:^|\n)\s*(?:CLAIMS?|WHAT\s+IS\s+CLAIMED\s+IS)\s*:?\s*\n(.+)",
             specification, re.DOTALL,
         )
-        if claims_match:
-            claims_section = claims_match.group(1)
-        else:
-            claims_section = specification
+        claims_section = claims_match.group(1) if claims_match else specification
 
         # Find claim numbers
         claim_pattern = re.compile(r"(?:^|\n)\s*(\d+)\.\s+", re.MULTILINE)

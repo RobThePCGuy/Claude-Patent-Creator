@@ -150,7 +150,7 @@ def _auto_detect_bigquery():
             try:
                 import json as _json
 
-                with open(creds_path) as f:
+                with creds_path.open() as f:
                     creds = _json.load(f)
                 project_id = creds.get("quota_project_id")
                 if project_id:
@@ -588,7 +588,9 @@ def setup_command(args):
     bq_works = False
     try:
         from bigquery_search import BigQueryPatentSearch
-        searcher = BigQueryPatentSearch()
+
+        # Construct to verify BigQuery is reachable/configured; raises if not.
+        BigQueryPatentSearch()
         bq_works = True
     except Exception:
         pass

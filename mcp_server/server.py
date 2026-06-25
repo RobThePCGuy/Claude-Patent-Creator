@@ -78,11 +78,9 @@ except ImportError:
     FormalitiesChecker = None
     SpecificationAnalyzer = None
 
-# Import MPEP index from mpep_search module
-from mpep_search import MPEPIndex
-
-# Import downloaders
+# Local modules (imported after the site-packages/env setup above)
 from downloaders import FileDownloader
+from mpep_search import MPEPIndex
 
 # Initialize MCP server
 mcp = FastMCP("claude-patent-creator")
@@ -271,7 +269,13 @@ def download_subsequent_publications(dest_dir: Path = MPEP_DIR) -> bool:
 
 def check_all_sources(dest_dir: Path = MPEP_DIR) -> dict[str, bool]:
     """Check which source documents are available"""
-    from epo_downloaders import EPC_FILE, EPO_GUIDELINES_FILE, PCT_GUIDELINES_FILE, PCT_RULES_FILE, PCT_TREATY_FILE
+    from epo_downloaders import (
+        EPC_FILE,
+        EPO_GUIDELINES_FILE,
+        PCT_GUIDELINES_FILE,
+        PCT_RULES_FILE,
+        PCT_TREATY_FILE,
+    )
 
     us_sources = {
         "mpep": check_mpep_pdfs(dest_dir) > 0,
@@ -296,8 +300,8 @@ def check_all_sources(dest_dir: Path = MPEP_DIR) -> dict[str, bool]:
 # Import tool registration functions
 from tools.analyzer_tools import register_analyzer_tools  # noqa: E402
 from tools.bigquery_tools import register_bigquery_tools  # noqa: E402
-from tools.epo_analyzer_tools import register_epo_analyzer_tools  # noqa: E402
 from tools.diagram_tools import register_diagram_tools  # noqa: E402
+from tools.epo_analyzer_tools import register_epo_analyzer_tools  # noqa: E402
 from tools.epo_search_tools import register_epo_tools  # noqa: E402
 from tools.mpep_tools import register_mpep_tools  # noqa: E402
 from tools.patent_law_tools import register_patent_law_tools  # noqa: E402
@@ -520,7 +524,8 @@ def _handle_additional_downloads(args):
 
     # PCT sources (epo_downloaders skips existing files internally)
     if args.download_all or args.download_pct:
-        from epo_downloaders import check_epo_pct_sources as _check_pct, download_all_pct_documents
+        from epo_downloaders import check_epo_pct_sources as _check_pct
+        from epo_downloaders import download_all_pct_documents
 
         pct_status = _check_pct(MPEP_DIR)
         if pct_status.get("pct_treaty") and pct_status.get("pct_rules"):

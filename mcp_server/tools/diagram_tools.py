@@ -28,10 +28,7 @@ def _resolve_under_cwd(user_path: str, default_subdir: str) -> Path:
     if not user_path:
         return cwd / default_subdir
     candidate = Path(user_path)
-    if candidate.is_absolute():
-        candidate = candidate.resolve()
-    else:
-        candidate = (cwd / candidate).resolve()
+    candidate = candidate.resolve() if candidate.is_absolute() else (cwd / candidate).resolve()
     try:
         candidate.relative_to(cwd)
     except ValueError as e:
