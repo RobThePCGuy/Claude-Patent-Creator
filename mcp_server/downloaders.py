@@ -103,6 +103,7 @@ class FileDownloader:
                 ) as response:
                     total_size = int(response.headers.get("Content-Length", 0) or 0)
                     block_num = 0
+                    downloaded = 0
                     progress_hook(block_num, block_size, total_size)
                     with dest_path.open("wb") as out_file:
                         while True:
@@ -110,8 +111,14 @@ class FileDownloader:
                             if not chunk:
                                 break
                             out_file.write(chunk)
+                            downloaded += len(chunk)
                             block_num += 1
                             progress_hook(block_num, block_size, total_size)
+                    # Mirror urlretrieve's ContentTooShortError: a stream that ends
+                    # before the advertised Content-Length is a truncated download,
+                    # not a success. Raising routes to the cleanup path below.
+                    if total_size and downloaded < total_size:
+                        raise OSError(f"Download truncated: got {downloaded} of {total_size} bytes")
                 print(f"\n[OK] {file_description} download complete", file=sys.stderr)
                 return True
             finally:
