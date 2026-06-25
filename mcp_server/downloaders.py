@@ -1,11 +1,30 @@
 """Unified file download utilities for USPTO resources"""
 
 import socket
+import ssl
 import sys
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Optional
+
+
+def _create_ssl_context() -> ssl.SSLContext:
+    """Build an SSL context with an explicit CA bundle.
+
+    The python.org macOS installer ships OpenSSL without a system CA bundle, so
+    ``urllib`` downloads from HTTPS hosts (e.g. the USPTO MPEP zip) fail with
+    ``CERTIFICATE_VERIFY_FAILED``. ``certifi`` is available transitively via
+    ``requests``; pointing the context at ``certifi.where()`` fixes verification
+    on those interpreters while remaining correct everywhere else. If ``certifi``
+    is somehow unavailable we fall back to the platform default context.
+    """
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        return ssl.create_default_context()
 
 
 class FileDownloader:
@@ -73,7 +92,26 @@ class FileDownloader:
                     )
 
             try:
-                urllib.request.urlretrieve(url, dest_path, progress_hook)
+                # Stream the download manually (rather than urlretrieve) so we can
+                # pass an explicit SSL context with a certifi CA bundle — required
+                # on python.org's macOS Python, which ships no system CA bundle.
+                ssl_context = _create_ssl_context()
+                request = urllib.request.Request(url)
+                block_size = 8192
+                with urllib.request.urlopen(
+                    request, timeout=timeout_seconds, context=ssl_context
+                ) as response:
+                    total_size = int(response.headers.get("Content-Length", 0) or 0)
+                    block_num = 0
+                    progress_hook(block_num, block_size, total_size)
+                    with dest_path.open("wb") as out_file:
+                        while True:
+                            chunk = response.read(block_size)
+                            if not chunk:
+                                break
+                            out_file.write(chunk)
+                            block_num += 1
+                            progress_hook(block_num, block_size, total_size)
                 print(f"\n[OK] {file_description} download complete", file=sys.stderr)
                 return True
             finally:

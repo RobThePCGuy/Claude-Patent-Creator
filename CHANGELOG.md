@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- `downloaders`: MPEP/USPTO downloads now verify TLS against the bundled `certifi`
+  CA store, fixing `SSL: CERTIFICATE_VERIFY_FAILED` on python.org macOS Python (#23)
+- `utils/device`: honor the documented `PATENT_MPEP_DEVICE` env var (`cpu`/`gpu`/
+  `mps`), which was referenced in docs but never read; `FORCE_CPU` still works (#23)
+- `utils/device`: detect Apple Silicon (MPS) and stay on CPU by default — MPS runs
+  the BGE embedding workload ~50x slower; opt in with `PATENT_MPEP_DEVICE=mps` (#23)
 - `analyzer_base`: WARNING/INFO severity levels now in SEVERITY_ORDER (prevents KeyError)
 - `base_index`: Guard against FAISS returning -1 for unfound results
 - `base_index`: Guard against empty candidates in reranker

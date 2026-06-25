@@ -273,6 +273,37 @@ EMBED_BATCH_SIZE=16 patent-creator rebuild-index
 ```
 Default batch size may be too large for GPUs with less VRAM. Try 16 or 8.
 
+## macOS / Apple Silicon
+
+On Apple Silicon (M-series) Macs, the embedding and reranker models run on **CPU
+by default** — and that is intentional. Apple's Metal (MPS) backend runs the
+BGE-base embedding workload roughly **50x slower** than CPU, so CPU is the
+faster choice here. The setup auto-detects this and stays on CPU.
+
+If you have a specific reason to use MPS anyway, opt in explicitly:
+```bash
+PATENT_MPEP_DEVICE=mps patent-creator setup --rebuild --non-interactive
+```
+
+To force CPU explicitly (either of these works):
+```bash
+FORCE_CPU=1 patent-creator setup --rebuild --non-interactive
+# or, equivalently:
+PATENT_MPEP_DEVICE=cpu patent-creator setup --rebuild --non-interactive
+```
+
+### `SSL: CERTIFICATE_VERIFY_FAILED` when downloading MPEP
+
+If the MPEP download fails with `[SSL: CERTIFICATE_VERIFY_FAILED] ... unable to
+get local issuer certificate`, you are almost certainly on the python.org macOS
+build of Python, which ships OpenSSL **without** a system CA bundle. The
+downloader now verifies against the bundled `certifi` CA store automatically, so
+this should resolve itself. If you are on an older build, you can also run the
+one-time fix that ships with the installer:
+```bash
+/Applications/Python\ 3.11/Install\ Certificates.command
+```
+
 ## Support
 
 If you encounter issues:
