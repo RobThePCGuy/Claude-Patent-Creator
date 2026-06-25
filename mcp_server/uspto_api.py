@@ -338,7 +338,13 @@ class USPTOClient:
 
         normalized = dict(result)
         normalized.setdefault("results", result.get("patentFileWrapperDataBag") or [])
-        normalized.setdefault("totalHits", result.get("count", 0))
+        # The ODP applications/search envelope carries the total match count under
+        # "totalNumFound" (not "count"). "count" is retained as a defensive fallback
+        # for any sibling endpoint variant, with the page-length as a last resort.
+        total = result.get("totalNumFound")
+        if total is None:
+            total = result.get("count", len(normalized["results"]))
+        normalized.setdefault("totalHits", total)
         return normalized
 
     def search_patents(
