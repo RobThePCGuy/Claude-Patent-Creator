@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `mps`), which was referenced in docs but never read; `FORCE_CPU` still works (#23)
 - `utils/device`: detect Apple Silicon (MPS) and stay on CPU by default — MPS runs
   the BGE embedding workload ~50x slower; opt in with `PATENT_MPEP_DEVICE=mps` (#23)
+- `hardware_detect`/`auto_setup`: when `nvidia-smi` can't report compute capability
+  (older drivers), select the CUDA wheel by GPU product name so legacy cards still
+  get cu126 without forcing Blackwell onto cu126; add `PATENT_TORCH_CUDA=cu126|cu128`
+  manual override; correct the cu126 Maxwell/Windows kernel-coverage claim (#26 follow-up)
 - `analyzer_base`: WARNING/INFO severity levels now in SEVERITY_ORDER (prevents KeyError)
 - `base_index`: Guard against FAISS returning -1 for unfound results
 - `base_index`: Guard against empty candidates in reranker

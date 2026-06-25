@@ -5,6 +5,7 @@ Detects GPU type and determines correct PyTorch version
 """
 
 import contextlib
+import os
 import platform
 import re
 import subprocess
@@ -23,12 +24,13 @@ def get_nvidia_compute_capability():
     """Return the LOWEST NVIDIA GPU compute capability as a float, or None.
 
     nvidia-smi reports one compute_cap per GPU. We return the minimum so the
-    oldest card in the system drives wheel selection: cu126 covers sm_50-sm_90,
-    so if any GPU is pre-Turing the whole system must use cu126. Non-numeric
-    lines (warnings, headers) are skipped rather than failing detection.
+    oldest card in the system drives wheel selection: any pre-Turing GPU forces
+    the whole system onto cu126. Non-numeric lines (warnings, headers) are
+    skipped rather than failing detection.
 
     e.g. GTX 1080 (Pascal) -> 6.1, RTX 3090 (Ampere) -> 8.6, RTX 5090 -> 12.0;
-    a mixed 6.1 + 8.6 system -> 6.1.
+    a mixed 6.1 + 8.6 system -> 6.1. Returns None when nvidia-smi is missing,
+    fails, or predates the compute_cap query field (older drivers).
     """
     try:
         result = subprocess.run(
@@ -49,6 +51,53 @@ def get_nvidia_compute_capability():
     except (subprocess.TimeoutExpired, OSError):
         pass
     return None
+
+
+def get_nvidia_gpu_names():
+    """Return NVIDIA GPU product names from nvidia-smi (empty list on failure).
+
+    Unlike compute_cap, the product name is reported even by older nvidia-smi
+    builds that predate the compute_cap field, so it can drive wheel selection
+    when the numeric compute capability is unavailable.
+    """
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    return []
+
+
+# Pre-Turing (compute capability < 7.5) NVIDIA product-name patterns: Maxwell,
+# Pascal, and Volta. Used only as a fallback when nvidia-smi can't report the
+# numeric compute capability. Turing+ names (RTX, GTX 16xx, Tesla T4) are
+# intentionally NOT matched, so modern cards keep the cu128 wheel.
+_LEGACY_NVIDIA_PATTERNS = (
+    r"gtx\s*7(45|50)",  # Maxwell GTX 745 / 750 / 750 Ti
+    r"gtx\s*9\d0",  # Maxwell GTX 950 / 960 / 970 / 980 (Ti)
+    r"gtx\s*10[1-8]0",  # Pascal GTX 1050 / 1060 / 1070 / 1080 (Ti)
+    r"\bgt\s*10[0-3]0",  # Pascal GT 1010 / 1030
+    r"\bmx[1-3]\d0\b",  # Pascal MX150 / MX250 / MX350
+    r"titan\s*xp\b",  # Pascal Titan Xp
+    r"titan\s*x\b",  # Maxwell / Pascal Titan X
+    r"titan\s*v\b",  # Volta Titan V
+    r"\bv100\b",  # Volta Tesla V100
+    r"\bgv100\b",  # Volta Quadro GV100
+    r"tesla\s*[mp]\d",  # Tesla M-series (Maxwell) / P-series (Pascal)
+    r"quadro\s*[mp]\d{3,}",  # Quadro M / P workstation cards
+)
+
+
+def is_legacy_nvidia_name(name):
+    """True if an NVIDIA product name is a pre-Turing (compute < 7.5) card."""
+    lowered = name.lower()
+    return any(re.search(pattern, lowered) for pattern in _LEGACY_NVIDIA_PATTERNS)
 
 
 def detect_apple_silicon():
@@ -75,22 +124,71 @@ def get_pytorch_install_command():
     has_apple_silicon = detect_apple_silicon()
 
     if has_nvidia:
-        compute_cap = get_nvidia_compute_capability()
-        # cu128 wheels only ship compiled kernels for sm_75+ (Turing and newer).
-        # Pre-Turing cards (Pascal sm_61, Volta sm_70, Maxwell sm_5x) get a
-        # "no kernel image is available for execution on the device" error with
-        # cu128. The cu126 build of torch 2.7.1 still bundles sm_50..sm_90, so
-        # route older GPUs there. Unknown capability falls through to cu128.
-        if compute_cap is not None and compute_cap < 7.5:
+        cu126 = "https://download.pytorch.org/whl/cu126"
+        cu128 = "https://download.pytorch.org/whl/cu128"
+
+        # Explicit manual override, useful when auto-detection can't determine the
+        # GPU architecture (see the unknown-capability path below) or a user wants
+        # to pin a specific build.
+        override = os.environ.get("PATENT_TORCH_CUDA", "").strip().lower()
+        if override == "cu126":
             return (
                 "torch==2.7.1 torchvision==0.22.1",
-                "https://download.pytorch.org/whl/cu126",
-                f"[GPU] NVIDIA GPU (compute {compute_cap}) detected - installing "
+                cu126,
+                "[GPU] NVIDIA GPU detected - installing PyTorch 2.7.1 / CUDA 12.6 "
+                "(forced via PATENT_TORCH_CUDA=cu126)",
+            )
+        if override == "cu128":
+            return (
+                "torch>=2.0.0",
+                cu128,
+                "[GPU] NVIDIA GPU detected - installing PyTorch / CUDA 12.8 "
+                "(forced via PATENT_TORCH_CUDA=cu128)",
+            )
+
+        # cu128 wheels only ship compiled kernels for sm_75+ (Turing and newer).
+        # Pre-Turing cards (Pascal sm_61, Volta sm_70, Maxwell sm_5x) hit a
+        # "no kernel image is available for execution on the device" error with
+        # cu128, so they need the cu126 build of torch 2.7.1 (kernels down to
+        # sm_61 on Windows / sm_50 on Linux, through sm_90).
+        compute_cap = get_nvidia_compute_capability()
+        cu126_reason = None
+        if compute_cap is not None:
+            if compute_cap < 7.5:
+                cu126_reason = f"compute {compute_cap}"
+        else:
+            # nvidia-smi couldn't report compute_cap (e.g. an older driver whose
+            # nvidia-smi predates the field). Defaulting blindly to cu128 would
+            # re-break legacy cards, but defaulting to cu126 would break Blackwell
+            # (sm_120, absent from the cu126 wheel). nvidia-smi still reports the
+            # product *name* on those drivers, so route known pre-Turing cards by
+            # name; everything else stays on cu128.
+            legacy = [n for n in get_nvidia_gpu_names() if is_legacy_nvidia_name(n)]
+            if legacy:
+                cu126_reason = f"legacy GPU {legacy[0]!r}, compute capability unavailable"
+
+        if cu126_reason is not None:
+            return (
+                "torch==2.7.1 torchvision==0.22.1",
+                cu126,
+                f"[GPU] NVIDIA GPU ({cu126_reason}) detected - installing "
                 "PyTorch 2.7.1 with CUDA 12.6 (legacy GPU architecture support)",
+            )
+        if compute_cap is None:
+            # Unknown capability and no recognized legacy name: default to cu128
+            # (correct for all current/modern GPUs) but tell the user how to
+            # recover if they actually have an unrecognized pre-Turing card.
+            return (
+                "torch>=2.0.0",
+                cu128,
+                "[GPU] NVIDIA GPU detected but compute capability could not be "
+                "determined - installing CUDA 12.8 (cu128). If you have a "
+                "pre-Turing GPU and see 'no kernel image is available', set "
+                "PATENT_TORCH_CUDA=cu126.",
             )
         return (
             "torch>=2.0.0",
-            "https://download.pytorch.org/whl/cu128",
+            cu128,
             "[GPU] NVIDIA GPU detected - installing PyTorch with CUDA 12.8 support",
         )
     elif has_apple_silicon:

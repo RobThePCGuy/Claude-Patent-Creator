@@ -5,6 +5,7 @@ Detects hardware and installs the correct PyTorch version automatically
 """
 
 import contextlib
+import os
 import platform
 import subprocess
 import sys
@@ -46,8 +47,8 @@ def get_compute_capability():
         if result.returncode == 0:
             # nvidia-smi emits one compute_cap per GPU; parse each line and
             # return the MINIMUM so the oldest GPU in the system drives wheel
-            # selection (cu126 covers sm_50-sm_90). Non-numeric lines (warnings,
-            # headers) are skipped rather than failing the whole detection.
+            # selection (any pre-Turing card forces cu126). Non-numeric lines
+            # (warnings, headers) are skipped rather than failing detection.
             caps = []
             for line in result.stdout.splitlines():
                 cleaned = line.strip()
@@ -72,22 +73,46 @@ def install_pytorch(gpu_available=False, compute_cap=None):
         return run_command(cmd, "Installing PyTorch (CPU)")
 
     # cu128 wheels only ship kernels for sm_75+ (Turing and newer). Pre-Turing
-    # GPUs (Pascal sm_61, Volta sm_70, Maxwell sm_5x) crash at kernel launch
-    # with "no kernel image is available for execution on the device". For those
-    # we pin the cu126 build of torch 2.7.1, which still bundles sm_50..sm_90.
-    if compute_cap is not None and compute_cap < 7.5:
+    # GPUs (Pascal sm_61, Volta sm_70, Maxwell sm_5x) crash at kernel launch with
+    # "no kernel image is available for execution on the device", so they need
+    # the cu126 build of torch 2.7.1 (kernels down to sm_61 on Windows / sm_50 on
+    # Linux, through sm_90).
+    override = os.environ.get("PATENT_TORCH_CUDA", "").strip().lower()
+    if override == "cu126":
+        route_cu126, reason = True, "forced via PATENT_TORCH_CUDA=cu126"
+    elif override == "cu128":
+        route_cu126, reason = False, "forced via PATENT_TORCH_CUDA=cu128"
+    elif compute_cap is not None:
+        route_cu126 = compute_cap < 7.5
+        reason = f"Compute {compute_cap}"
+    else:
+        # Unknown capability (older driver without the compute_cap field): route
+        # known pre-Turing cards by product name via the shared detector, so a
+        # legacy GPU isn't sent to cu128 while Blackwell isn't sent to cu126.
+        reason = "compute capability unavailable"
+        try:
+            from mcp_server.hardware_detect import (
+                get_nvidia_gpu_names,
+                is_legacy_nvidia_name,
+            )
+
+            route_cu126 = any(is_legacy_nvidia_name(n) for n in get_nvidia_gpu_names())
+        except Exception:
+            route_cu126 = False
+
+    if route_cu126:
         torch_spec = "torch==2.7.1 torchvision==0.22.1"
         cuda_pkg = "cu126"
         cuda_name = "12.6"
         print("\n" + "=" * 60)
-        print(f"Legacy NVIDIA GPU detected (Compute {compute_cap}) - Installing CUDA {cuda_name}")
+        print(f"Legacy NVIDIA GPU detected ({reason}) - Installing CUDA {cuda_name}")
         print("=" * 60)
     else:
         torch_spec = "torch torchvision"
         cuda_pkg = "cu128"  # Turing and newer
         cuda_name = "12.8"
         print("\n" + "=" * 60)
-        print(f"NVIDIA GPU detected - Installing CUDA {cuda_name} version")
+        print(f"NVIDIA GPU detected ({reason}) - Installing CUDA {cuda_name} version")
         print("=" * 60)
 
     # Uninstall any existing PyTorch first. Quote sys.executable so a venv path

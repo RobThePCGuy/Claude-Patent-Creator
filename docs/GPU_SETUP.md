@@ -201,8 +201,20 @@ kernels for **Turing (sm_75) and newer**:
 
 Pre-Turing cards routed to `cu128` crash at kernel launch with
 `CUDA error: no kernel image is available for execution on the device`. The
-`cu126` build of torch 2.7.1 still bundles `sm_50`–`sm_90`, so those GPUs are
-sent there automatically.
+`cu126` build of torch 2.7.1 ships kernels down to **`sm_61` (Pascal)** on
+Windows — and **`sm_50` (Maxwell)** on Linux — through `sm_90`, so Pascal and
+Volta cards are sent there automatically.
+
+> **Maxwell on Windows:** the Windows `cu126` wheel omits `sm_50`/`sm_52`, so a
+> Maxwell card (GTX 9xx, GTX 745/750) may still report "no kernel image" on
+> Windows. `patent-creator status` will flag the mismatch rather than failing
+> silently. Linux `cu126` wheels do include Maxwell.
+
+**If `nvidia-smi` can't report compute capability** (older drivers predate the
+field), the wheel is chosen from the GPU's product *name* instead: recognized
+pre-Turing cards still get `cu126`, and everything else defaults to `cu128`. You
+can always force the choice with `PATENT_TORCH_CUDA=cu126` or
+`PATENT_TORCH_CUDA=cu128`.
 
 ## Troubleshooting
 
@@ -229,13 +241,17 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
 
 Your PyTorch build has no compiled kernels for your GPU's architecture —
 typically a pre-Turing card (GTX 10-series and older, compute capability < 7.5)
-that received a `cu128` build. Reinstall the `cu126` build, which includes
-`sm_50`–`sm_90`:
+that received a `cu128` build. Reinstall the `cu126` build (kernels `sm_61`–`sm_90`
+on Windows, `sm_50`–`sm_90` on Linux):
 
 ```powershell
 pip uninstall -y torch torchvision
 pip install torch==2.7.1 torchvision==0.22.1 --index-url https://download.pytorch.org/whl/cu126
 ```
+
+Or set `PATENT_TORCH_CUDA=cu126` before `patent-creator setup` to force the
+legacy wheel — handy when auto-detection can't read your GPU's compute
+capability.
 
 Confirm your GPU's architecture is now supported:
 
