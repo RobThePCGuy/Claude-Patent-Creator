@@ -453,7 +453,10 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             )
             if claim_match:
                 claim_text = claim_match.group(1)
-                if not re.search(r"claim \d+", claim_text, re.IGNORECASE):
+                # Also recognize plural "claims 1 to 5" dependency references, so a
+                # set where every claim is dependent (some via the plural form) is
+                # not mistaken for having an independent claim.
+                if not re.search(r"\bclaims?\s+\d+", claim_text, re.IGNORECASE):
                     has_independent = True
                     break
 

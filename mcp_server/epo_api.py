@@ -670,7 +670,8 @@ class EPOClient:
                 "epo_get_patent_completed",
                 extra={
                     "patent_number": patent_number,
-                    "title": result.get("title", "")[:50],
+                    # title may be None (no English-language title); guard the slice
+                    "title": (result.get("title") or "")[:50],
                 },
             )
 

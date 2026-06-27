@@ -107,8 +107,10 @@ def register_patent_law_tools(
                         # Source may not be indexed yet — skip silently
                         pass
 
-                # Sort by score and limit
-                all_results.sort(key=lambda x: x.get("score", 0), reverse=True)
+                # Sort by relevance and limit. mpep_index.search() returns the
+                # rerank score under "relevance_score" — keying on "score" made
+                # this a silent no-op that dropped the best cross-source passages.
+                all_results.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
                 all_results = all_results[:top_k]
             else:
                 # Search all sources (no filter)

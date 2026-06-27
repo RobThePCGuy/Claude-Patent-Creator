@@ -132,14 +132,17 @@ class ClaimsAnalyzer(BaseAnalyzer):
             claim = {
                 "number": int(claim_num),
                 "text": claim_body.strip(),
-                "is_independent": not bool(re.search(r"claim \d+", claim_body, re.IGNORECASE)),
+                # Plural "claims 1 to 5" / "claims 1 and 2" are the standard way
+                # to write multiple-dependent claims; the old `claim \d+` pattern
+                # missed them, mislabeling those dependent claims as independent.
+                "is_independent": not bool(re.search(r"\bclaims?\s+\d+", claim_body, re.IGNORECASE)),
                 "depends_on": None,
                 "elements": {},
                 "limitations": [],
             }
 
             # Check for dependency
-            dep_match = re.search(r"claim (\d+)", claim_body, re.IGNORECASE)
+            dep_match = re.search(r"\bclaims?\s+(\d+)", claim_body, re.IGNORECASE)
             if dep_match:
                 dep_num = int(dep_match.group(1))
                 if dep_num != int(claim_num):  # Prevent self-referencing

@@ -285,7 +285,7 @@ class BigQueryPatentSearch:
             country_code
         FROM `{self.FULL_TABLE_ID}`
         WHERE {where_clause}
-        ORDER BY publication_date DESC
+        ORDER BY publication_date DESC, publication_number DESC
         LIMIT @limit
         OFFSET @offset
         """
@@ -496,12 +496,14 @@ class BigQueryPatentSearch:
             CAST(publication_date AS STRING) AS publication_date,
             application_number,
             country_code
-        FROM `{self.FULL_TABLE_ID}`,
-        UNNEST(cpc) AS cpc_entry
+        FROM `{self.FULL_TABLE_ID}`
         WHERE
             country_code = @country
-            AND STARTS_WITH(cpc_entry.code, @cpc_code)
-        ORDER BY publication_date DESC
+            AND EXISTS (
+                SELECT 1 FROM UNNEST(cpc) AS cpc_entry
+                WHERE STARTS_WITH(cpc_entry.code, @cpc_code)
+            )
+        ORDER BY publication_date DESC, publication_number DESC
         LIMIT @limit
         """
 
@@ -599,12 +601,14 @@ class BigQueryPatentSearch:
             CAST(publication_date AS STRING) AS publication_date,
             application_number,
             country_code
-        FROM `{self.FULL_TABLE_ID}`,
-        UNNEST(ipc) AS ipc_entry
+        FROM `{self.FULL_TABLE_ID}`
         WHERE
             country_code = @country
-            AND STARTS_WITH(ipc_entry.code, @ipc_code)
-        ORDER BY publication_date DESC
+            AND EXISTS (
+                SELECT 1 FROM UNNEST(ipc) AS ipc_entry
+                WHERE STARTS_WITH(ipc_entry.code, @ipc_code)
+            )
+        ORDER BY publication_date DESC, publication_number DESC
         LIMIT @limit
         """
 
