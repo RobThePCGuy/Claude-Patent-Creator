@@ -1038,8 +1038,17 @@ def config_path_command(args):
     return 0
 
 
+def config_gui_command(args):
+    """Launch the desktop settings window."""
+    from config_gui import launch
+
+    return launch()
+
+
 def config_command(args):
-    """Dispatch `config` with no subaction to the listing."""
+    """Dispatch bare `config`: GUI with --gui, otherwise the listing."""
+    if getattr(args, "gui", False):
+        return config_gui_command(args)
     return config_list_command(args)
 
 
@@ -1119,6 +1128,9 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
     # Config command (view/edit settings)
     config_parser = subparsers.add_parser(
         "config", help="View or change settings (API keys, BigQuery cap, device, ...)"
+    )
+    config_parser.add_argument(
+        "--gui", action="store_true", help="Open the desktop settings window"
     )
     config_parser.set_defaults(func=config_command)
     config_sub = config_parser.add_subparsers(dest="config_action")
