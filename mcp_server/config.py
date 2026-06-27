@@ -86,11 +86,12 @@ OPTIONS: tuple[Option, ...] = (
     # --- Search & performance ------------------------------------------------
     Option(
         "PATENT_BIGQUERY_MAX_BYTES_BILLED", "Search", "BigQuery cost cap (bytes)",
-        "Per-query scan ceiling for BigQuery. A title search scans ~15 GiB; an "
-        "abstract/claims search scans ~200+ GiB, so the 25 GiB default blocks "
-        "full-text search until raised.",
-        "int", default=str(25 * GIB), minimum=GIB,
-        note="250 GiB ~= $1.30/query at on-demand pricing.",
+        "Per-query scan ceiling for BigQuery. A title-only search scans ~18 GiB; "
+        "the default title+abstract+claims search scans ~325 GiB. The 350 GiB "
+        "default lets a normal search run; lower it to cap spend, raise it for "
+        "broader queries. A free dry-run estimate fails fast before overspending.",
+        "int", default=str(350 * GIB), minimum=GIB,
+        note="350 GiB ~= $2.15/query at $6.25/TiB on-demand pricing.",
     ),
     Option(
         "HYDE_BACKEND", "Search", "HyDE backend",

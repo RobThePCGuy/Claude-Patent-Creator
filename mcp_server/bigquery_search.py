@@ -76,9 +76,12 @@ class BigQueryPatentSearch:
     TABLE_ID = "publications"
     FULL_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
 
-    # Per-query bytes-billed ceiling. Defaults to 25 GiB; override via
-    # PATENT_BIGQUERY_MAX_BYTES_BILLED.
-    DEFAULT_MAX_BYTES_BILLED = 25 * 1024**3
+    # Per-query bytes-billed ceiling; override via PATENT_BIGQUERY_MAX_BYTES_BILLED.
+    # Defaults to 350 GiB so a normal keyword prior-art search works out of the
+    # box: the default search spans title+abstract+claims, which scans ~325 GiB
+    # of the public corpus (~$2.15/query at $6.25/TiB). A free dry-run still
+    # estimates each query and fails fast before anything larger is billed.
+    DEFAULT_MAX_BYTES_BILLED = 350 * 1024**3
     QUERY_TIMEOUT_SECONDS = 30
 
     def __init__(self, project_id: Optional[str] = None):
