@@ -171,42 +171,53 @@ def load_file() -> dict[str, str]:
     return {k: str(v) for k, v in data.items() if k in OPTIONS_BY_KEY}
 
 
+def _atomic_write(path: Path, data: dict) -> None:
+    """Write ``data`` as JSON to ``path`` atomically, owner-readable only.
+
+    The temp file is created with 0o600 *before* the (secret-bearing) content is
+    written, so there is no window where it is world-readable, then renamed over
+    the target. On Windows ``chmod`` only toggles the read-only bit, so
+    confidentiality there relies on the user-profile ACL of the config dir.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2, sort_keys=True)
+    except Exception:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
+        raise
+    tmp.replace(path)
+    with contextlib.suppress(OSError):
+        path.chmod(0o600)
+
+
 def save_value(key: str, value: str) -> Path:
     """Persist a single setting (merging with the existing file)."""
     return save_values({key: value})
 
 
 def save_values(values: dict[str, str]) -> Path:
-    path = config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
     current = load_file()
     for key, value in values.items():
         if key not in OPTIONS_BY_KEY:
             raise KeyError(f"Unknown setting: {key}")
         current[key] = str(value)
     # Drop blanks so the file stays minimal.
-    clean = {k: v for k, v in current.items() if v != ""}
-    tmp = path.with_suffix(".json.tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(clean, fh, indent=2, sort_keys=True)
-    tmp.replace(path)
-    # best-effort: secrets live here, so restrict perms where supported
-    with contextlib.suppress(OSError):
-        path.chmod(0o600)
+    path = config_path()
+    _atomic_write(path, {k: v for k, v in current.items() if v != ""})
     return path
 
 
 def unset_value(key: str) -> Path:
     if key not in OPTIONS_BY_KEY:
         raise KeyError(f"Unknown setting: {key}")
-    path = config_path()
     current = load_file()
     current.pop(key, None)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".json.tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump({k: v for k, v in current.items() if v != ""}, fh, indent=2, sort_keys=True)
-    tmp.replace(path)
+    path = config_path()
+    _atomic_write(path, {k: v for k, v in current.items() if v != ""})
     return path
 
 

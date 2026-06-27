@@ -53,9 +53,14 @@ try:
         )
 
     _SERVER_IMPORT_ERROR = None
+    _SERVER_IMPORT_STDERR = ""
     sys.stderr.write(_server_import_stderr.getvalue())
 except (ImportError, SystemExit) as exc:  # SystemExit: server.py exits if mcp is missing
     _SERVER_IMPORT_ERROR = exc
+    # Keep the captured diagnostic (e.g. "mcp package not found") to show only if
+    # a command that actually needs the stack is run — see the guard in main().
+    # str(SystemExit(1)) is just "1", so this captured text is the real message.
+    _SERVER_IMPORT_STDERR = _server_import_stderr.getvalue()
     check_pytorch_installation = get_pytorch_install_command = None
     INDEX_DIR = MPEP_DIR = MPEP_DOWNLOAD_URL = MPEPIndex = None
     check_all_sources = check_mpep_pdfs = None
@@ -1161,10 +1166,10 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
     # `config` is intentionally usable without the heavy server stack, so users
     # can set credentials/options before everything else is installed.
     if args.command != "config" and _SERVER_IMPORT_ERROR is not None:
-        print(
-            f"[X] Could not load required dependencies: {_SERVER_IMPORT_ERROR}",
-            file=sys.stderr,
-        )
+        print("[X] Could not load required dependencies.", file=sys.stderr)
+        detail = _SERVER_IMPORT_STDERR.strip() or str(_SERVER_IMPORT_ERROR)
+        if detail:
+            print("    " + detail.replace("\n", "\n    "), file=sys.stderr)
         print(
             "    Install them with 'pip install \".[dev]\"' and retry. "
             "('patent-creator config' works without them.)",

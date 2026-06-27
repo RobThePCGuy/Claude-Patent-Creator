@@ -93,5 +93,23 @@ class TestGeneratedSQL:
     def test_claims_field_only_used_for_us(self):
         us = _run("sensor", country="US", search_fields=["claims"])
         assert "claims_localized" in us.sql
+        # Non-US has no claims full-text here. A claims-only search on EP must not
+        # emit a predicate-less query that scans everything — it returns nothing
+        # without ever touching BigQuery.
         ep = _run("sensor", country="EP", search_fields=["claims"])
-        assert "claims_localized" not in ep.sql
+        assert ep.sql is None
+
+    def test_like_metacharacters_are_escaped(self):
+        # % and _ are LIKE wildcards; a literal term must be escaped so it does
+        # not match unintended rows (a stray "%" would otherwise match everything).
+        client = _run("50%_off", country="US", search_fields=["title"])
+        term_values = [p.value for p in client.params if p.name.startswith("term")]
+        assert term_values == ["%50\\%\\_off%"]
+
+    def test_empty_query_issues_no_query(self):
+        client = _run("", country="US")
+        assert client.sql is None
+
+    def test_operator_only_query_issues_no_query(self):
+        client = _run("and or ( )", country="US")
+        assert client.sql is None
