@@ -2,6 +2,20 @@
 
 This guide shows how to set environment variables for API keys on different platforms.
 
+> **Easier: use the built-in config command.** Instead of editing environment
+> variables you can store settings in a config file the server reads:
+>
+> ```bash
+> patent-creator config list                 # every setting, its value, and source
+> patent-creator config set GOOGLE_CLOUD_PROJECT my-project-id
+> patent-creator config set PATENT_BIGQUERY_MAX_BYTES_BILLED 268435456000   # ~250 GiB
+> patent-creator config path                 # where the file lives
+> ```
+>
+> Resolution order is **environment variable > config file > default**, so an
+> explicitly-set environment variable always wins. The settings below can all be
+> managed this way, and `config` works even before the rest of the stack is installed.
+
 ## Windows (PowerShell)
 
 Set permanently for your user account:
