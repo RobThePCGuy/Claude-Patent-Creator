@@ -22,26 +22,45 @@ if _pkg_dir not in sys.path:
 
 # Import hardware detection for PyTorch installation
 import contextlib
+import io
 
-from hardware_detect import (
-    check_pytorch_installation,
-    get_pytorch_install_command,
-)
+# The server stack (mcp, torch, faiss, ...) is heavy and may be unavailable when
+# the environment isn't set up yet. Guard these imports so lightweight commands
+# such as `config` still run — that is exactly when a user needs to edit settings.
+# Heavy commands are gated centrally in main() when the stack failed to load.
+# stderr is captured during the attempt so a failed import's diagnostics don't
+# leak onto otherwise-clean lightweight commands; real warnings are re-emitted
+# on success.
+_server_import_stderr = io.StringIO()
+try:
+    with contextlib.redirect_stderr(_server_import_stderr):
+        from hardware_detect import (
+            check_pytorch_installation,
+            get_pytorch_install_command,
+        )
+        from server import (
+            INDEX_DIR,
+            MPEP_DIR,
+            MPEP_DOWNLOAD_URL,
+            MPEPIndex,
+            check_all_sources,
+            check_mpep_pdfs,
+            download_35_usc,
+            download_37_cfr,
+            download_mpep_pdfs,
+            download_subsequent_publications,
+            extract_mpep_pdfs,
+        )
 
-# Import from server module
-from server import (
-    INDEX_DIR,
-    MPEP_DIR,
-    MPEP_DOWNLOAD_URL,
-    MPEPIndex,
-    check_all_sources,
-    check_mpep_pdfs,
-    download_35_usc,
-    download_37_cfr,
-    download_mpep_pdfs,
-    download_subsequent_publications,
-    extract_mpep_pdfs,
-)
+    _SERVER_IMPORT_ERROR = None
+    sys.stderr.write(_server_import_stderr.getvalue())
+except (ImportError, SystemExit) as exc:  # SystemExit: server.py exits if mcp is missing
+    _SERVER_IMPORT_ERROR = exc
+    check_pytorch_installation = get_pytorch_install_command = None
+    INDEX_DIR = MPEP_DIR = MPEP_DOWNLOAD_URL = MPEPIndex = None
+    check_all_sources = check_mpep_pdfs = None
+    download_35_usc = download_37_cfr = download_mpep_pdfs = None
+    download_subsequent_publications = extract_mpep_pdfs = None
 
 # Import path utilities for cross-platform path handling
 try:
@@ -626,6 +645,12 @@ def run_server(args):
     server_script = Path(__file__).parent / "server.py"
     cmd = [sys.executable, str(server_script)]
 
+    # Bridge file-backed settings into the environment so the server subprocess
+    # inherits them (an explicitly-set env var still wins). See mcp_server.config.
+    from config import apply_config_to_env
+
+    apply_config_to_env()
+
     env = os.environ.copy()
     if args.no_hyde:
         env["PATENT_MPEP_USE_HYDE"] = "false"
@@ -921,6 +946,103 @@ def download_all_command(args):
         return 1
 
 
+def _format_config_value(opt, value, source):
+    """Render a setting for display, masking secrets."""
+    if opt.is_secret:
+        shown = "(set)" if value else "(not set)"
+    elif value == "":
+        shown = "(empty)"
+    else:
+        shown = value
+    return shown, source
+
+
+def config_list_command(args):
+    """Print all settings, their effective values, and where each comes from."""
+    from config import OPTIONS, config_path, get_effective
+
+    sections: dict = {}
+    for opt in OPTIONS:
+        sections.setdefault(opt.section, []).append(opt)
+
+    print(f"Config file: {config_path()}\n")
+    print("Resolution order: environment variable > config file > default\n")
+    for section, opts in sections.items():
+        print(f"== {section} ==")
+        for opt in opts:
+            value, source = get_effective(opt.key)
+            shown, _ = _format_config_value(opt, value, source)
+            print(f"  {opt.key}")
+            print(f"      = {shown}   [{source}]")
+            print(f"      {opt.description}")
+            if opt.note:
+                print(f"      note: {opt.note}")
+        print()
+    print("Change a setting:  patent-creator config set <KEY> <VALUE>")
+    return 0
+
+
+def config_get_command(args):
+    from config import OPTIONS_BY_KEY, get_effective
+
+    if args.key not in OPTIONS_BY_KEY:
+        print(f"[X] Unknown setting: {args.key}", file=sys.stderr)
+        print("    Run 'patent-creator config list' to see valid keys.", file=sys.stderr)
+        return 1
+    value, source = get_effective(args.key)
+    opt = OPTIONS_BY_KEY[args.key]
+    shown, _ = _format_config_value(opt, value, source)
+    print(f"{shown}   [{source}]")
+    return 0
+
+
+def config_set_command(args):
+    from config import OPTIONS_BY_KEY, normalize, save_value, validate
+
+    if args.key not in OPTIONS_BY_KEY:
+        print(f"[X] Unknown setting: {args.key}", file=sys.stderr)
+        print("    Run 'patent-creator config list' to see valid keys.", file=sys.stderr)
+        return 1
+    error = validate(args.key, args.value)
+    if error:
+        print(f"[X] Invalid value for {args.key}: {error}", file=sys.stderr)
+        return 1
+    value = normalize(args.key, args.value)
+    path = save_value(args.key, value)
+    opt = OPTIONS_BY_KEY[args.key]
+    shown = "(set)" if opt.is_secret else value
+    print(f"[OK] {args.key} = {shown}")
+    print(f"     Saved to {path}")
+    if opt.is_secret:
+        print("     Note: stored in plaintext; protect this file.", file=sys.stderr)
+    if opt.note:
+        print(f"     {opt.note}")
+    return 0
+
+
+def config_unset_command(args):
+    from config import OPTIONS_BY_KEY, unset_value
+
+    if args.key not in OPTIONS_BY_KEY:
+        print(f"[X] Unknown setting: {args.key}", file=sys.stderr)
+        return 1
+    unset_value(args.key)
+    print(f"[OK] {args.key} removed from the config file (default/env now apply).")
+    return 0
+
+
+def config_path_command(args):
+    from config import config_path
+
+    print(config_path())
+    return 0
+
+
+def config_command(args):
+    """Dispatch `config` with no subaction to the listing."""
+    return config_list_command(args)
+
+
 def main():
     """
     Main CLI entry point
@@ -994,12 +1116,49 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
     )
     verify_parser.set_defaults(func=verify_config_command)
 
+    # Config command (view/edit settings)
+    config_parser = subparsers.add_parser(
+        "config", help="View or change settings (API keys, BigQuery cap, device, ...)"
+    )
+    config_parser.set_defaults(func=config_command)
+    config_sub = config_parser.add_subparsers(dest="config_action")
+    config_sub.add_parser("list", help="List all settings and their values").set_defaults(
+        func=config_list_command
+    )
+    cfg_get = config_sub.add_parser("get", help="Print one setting's value")
+    cfg_get.add_argument("key")
+    cfg_get.set_defaults(func=config_get_command)
+    cfg_set = config_sub.add_parser("set", help="Set a setting in the config file")
+    cfg_set.add_argument("key")
+    cfg_set.add_argument("value")
+    cfg_set.set_defaults(func=config_set_command)
+    cfg_unset = config_sub.add_parser("unset", help="Remove a setting from the config file")
+    cfg_unset.add_argument("key")
+    cfg_unset.set_defaults(func=config_unset_command)
+    config_sub.add_parser("path", help="Print the config file path").set_defaults(
+        func=config_path_command
+    )
+
     # Download patents command
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         return 0
+
+    # `config` is intentionally usable without the heavy server stack, so users
+    # can set credentials/options before everything else is installed.
+    if args.command != "config" and _SERVER_IMPORT_ERROR is not None:
+        print(
+            f"[X] Could not load required dependencies: {_SERVER_IMPORT_ERROR}",
+            file=sys.stderr,
+        )
+        print(
+            "    Install them with 'pip install \".[dev]\"' and retry. "
+            "('patent-creator config' works without them.)",
+            file=sys.stderr,
+        )
+        return 1
 
     # Run the selected command
     return args.func(args)
