@@ -141,14 +141,17 @@ class EPOClaimsAnalyzer(BaseAnalyzer):
             claim = {
                 "number": int(claim_num),
                 "text": claim_body.strip(),
-                "is_independent": not bool(re.search(r"claim \d+", claim_body, re.IGNORECASE)),
+                # Match plural "claims 1 to 5" too — the EPO multiple-dependent
+                # form — which `claim \d+` missed, mislabeling dependent claims
+                # as independent and triggering false Rule 43(2) issues.
+                "is_independent": not bool(re.search(r"\bclaims?\s+\d+", claim_body, re.IGNORECASE)),
                 "depends_on": None,
                 "category": self._determine_claim_category(claim_body),
                 "limitations": [],
             }
 
             # Check for dependency
-            dep_match = re.search(r"claim (\d+)", claim_body, re.IGNORECASE)
+            dep_match = re.search(r"\bclaims?\s+(\d+)", claim_body, re.IGNORECASE)
             if dep_match:
                 dep_num = int(dep_match.group(1))
                 if dep_num != int(claim_num):

@@ -451,9 +451,12 @@ class USPTOClient:
                 }
             )
 
-        # Add year range filter
+        # Add year range filter. start_year/end_year are documented as the
+        # *filing* year (see validation.PatentSearchInput); filtering on grantDate
+        # returned the wrong patents and silently excluded every pending /
+        # published-but-ungranted application.
         if start_year or end_year:
-            range_filter: dict[str, Any] = {"field": "applicationMetaData.grantDate"}
+            range_filter: dict[str, Any] = {"field": "applicationMetaData.filingDate"}
             if start_year:
                 range_filter["valueFrom"] = f"{start_year}-01-01"
             else:
@@ -535,19 +538,25 @@ class USPTOClient:
         """
         app_meta = data.get("applicationMetaData", {})
 
-        # Extract inventors
+        # Extract inventors. The ODP API usually returns a list, but a single
+        # entry can arrive as a bare dict; coerce so iteration never walks dict
+        # keys and raises AttributeError (mirrors the EPO parser's handling).
         inventors = []
         inventor_bag = app_meta.get("inventorBag", [])
+        if isinstance(inventor_bag, dict):
+            inventor_bag = [inventor_bag]
         for inv in inventor_bag:
-            name = inv.get("inventorNameText", "")
+            name = inv.get("inventorNameText", "") if isinstance(inv, dict) else ""
             if name:
                 inventors.append(name)
 
         # Extract applicants
         applicants = []
         applicant_bag = app_meta.get("applicantBag", [])
+        if isinstance(applicant_bag, dict):
+            applicant_bag = [applicant_bag]
         for app in applicant_bag:
-            name = app.get("applicantNameText", "")
+            name = app.get("applicantNameText", "") if isinstance(app, dict) else ""
             if name:
                 applicants.append(name)
 
