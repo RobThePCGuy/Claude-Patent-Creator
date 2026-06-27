@@ -6,6 +6,7 @@ Fast, cloud-based patent search using Google's Patents Public Data
 
 import os
 import platform
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -192,6 +193,47 @@ class BigQueryPatentSearch:
                 "message": "Could not access patents public data",
             }
 
+    @staticmethod
+    def _tokenize_query(query: str) -> list[str]:
+        """Split a free-text query into search terms for keyword matching.
+
+        Prior-art search lives or dies on recall, so a multi-word query is
+        treated as a set of terms that must each appear in some searched field
+        (AND across terms) rather than as one verbatim phrase. Rules:
+
+        * ``"quoted substrings"`` are kept together as exact phrases.
+        * Standalone boolean operators (and/or/not) and parentheses are dropped,
+          so Boolean-style input degrades gracefully into an all-terms match
+          instead of being matched literally (which found nothing).
+        * Surrounding punctuation is stripped and duplicate terms removed.
+
+        Returns an ordered, de-duplicated list of lowercase terms.
+        """
+        if not query:
+            return []
+
+        lowered = query.lower()
+        phrases = re.findall(r'"([^"]+)"', lowered)
+        remainder = re.sub(r'"[^"]+"', " ", lowered)
+        remainder = re.sub(r"[()]", " ", remainder)
+
+        words = []
+        for word in remainder.split():
+            if word in {"and", "or", "not"}:
+                continue
+            word = word.strip(".,;:'\"-/")
+            if word:
+                words.append(word)
+
+        ordered = [p.strip() for p in phrases if p.strip()] + words
+        seen: set[str] = set()
+        terms: list[str] = []
+        for term in ordered:
+            if term not in seen:
+                seen.add(term)
+                terms.append(term)
+        return terms
+
     def search_by_keywords(
         self,
         query: str,
@@ -240,24 +282,46 @@ class BigQueryPatentSearch:
 
         conditions = ["country_code = @country"]
         parameters = [
-            bigquery.ScalarQueryParameter("query", "STRING", f"%{query.lower()}%"),  # type: ignore[union-attr]
             bigquery.ScalarQueryParameter("country", "STRING", country),  # type: ignore[union-attr]
             bigquery.ScalarQueryParameter("limit", "INT64", limit),  # type: ignore[union-attr]
             bigquery.ScalarQueryParameter("offset", "INT64", offset),  # type: ignore[union-attr]
         ]
 
+        # Map requested fields to (SQL expression, relevance weight). A title hit
+        # is a stronger relevance signal than an abstract/claims hit.
         # claims_localized only carries text for US publications; for EP/WO
         # full-text use epo_api.py.
-        search_conditions = []
-        if "abstract" in search_fields:
-            search_conditions.append("LOWER(abstract_localized[SAFE_OFFSET(0)].text) LIKE @query")
+        field_exprs: list[tuple[str, int]] = []
         if "title" in search_fields:
-            search_conditions.append("LOWER(title_localized[SAFE_OFFSET(0)].text) LIKE @query")
+            field_exprs.append(("LOWER(title_localized[SAFE_OFFSET(0)].text)", 3))
+        if "abstract" in search_fields:
+            field_exprs.append(("LOWER(abstract_localized[SAFE_OFFSET(0)].text)", 1))
         if "claims" in search_fields and country == "US":
-            search_conditions.append("LOWER(claims_localized[SAFE_OFFSET(0)].text) LIKE @query")
+            field_exprs.append(("LOWER(claims_localized[SAFE_OFFSET(0)].text)", 1))
 
-        if search_conditions:
-            conditions.append(f"({' OR '.join(search_conditions)})")
+        # Split the query into terms. Each term must appear in at least one
+        # searched field (AND across terms, OR across fields), so a natural
+        # multi-word query no longer requires one verbatim phrase to match.
+        # Wrap a substring in "double quotes" to force exact-phrase matching.
+        terms = self._tokenize_query(query)
+        if not terms:
+            terms = [query.strip().lower()]  # degenerate input: match as-is
+
+        relevance_parts: list[str] = []
+        if field_exprs:
+            for i, term in enumerate(terms):
+                pname = f"term{i}"
+                parameters.append(
+                    bigquery.ScalarQueryParameter(pname, "STRING", f"%{term}%")  # type: ignore[union-attr]
+                )
+                term_clause = " OR ".join(f"{expr} LIKE @{pname}" for expr, _ in field_exprs)
+                conditions.append(f"({term_clause})")
+                for expr, weight in field_exprs:
+                    relevance_parts.append(
+                        f"CASE WHEN {expr} LIKE @{pname} THEN {weight} ELSE 0 END"
+                    )
+
+        relevance_expr = " + ".join(relevance_parts) if relevance_parts else "0"
 
         if start_year:
             conditions.append("CAST(filing_date AS INT64) >= @start_yyyymmdd")
@@ -282,10 +346,11 @@ class BigQueryPatentSearch:
             CAST(publication_date AS STRING) AS publication_date,
             application_number,
             family_id,
-            country_code
+            country_code,
+            ({relevance_expr}) AS relevance_score
         FROM `{self.FULL_TABLE_ID}`
         WHERE {where_clause}
-        ORDER BY publication_date DESC, publication_number DESC
+        ORDER BY relevance_score DESC, publication_date DESC, publication_number DESC
         LIMIT @limit
         OFFSET @offset
         """
@@ -314,6 +379,7 @@ class BigQueryPatentSearch:
                         "publication_date": self._format_date(row.publication_date),
                         "country": row.country_code,
                         "family_id": row.family_id,
+                        "relevance_score": row.relevance_score,
                     }
                 )
 
