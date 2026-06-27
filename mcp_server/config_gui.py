@@ -28,6 +28,27 @@ def _choice_value(display: str) -> str:
     return "" if display == _DEFAULT_LABEL else display
 
 
+def _plan_save(entries):
+    """Decide what the GUI's Save should persist.
+
+    ``entries`` is an iterable of ``(option, current_value, original_value)``.
+    Only fields the user actually changed are persisted (so opening the window
+    never copies an env-sourced secret or a built-in default onto disk), and each
+    changed value is validated. Returns ``(to_save, errors)``.
+    """
+    to_save: dict = {}
+    errors: list = []
+    for opt, current, original in entries:
+        if current == original:
+            continue
+        error = _config.validate(opt.key, current)
+        if error:
+            errors.append(f"{opt.label}: {error}")
+            continue
+        to_save[opt.key] = _config.normalize(opt.key, current)
+    return to_save, errors
+
+
 def launch() -> int:
     """Open the settings window. Returns a process exit code."""
     try:
@@ -89,11 +110,13 @@ def launch() -> int:
             )
 
             if opt.type == "bool":
+                original = "true" if value.lower() == "true" else "false"
                 var = tk.BooleanVar(value=value.lower() == "true")
                 ttk.Checkbutton(frame, variable=var).grid(
                     row=inner_row * 2, column=1, sticky="w", padx=8, pady=(8, 0)
                 )
             elif opt.type == "choice":
+                original = value
                 var = tk.StringVar(value=_choice_display(value))
                 ttk.Combobox(
                     frame,
@@ -102,6 +125,7 @@ def launch() -> int:
                     state="readonly",
                 ).grid(row=inner_row * 2, column=1, sticky="ew", padx=8, pady=(8, 0))
             else:
+                original = value
                 var = tk.StringVar(value=value)
                 ttk.Entry(
                     frame,
@@ -114,26 +138,28 @@ def launch() -> int:
                 frame, text=f"{desc}   [source: {source}]", foreground="#666", wraplength=460
             ).grid(row=inner_row * 2 + 1, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 4))
 
-            widgets[opt.key] = (opt, var)
+            # Keep the pre-filled value so Save only persists fields the user
+            # actually changed — never copying env-sourced secrets or defaults
+            # onto disk just because the window was opened.
+            widgets[opt.key] = (opt, var, original)
 
     def on_save():
-        errors = []
-        to_save = {}
-        for key, (opt, var) in widgets.items():
+        entries = []
+        for _key, (opt, var, original) in widgets.items():
             raw = var.get()
             if isinstance(raw, bool):
                 raw = "true" if raw else "false"
             raw = _choice_value(str(raw)) if opt.type == "choice" else str(raw)
-            err = _config.validate(key, raw)
-            if err:
-                errors.append(f"{opt.label}: {err}")
-                continue
-            to_save[key] = _config.normalize(key, raw)
+            entries.append((opt, raw, original))
+        to_save, errors = _plan_save(entries)
         if errors:
             messagebox.showerror("Invalid settings", "\n".join(errors))
             return
-        _config.save_values(to_save)
-        messagebox.showinfo("Saved", f"Settings saved to\n{_config.config_path()}")
+        if to_save:
+            _config.save_values(to_save)
+        messagebox.showinfo(
+            "Saved", f"Saved {len(to_save)} change(s) to\n{_config.config_path()}"
+        )
 
     buttons = ttk.Frame(root)
     buttons.pack(fill="x", padx=12, pady=10)

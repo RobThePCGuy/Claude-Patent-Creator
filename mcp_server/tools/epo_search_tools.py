@@ -295,7 +295,8 @@ def register_epo_tools(
             else:
                 log_info(
                     "get_epo_patent: got result",
-                    title=result.get("title", "")[:50],
+                    # title may be None (EP publication with no English title)
+                    title=(result.get("title") or "")[:50],
                     claims_length=result.get("claims_length", 0),
                     description_length=result.get("description_length", 0),
                 )

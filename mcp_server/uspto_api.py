@@ -542,7 +542,7 @@ class USPTOClient:
         # entry can arrive as a bare dict; coerce so iteration never walks dict
         # keys and raises AttributeError (mirrors the EPO parser's handling).
         inventors = []
-        inventor_bag = app_meta.get("inventorBag", [])
+        inventor_bag = app_meta.get("inventorBag") or []  # may be missing or null
         if isinstance(inventor_bag, dict):
             inventor_bag = [inventor_bag]
         for inv in inventor_bag:
@@ -552,7 +552,7 @@ class USPTOClient:
 
         # Extract applicants
         applicants = []
-        applicant_bag = app_meta.get("applicantBag", [])
+        applicant_bag = app_meta.get("applicantBag") or []  # may be missing or null
         if isinstance(applicant_bag, dict):
             applicant_bag = [applicant_bag]
         for app in applicant_bag:

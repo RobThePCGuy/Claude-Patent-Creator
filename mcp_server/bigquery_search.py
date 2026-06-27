@@ -307,22 +307,33 @@ class BigQueryPatentSearch:
         # multi-word query no longer requires one verbatim phrase to match.
         # Wrap a substring in "double quotes" to force exact-phrase matching.
         terms = self._tokenize_query(query)
-        if not terms:
-            terms = [query.strip().lower()]  # degenerate input: match as-is
+
+        # Bail out instead of emitting a predicate-less query that would scan and
+        # bill the entire corpus and return everything: this happens for an
+        # empty/operator-only query (no terms) or when the only requested field
+        # is claims on a non-US country (no field_exprs, since non-US has no
+        # claims full-text here).
+        if not terms or not field_exprs:
+            if LOGGING_AVAILABLE and logger:
+                logger.info("bigquery_search_no_predicate", extra=log_extra)
+            return []
 
         relevance_parts: list[str] = []
-        if field_exprs:
-            for i, term in enumerate(terms):
-                pname = f"term{i}"
-                parameters.append(
-                    bigquery.ScalarQueryParameter(pname, "STRING", f"%{term}%")  # type: ignore[union-attr]
+        for i, term in enumerate(terms):
+            pname = f"term{i}"
+            # Escape LIKE metacharacters so a term containing % or _ (or the
+            # backslash escape char) matches literally instead of acting as a
+            # wildcard — otherwise a stray "%" would match every row.
+            escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            parameters.append(
+                bigquery.ScalarQueryParameter(pname, "STRING", f"%{escaped}%")  # type: ignore[union-attr]
+            )
+            term_clause = " OR ".join(f"{expr} LIKE @{pname}" for expr, _ in field_exprs)
+            conditions.append(f"({term_clause})")
+            for expr, weight in field_exprs:
+                relevance_parts.append(
+                    f"CASE WHEN {expr} LIKE @{pname} THEN {weight} ELSE 0 END"
                 )
-                term_clause = " OR ".join(f"{expr} LIKE @{pname}" for expr, _ in field_exprs)
-                conditions.append(f"({term_clause})")
-                for expr, weight in field_exprs:
-                    relevance_parts.append(
-                        f"CASE WHEN {expr} LIKE @{pname} THEN {weight} ELSE 0 END"
-                    )
 
         relevance_expr = " + ".join(relevance_parts) if relevance_parts else "0"
 
