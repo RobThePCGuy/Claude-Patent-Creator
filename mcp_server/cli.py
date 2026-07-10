@@ -455,6 +455,28 @@ def setup_bigquery_auth_prompt():
     return False
 
 
+def _stdin_is_interactive() -> bool:
+    """True when stdin can answer input() prompts."""
+    try:
+        return sys.stdin is not None and sys.stdin.isatty()
+    except Exception:
+        return False
+
+
+def _normalize_interactivity(args) -> None:
+    """Force non-interactive mode when stdin cannot answer prompts.
+
+    Without this, setup's input() calls raise EOFError in CI, agent-driven,
+    or piped contexts (issue #52). An explicit --non-interactive always wins.
+    """
+    if not getattr(args, "non_interactive", False) and not _stdin_is_interactive():
+        args.non_interactive = True
+        print(
+            "[INFO] stdin is not a terminal -- running setup non-interactively",
+            file=sys.stderr,
+        )
+
+
 def _setup_graphviz(ensure_fn=None) -> bool:
     """Provision system Graphviz so the diagram tools work out of the box.
 
@@ -496,6 +518,8 @@ def setup_command(args):
     print("\n" + "=" * 60, file=sys.stderr)
     print("Claude Patent Creator - Automatic Setup", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
+
+    _normalize_interactivity(args)
 
     # Step 1: Install PyTorch with hardware detection
     print("\n[1/4] Checking PyTorch installation...", file=sys.stderr)
