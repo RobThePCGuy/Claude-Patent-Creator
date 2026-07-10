@@ -69,3 +69,49 @@ def test_unknown_jurisdiction_is_rejected():
     search_patent_law = _make_tool()
     results = search_patent_law(query="x", jurisdiction="ZZ", top_k=5)
     assert len(results) == 1 and "error" in results[0]
+
+
+class _USOnlyIndex(_FakeIndex):
+    """Simulates a fresh install: US sources indexed, EPO/PCT absent."""
+
+    def search(self, query, top_k, source_filter=None):
+        if source_filter not in self.SCORES:
+            raise KeyError(f"source not indexed: {source_filter}")
+        return super().search(query, top_k, source_filter=source_filter)
+
+
+def _make_us_only_tool():
+    mcp = _FakeMCP()
+    patent_law_tools.register_patent_law_tools(
+        mcp,
+        mpep_index=_USOnlyIndex(),
+        log_info=lambda *a, **k: None,
+        log_error=lambda *a, **k: None,
+        validate_input=None,
+        SearchPatentLawInput=None,
+        track_performance=lambda *a, **k: (lambda f: f),
+    )
+    return mcp.tools["search_patent_law"]
+
+
+def test_missing_jurisdiction_sources_reported_not_silent():
+    """A fresh install has no EPO/PCT corpus; the tool must say so instead of
+    returning an empty list that reads as 'no relevant law exists'."""
+    search_patent_law = _make_us_only_tool()
+
+    results = search_patent_law(query="inventive step", jurisdiction="EPO", top_k=5)
+
+    assert len(results) == 1
+    error = results[0]["error"]
+    # Must explain the absence and point at a remedy, naming the jurisdiction.
+    assert "EPO" in error
+    assert "installed" in error or "indexed" in error
+    assert "setup" in error.lower()
+
+
+def test_us_results_unaffected_by_missing_epo_sources():
+    search_patent_law = _make_us_only_tool()
+
+    results = search_patent_law(query="definiteness", jurisdiction="US", top_k=3)
+
+    assert results and all("error" not in r for r in results)

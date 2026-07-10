@@ -455,6 +455,35 @@ def setup_bigquery_auth_prompt():
     return False
 
 
+def _setup_graphviz(ensure_fn=None) -> bool:
+    """Provision system Graphviz so the diagram tools work out of the box.
+
+    Best effort: any failure prints guidance and returns False without
+    blocking the rest of setup. ``ensure_fn`` is injectable for tests.
+    """
+    print("\nChecking Graphviz (diagram tools)...", file=sys.stderr)
+    if ensure_fn is None:
+        try:
+            from graphviz_installer import ensure_graphviz as ensure_fn
+        except ImportError:
+            try:
+                from mcp_server.graphviz_installer import ensure_graphviz as ensure_fn
+            except ImportError:
+                print("  [SKIP] graphviz_installer module unavailable", file=sys.stderr)
+                return False
+    try:
+        ready, message = ensure_fn()
+    except Exception as e:  # never let the diagram step break setup
+        print(f"  [WARN] Graphviz install attempt failed: {e}", file=sys.stderr)
+        print("  Diagram tools will stay disabled until Graphviz is installed.", file=sys.stderr)
+        return False
+    tag = "[OK]" if ready else "[WARN]"
+    print(f"  {tag} {message}", file=sys.stderr)
+    if not ready:
+        print("  Diagram tools will stay disabled until Graphviz is installed.", file=sys.stderr)
+    return ready
+
+
 def setup_command(args):
     """
     One-command setup: installs PyTorch, downloads all sources, and builds index
@@ -558,6 +587,9 @@ def setup_command(args):
         print("\n[OK] Index built successfully", file=sys.stderr)
     else:
         print("\n[OK] Index already exists (use --rebuild to force rebuild)", file=sys.stderr)
+
+    # Diagram tools: provision system Graphviz (best effort, never blocks setup)
+    _setup_graphviz()
 
     # Setup BigQuery authentication (auto-detect in non-interactive, prompt in interactive)
     if not getattr(args, "non_interactive", False):
