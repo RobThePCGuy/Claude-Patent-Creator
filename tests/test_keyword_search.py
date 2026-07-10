@@ -39,6 +39,11 @@ class TestTokenizer:
 
 
 class _FakeQueryJob:
+    # Dry runs read total_bytes_processed off the job itself; keep it present
+    # so these tests exercise the budget guard instead of tripping its
+    # degrade-open exception path.
+    total_bytes_processed = 0
+
     def __init__(self):
         class _Result(list):
             total_bytes_processed = 0
@@ -55,7 +60,7 @@ class _FakeClient:
         self.sql = None
         self.params = None
 
-    def query(self, sql, job_config=None):
+    def query(self, sql, job_config=None, timeout=None):
         self.sql = sql
         self.params = job_config.query_parameters
         return _FakeQueryJob()
@@ -70,7 +75,9 @@ def _run(query, **kwargs):
 
 class TestGeneratedSQL:
     def test_each_term_becomes_its_own_anded_group(self):
-        client = _run("blockchain authentication", country="US", search_fields=["title", "abstract"])
+        client = _run(
+            "blockchain authentication", country="US", search_fields=["title", "abstract"]
+        )
         term_params = {p.name: p.value for p in client.params if p.name.startswith("term")}
         assert term_params == {"term0": "%blockchain%", "term1": "%authentication%"}
 

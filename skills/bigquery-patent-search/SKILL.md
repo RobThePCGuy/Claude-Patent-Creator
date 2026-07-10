@@ -206,7 +206,7 @@ BigQuery pricing:
 - **First 1 TiB/month**: FREE
 - **After 1 TiB**: $6.25 per TiB queried (on-demand)
 - **Typical query**: 10-50 MB per search
-- **Bytes-billed ceiling**: enforced per-query via `PATENT_BIGQUERY_MAX_BYTES_BILLED` (default 25 GiB)
+- **Bytes-billed ceiling**: enforced per-query via `PATENT_BIGQUERY_MAX_BYTES_BILLED` (default 350 GiB)
 
 ## Tools Available
 
