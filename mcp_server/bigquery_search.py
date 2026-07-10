@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Optional
 
@@ -35,6 +36,20 @@ except ImportError:
     track_performance = None
     OperationTimer = None
     LOGGING_AVAILABLE = False
+
+# Config layer (env > config file > default, schema-validated). Same dual
+# import style as the module itself (flat in the server process, packaged
+# in tests/skills).
+try:
+    import config as _config
+except ImportError:
+    try:
+        from mcp_server import config as _config
+    except ImportError:
+        _config = None
+
+GIB = 1024**3
+USD_PER_TIB = 6.25  # BigQuery on-demand price per TiB scanned
 
 
 def _get_gcloud_credentials_path():
@@ -377,7 +392,14 @@ class BigQueryPatentSearch:
         """
 
         try:
-            results = self._run_query(sql, parameters)
+            results = self._run_query(
+                sql,
+                parameters,
+                narrowing_hint=(
+                    "Narrow the search (add country / start_year / end_year "
+                    "filters or more specific keywords)."
+                ),
+            )
 
             # Process results
             patents = []
@@ -434,7 +456,14 @@ class BigQueryPatentSearch:
             patent_number: Patent publication number (e.g., "US10123456B2")
 
         Returns:
-            Patent details dictionary or None if not found
+            Patent details dictionary, or None only when the patent does not
+            exist in the corpus.
+
+        Raises:
+            BigQueryBudgetExceededError: query would exceed the cost cap.
+            Exception: query/auth/network failures propagate — they are not
+                collapsed into None, so callers can distinguish "not found"
+                from "lookup failed".
         """
         if not self.client:
             raise RuntimeError("BigQuery client not initialized")
@@ -536,12 +565,10 @@ class BigQueryPatentSearch:
             else:
                 print(f"BigQuery get patent error: {e}", file=sys.stderr)
 
-            # A budget rejection is actionable guidance, not "patent not found";
-            # surface it instead of collapsing it into None.
-            if isinstance(e, BigQueryBudgetExceededError):
-                raise
-
-            return None
+            # Errors are not "patent not found" — collapsing them into None made
+            # auth/network/budget failures masquerade as missing patents. None is
+            # reserved for a genuinely empty result set (handled above).
+            raise
 
     def search_by_cpc(
         self, cpc_code: str, limit: int = 20, country: str = "US"
@@ -826,15 +853,32 @@ class BigQueryPatentSearch:
             raise
 
     def _resolve_max_bytes_billed(self) -> int:
-        """Resolve the per-query bytes-billed ceiling (env override or default)."""
+        """Resolve the per-query bytes-billed ceiling.
+
+        Delegates to the config layer (env > config file > default, schema
+        minimum enforced) so this knob cannot diverge from what
+        ``patent-creator config`` validates and documents. Falls back to
+        env-only parsing when the config module is unavailable.
+        """
+        key = "PATENT_BIGQUERY_MAX_BYTES_BILLED"
+        if _config is not None:
+            raw, _source = _config.get_effective(key)
+            if _config.validate(key, raw) is None:
+                return int(raw)
+            if LOGGING_AVAILABLE and logger:
+                logger.warning(
+                    "patent_bigquery_max_bytes_billed_invalid",
+                    extra={"value": raw, "fallback_bytes": self.DEFAULT_MAX_BYTES_BILLED},
+                )
+            return self.DEFAULT_MAX_BYTES_BILLED
         max_bytes = self.DEFAULT_MAX_BYTES_BILLED
-        env_value = os.environ.get("PATENT_BIGQUERY_MAX_BYTES_BILLED")
+        env_value = os.environ.get(key)
         if env_value:
             try:
                 parsed = int(env_value)
             except ValueError:
                 parsed = 0
-            if parsed > 0:
+            if parsed >= GIB:
                 max_bytes = parsed
             elif LOGGING_AVAILABLE and logger:
                 logger.warning(
@@ -843,64 +887,123 @@ class BigQueryPatentSearch:
                 )
         return max_bytes
 
-    def _make_job_config(self, parameters: list) -> Any:
+    def _make_job_config(self, parameters: list, max_bytes: Optional[int] = None) -> Any:
         """Build a QueryJobConfig with parameters and the bytes-billed ceiling."""
         return bigquery.QueryJobConfig(  # type: ignore[union-attr]
             query_parameters=parameters,
-            maximum_bytes_billed=self._resolve_max_bytes_billed(),
+            maximum_bytes_billed=(
+                max_bytes if max_bytes is not None else self._resolve_max_bytes_billed()
+            ),
         )
 
-    def _assert_within_budget(self, sql: str, parameters: list) -> None:
+    @staticmethod
+    def _format_gib(num_bytes: float) -> str:
+        """Human-readable GiB amount that never rounds a real value to 0."""
+        gib = num_bytes / GIB
+        return f"{gib:.0f}" if gib >= 10 else f"{gib:.2f}"
+
+    def _budget_error(
+        self, estimate: Optional[int], max_bytes: int, narrowing_hint: str
+    ) -> "BigQueryBudgetExceededError":
+        """Build the actionable over-budget error for both the pre-flight
+        (estimate known) and the real query's cap rejection (estimate unknown)."""
+        hint = f"{narrowing_hint} " if narrowing_hint else ""
+        if estimate is None:
+            return BigQueryBudgetExceededError(
+                f"Patent search exceeded the per-query cost cap of "
+                f"{self._format_gib(max_bytes)} GiB. {hint}Or raise the cap via the "
+                f"PATENT_BIGQUERY_MAX_BYTES_BILLED setting (currently {max_bytes})."
+            )
+        suggested = int(estimate * 1.2)
+        est_usd = estimate / 1024**4 * USD_PER_TIB
+        return BigQueryBudgetExceededError(
+            f"Patent search would scan ~{self._format_gib(estimate)} GiB, exceeding "
+            f"the per-query cost cap of {self._format_gib(max_bytes)} GiB. {hint}"
+            f"Or raise the cap by setting PATENT_BIGQUERY_MAX_BYTES_BILLED={suggested} "
+            f"(~{self._format_gib(suggested)} GiB headroom; this query would bill "
+            f"~${est_usd:.2f} at on-demand pricing)."
+        )
+
+    def _assert_within_budget(
+        self,
+        sql: str,
+        parameters: list,
+        max_bytes: Optional[int] = None,
+        narrowing_hint: str = "",
+    ) -> None:
         """Estimate the query's scan size with a free dry run and fail loudly if it
         would exceed the bytes-billed ceiling.
 
-        Without this guard an over-budget query is either rejected mid-flight by
-        BigQuery with an opaque ``bytesBilledLimitExceeded`` 500 or appears to hang,
-        giving the caller no actionable signal. A dry run is free and near-instant, so
-        we surface a clear, actionable error *before* spending any query budget.
+        This is a fast-path courtesy check: the enforcement that always holds is
+        ``maximum_bytes_billed`` on the real query, whose rejection ``_run_query``
+        translates into the same actionable error. The dry run keeps the query
+        cache enabled so a re-run BigQuery would serve free (0 bytes billed,
+        exempt from the cap) estimates ~0 and passes.
         """
         if not self.client or bigquery is None:
             return
-        max_bytes = self._resolve_max_bytes_billed()
+        if max_bytes is None:
+            max_bytes = self._resolve_max_bytes_billed()
         try:
             dry_config = bigquery.QueryJobConfig(  # type: ignore[union-attr]
-                query_parameters=parameters, dry_run=True, use_query_cache=False
+                query_parameters=parameters, dry_run=True
             )
-            estimate = self.client.query(sql, job_config=dry_config).total_bytes_processed
-        except Exception:
-            # A failed estimate must never block the search; let the real query run
-            # and surface any genuine error itself.
+            estimate = self.client.query(
+                sql, job_config=dry_config, timeout=self.QUERY_TIMEOUT_SECONDS
+            ).total_bytes_processed
+        except Exception as e:
+            # A failed estimate must never block the search; the real query's own
+            # cap enforcement still holds and _run_query translates its rejection.
+            if LOGGING_AVAILABLE and logger:
+                logger.warning(
+                    "bigquery_budget_preflight_failed",
+                    extra={"error_type": type(e).__name__, "error_message": str(e)},
+                )
             return
         if estimate is None or estimate <= max_bytes:
             return
-        est_gib = estimate / 1024**3
-        cap_gib = max_bytes / 1024**3
-        suggested = int(estimate * 1.2)
-        est_usd = estimate / 1024**4 * 6.25  # on-demand BigQuery: ~$6.25 per TiB scanned
-        raise BigQueryBudgetExceededError(
-            f"Patent search would scan ~{est_gib:.0f} GiB, exceeding the per-query cost "
-            f"cap of {cap_gib:.0f} GiB. Narrow the search (add country / start_year / "
-            f"end_year filters or more specific keywords), or raise the cap by setting "
-            f"PATENT_BIGQUERY_MAX_BYTES_BILLED={suggested} "
-            f"(~{est_gib * 1.2:.0f} GiB, ~${est_usd:.2f} per query at on-demand pricing)."
-        )
+        raise self._budget_error(estimate, max_bytes, narrowing_hint)
 
-    def _run_query(self, sql: str, parameters: list) -> Any:
-        """Pre-flight the cost, then execute the query and return the row iterator."""
-        self._assert_within_budget(sql, parameters)
-        job_config = self._make_job_config(parameters)
-        if LOGGING_AVAILABLE and OperationTimer:
-            with OperationTimer("bigquery_query"):
+    @staticmethod
+    def _is_bytes_billed_rejection(exc: Exception) -> bool:
+        """Recognize BigQuery's maximum_bytes_billed rejection of a real query."""
+        for err in getattr(exc, "errors", None) or []:
+            if isinstance(err, dict) and err.get("reason") == "bytesBilledLimitExceeded":
+                return True
+        text = str(exc)
+        return "bytesBilledLimitExceeded" in text or "limit for bytes billed" in text.lower()
+
+    def _run_query(self, sql: str, parameters: list, narrowing_hint: str = "") -> Any:
+        """Pre-flight the cost, then execute the query and return the row iterator.
+
+        Guarantees an actionable ``BigQueryBudgetExceededError`` on every
+        over-budget path: the dry-run estimate when available, and translation
+        of the server's own ``bytesBilledLimitExceeded`` rejection otherwise.
+        """
+        max_bytes = self._resolve_max_bytes_billed()
+        self._assert_within_budget(sql, parameters, max_bytes, narrowing_hint)
+        job_config = self._make_job_config(parameters, max_bytes)
+        timer = (
+            OperationTimer("bigquery_query")
+            if LOGGING_AVAILABLE and OperationTimer
+            else nullcontext()
+        )
+        with timer:
+            try:
                 return self.client.query(sql, job_config=job_config).result(
                     timeout=self.QUERY_TIMEOUT_SECONDS
                 )
-        return self.client.query(sql, job_config=job_config).result(
-            timeout=self.QUERY_TIMEOUT_SECONDS
-        )
+            except BigQueryBudgetExceededError:
+                raise
+            except Exception as e:
+                if self._is_bytes_billed_rejection(e):
+                    raise self._budget_error(None, max_bytes, narrowing_hint) from e
+                raise
 
     def _format_date(self, date_int: Optional[int]) -> Optional[str]:
         """Convert YYYYMMDD integer to YYYY-MM-DD string"""
-        if not date_int:
+        # BigQuery SQL casts dates to STRING, so missing dates arrive as "0".
+        if not date_int or str(date_int) == "0":
             return None
 
         try:
