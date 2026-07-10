@@ -84,4 +84,11 @@ $env:VARIABLE_NAME
 - `USPTO_API_KEY` - USPTO Open Data Portal API key (optional)
 - `EPO_OPS_KEY` / `EPO_OPS_SECRET` - EPO OPS API credentials (optional)
 - `HYDE_BACKEND` - Set to `api` to use Anthropic/OpenAI for HyDE query expansion
-- `PATENT_BIGQUERY_MAX_BYTES_BILLED` - Override the per-query BigQuery cost ceiling (default: 25 GiB)
+- `PATENT_BIGQUERY_MAX_BYTES_BILLED` - Override the per-query BigQuery cost ceiling, in bytes
+  (default: 25 GiB). A broad keyword search across the full patents corpus can scan several
+  hundred GiB. When the estimated scan exceeds this ceiling, the search **fails fast with an
+  actionable error** (estimated size, suggested ceiling, and approximate cost) via a free
+  dry-run estimate, instead of running an expensive query or appearing to hang. To run such a
+  search, raise the ceiling (e.g. `429496729600` for ~400 GiB, roughly $2/query at on-demand
+  pricing) or narrow the search with `country` / `start_year` / `end_year` filters or more
+  specific keywords.
