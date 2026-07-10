@@ -5,6 +5,7 @@ Performs automated analysis of patent claims for 35 USC 112(b) compliance
 Based on research from plint, cgupatent/antecedent-check, and PEDANTIC
 """
 
+import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -178,9 +179,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
         #
         # When enabled, all findings are emitted at LOW confidence requiring manual review.
         # Enable with: PATENT_ENABLE_ANTECEDENT_CHECK=1
-        import os
-
-        if os.environ.get("PATENT_ENABLE_ANTECEDENT_CHECK", "").strip() not in ("1", "true", "yes"):
+        if not self._antecedent_check_enabled():
             return
 
         claim_text = claim["text"]
@@ -468,6 +467,30 @@ class ClaimsAnalyzer(BaseAnalyzer):
             # Fallback for base issues (shouldn't happen in this analyzer)
             return super()._issue_to_dict(issue)
 
+    @staticmethod
+    def _antecedent_check_enabled() -> bool:
+        """Antecedent-basis checking is opt-in due to its false-positive rate."""
+        return os.environ.get("PATENT_ENABLE_ANTECEDENT_CHECK", "").strip() in (
+            "1",
+            "true",
+            "yes",
+        )
+
+    def _skipped_checks(self) -> list[dict[str, str]]:
+        """Checks that did not run in this analysis, with how to enable them."""
+        if self._antecedent_check_enabled():
+            return []
+        return [
+            {
+                "check": "antecedent_basis",
+                "reason": (
+                    "opt-in: pattern-based antecedent checking has a high "
+                    "false-positive rate, so it is disabled by default"
+                ),
+                "enable_with": "PATENT_ENABLE_ANTECEDENT_CHECK=1",
+            }
+        ]
+
     def _generate_report(self, claims: list[dict]) -> dict:
         """Generate comprehensive analysis report"""
         # Sort issues by severity and claim number
@@ -485,8 +508,17 @@ class ClaimsAnalyzer(BaseAnalyzer):
             len(claims), counts["critical"], counts["important"], counts["minor"]
         )
 
-        # Generate summary
+        # Generate summary — a clean result must not read as a full bill of
+        # health when a check was skipped.
         summary = self._generate_claims_summary(claims, counts)
+        checks_skipped = self._skipped_checks()
+        if checks_skipped:
+            skipped_names = ", ".join(c["check"] for c in checks_skipped)
+            summary += (
+                f" NOTE: the following checks were skipped: {skipped_names}. "
+                f"Enable with {checks_skipped[0]['enable_with']} (findings are "
+                f"LOW confidence and need manual review)."
+            )
 
         # Use base report generation
         additional_data = {
@@ -494,6 +526,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
             "independent_count": sum(1 for c in claims if c["is_independent"]),
             "dependent_count": sum(1 for c in claims if not c["is_independent"]),
             "issues_by_type": {k: len(v) for k, v in issues_by_type.items()},
+            "checks_skipped": checks_skipped,
         }
 
         return self._generate_base_report(
