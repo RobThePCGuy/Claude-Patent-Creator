@@ -133,6 +133,15 @@ OPTIONS: tuple[Option, ...] = (
         "choice", default="INFO",
         choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
     ),
+    Option(
+        "PATENT_DATA_DIR", "Performance", "Data directory",
+        "Where downloaded corpora (MPEP/USC/CFR PDFs) and the search index "
+        "are stored. Empty = platform app-data dir, or the legacy in-tree "
+        "location when it already holds data.",
+        "str",
+        note="Changing this does not move existing data; re-run "
+        "'patent-creator setup' to download and rebuild at the new location.",
+    ),
 )
 
 OPTIONS_BY_KEY: dict[str, Option] = {o.key: o for o in OPTIONS}

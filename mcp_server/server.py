@@ -88,9 +88,15 @@ mcp = FastMCP("claude-patent-creator")
 # Initialize logger
 logger = get_logger()
 
-# Global variables
-MPEP_DIR = Path(__file__).parent.parent / "pdfs"
-INDEX_DIR = Path(__file__).parent / "index"
+# Global variables — resolved outside site-packages so a reinstall cannot
+# destroy downloads or the index (see data_paths / issue #51).
+try:
+    from data_paths import index_dir, mpep_dir
+except ImportError:
+    from mcp_server.data_paths import index_dir, mpep_dir
+
+MPEP_DIR = mpep_dir()
+INDEX_DIR = index_dir()
 mpep_index: Any = None
 
 # Ensure directories exist

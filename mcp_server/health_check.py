@@ -21,9 +21,14 @@ except ImportError:
 try:
     from server import INDEX_DIR, MPEP_DIR
 except ImportError:
-    # Fallback for standalone testing
-    INDEX_DIR = Path(__file__).parent / "index"
-    MPEP_DIR = Path(__file__).parent.parent / "pdfs"
+    # Fallback for standalone testing — same resolution as the server
+    try:
+        from data_paths import index_dir, mpep_dir
+    except ImportError:
+        from mcp_server.data_paths import index_dir, mpep_dir
+
+    INDEX_DIR = index_dir()
+    MPEP_DIR = mpep_dir()
 
 
 class SystemHealthChecker:

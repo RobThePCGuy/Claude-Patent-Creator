@@ -23,9 +23,15 @@ except ImportError:
     GraphvizInstaller = None
 
 
-# Default output directory for generated diagrams (created lazily in __init__, not at import time)
+# Default output directory for generated diagrams (created lazily in __init__,
+# not at import time) — resolved outside site-packages (see data_paths / #51).
+try:
+    from data_paths import diagrams_dir
+except ImportError:
+    from mcp_server.data_paths import diagrams_dir
+
 PROJECT_ROOT = Path(__file__).parent.parent
-DIAGRAMS_DIR = PROJECT_ROOT / "diagrams"
+DIAGRAMS_DIR = diagrams_dir()
 
 
 class PatentDiagramGenerator:

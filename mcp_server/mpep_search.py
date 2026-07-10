@@ -85,9 +85,15 @@ except ImportError:
     LOGGING_AVAILABLE = False
 
 
-# Global variables for the RAG system
-MPEP_DIR = Path(__file__).parent.parent / "pdfs"
-INDEX_DIR = Path(__file__).parent / "index"
+# Global variables for the RAG system — resolved outside site-packages so a
+# reinstall cannot destroy downloads or the index (see data_paths / issue #51).
+try:
+    from data_paths import index_dir, mpep_dir
+except ImportError:
+    from mcp_server.data_paths import index_dir, mpep_dir
+
+MPEP_DIR = mpep_dir()
+INDEX_DIR = index_dir()
 
 # Ensure directories exist
 MPEP_DIR.mkdir(parents=True, exist_ok=True)
