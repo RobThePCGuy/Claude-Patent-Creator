@@ -104,8 +104,28 @@ def register_patent_law_tools(
                             r["jurisdiction"] = jurisdiction
                         all_results.extend(results)
                     except Exception:
-                        # Source may not be indexed yet — skip silently
+                        # Source not indexed; reported below if the whole
+                        # jurisdiction comes up empty.
                         pass
+
+                if not all_results:
+                    # An empty result here means the jurisdiction's corpus is
+                    # absent (vector search over an indexed source always
+                    # returns nearest neighbours) — say so instead of
+                    # returning [] that reads as "no relevant law exists".
+                    return [
+                        {
+                            "error": (
+                                f"No {jurisdiction} patent-law sources are "
+                                f"installed or indexed (looked for: "
+                                f"{', '.join(source_filters)}). The default "
+                                f"setup downloads US sources only. Re-run "
+                                f"'patent-creator setup' after adding the "
+                                f"{jurisdiction} sources, or search with "
+                                f"jurisdiction='US'."
+                            )
+                        }
+                    ]
 
                 # Sort by relevance and limit. mpep_index.search() returns the
                 # rerank score under "relevance_score" — keying on "score" made
