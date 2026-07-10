@@ -62,6 +62,13 @@ def _get_gcloud_credentials_path():
         return Path.home() / ".config" / "gcloud" / "application_default_credentials.json"
 
 
+class BigQueryBudgetExceededError(ValueError):
+    """Raised when a query's dry-run estimate exceeds the bytes-billed ceiling.
+
+    Subclasses ValueError so existing callers that catch/expect ValueError keep
+    working, while paths that must not swallow it can re-raise by type."""
+
+
 class BigQueryPatentSearch:
     """
     Search patents using Google BigQuery Patents Public Data
@@ -529,6 +536,11 @@ class BigQueryPatentSearch:
             else:
                 print(f"BigQuery get patent error: {e}", file=sys.stderr)
 
+            # A budget rejection is actionable guidance, not "patent not found";
+            # surface it instead of collapsing it into None.
+            if isinstance(e, BigQueryBudgetExceededError):
+                raise
+
             return None
 
     def search_by_cpc(
@@ -865,7 +877,7 @@ class BigQueryPatentSearch:
         cap_gib = max_bytes / 1024**3
         suggested = int(estimate * 1.2)
         est_usd = estimate / 1024**4 * 6.25  # on-demand BigQuery: ~$6.25 per TiB scanned
-        raise ValueError(
+        raise BigQueryBudgetExceededError(
             f"Patent search would scan ~{est_gib:.0f} GiB, exceeding the per-query cost "
             f"cap of {cap_gib:.0f} GiB. Narrow the search (add country / start_year / "
             f"end_year filters or more specific keywords), or raise the cap by setting "

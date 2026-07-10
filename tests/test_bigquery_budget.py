@@ -69,3 +69,16 @@ def test_budget_guard_silent_when_estimate_unavailable(monkeypatch):
 
     # Swallows the dry-run failure and returns without raising.
     searcher._assert_within_budget("SELECT 1", [])
+
+
+def test_get_patent_details_surfaces_budget_error(monkeypatch):
+    """An over-budget details lookup must raise the actionable budget error,
+    not swallow it into a "patent not found" None."""
+    monkeypatch.delenv("PATENT_BIGQUERY_MAX_BYTES_BILLED", raising=False)
+    over = BigQueryPatentSearch.DEFAULT_MAX_BYTES_BILLED * 10
+    searcher = _searcher_with_estimate(over)
+
+    with pytest.raises(ValueError) as exc:
+        searcher.get_patent_details("US1234567B2")
+
+    assert "PATENT_BIGQUERY_MAX_BYTES_BILLED" in str(exc.value)
