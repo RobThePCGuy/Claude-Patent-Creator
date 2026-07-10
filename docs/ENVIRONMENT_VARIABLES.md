@@ -92,3 +92,10 @@ $env:VARIABLE_NAME
   expensive query or appearing to hang. To run a larger search, raise the ceiling (e.g.
   `536870912000` for ~500 GiB) or narrow the search with `country` / `start_year` /
   `end_year` filters or more specific keywords.
+- `PATENT_DATA_DIR` - Where downloaded corpora (MPEP/USC/CFR PDFs, ~500 MB) and the search
+  index (~150 MB) are stored. Default: the platform app-data directory
+  (`%APPDATA%\claude-patent-creator\data` on Windows, `~/.local/share/claude-patent-creator/data`
+  elsewhere), so the data survives reinstalls and upgrades. Installs that already hold data at
+  the legacy in-package location keep using it — no migration needed. Changing this setting
+  does not move existing data; re-run `patent-creator setup` to download and rebuild at the
+  new location.
