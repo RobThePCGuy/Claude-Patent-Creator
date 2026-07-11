@@ -627,6 +627,24 @@ def _run_health_checks():
 
 def main():
     """Main entry point"""
+    # Bridge config-file settings into the environment before anything reads
+    # os.environ. The config layer documents this as happening at server
+    # startup; until now nothing actually called it, so file-configured
+    # settings (GOOGLE_CLOUD_PROJECT, PATENT_ENABLE_ANTECEDENT_CHECK, ...)
+    # never reached the MCP server process.
+    try:
+        from config import apply_config_to_env
+    except ImportError:
+        try:
+            from mcp_server.config import apply_config_to_env
+        except ImportError:
+            apply_config_to_env = None
+    if apply_config_to_env is not None:
+        try:
+            apply_config_to_env()
+        except Exception as e:
+            _log_warning(f"config bridge failed: {e}")
+
     args = _parse_args()
 
     # Handle download requests
