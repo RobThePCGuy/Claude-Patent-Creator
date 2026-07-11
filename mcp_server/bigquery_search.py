@@ -14,6 +14,7 @@ from typing import Any, Optional
 
 try:
     from google.api_core.exceptions import NotFound
+    from google.auth import load_credentials_from_file as _load_creds_from_file
     from google.cloud import bigquery
     from google.cloud.exceptions import GoogleCloudError
 
@@ -23,6 +24,7 @@ except ImportError:
     bigquery = None
     GoogleCloudError = Exception
     NotFound = Exception
+    _load_creds_from_file = None
 
 # Import logging and monitoring with fallback
 try:
@@ -184,7 +186,17 @@ class BigQueryPatentSearch:
         )
 
         try:
-            self.client = bigquery.Client(project=self.billing_project)  # type: ignore[union-attr]
+            # Explicit credentials keep google.auth.default() from ever
+            # running: its chain special-cases the well-known ADC path back
+            # into the gcloud-SDK handler, whose `gcloud config config-helper`
+            # subprocess hangs in console-less MCP servers. With credentials
+            # passed, the client never consults default() at all.
+            credentials = self._load_explicit_credentials(
+                _get_gcloud_credentials_path(), self.billing_project
+            )
+            self.client = bigquery.Client(  # type: ignore[union-attr]
+                project=self.billing_project, credentials=credentials
+            )
 
             if LOGGING_AVAILABLE and logger:
                 logger.info(
@@ -194,6 +206,29 @@ class BigQueryPatentSearch:
             raise ValueError(
                 f"Could not initialize BigQuery client: {e}\n{setup_msg}"
             ) from e
+
+    @staticmethod
+    def _load_explicit_credentials(creds_path, quota_project):
+        """Load ADC credentials directly from the well-known file.
+
+        Returns None (letting the client fall back to google.auth.default())
+        only when the file is absent or unreadable. Passing explicit
+        credentials to the client is the load-bearing part of the MCP-hang
+        fix: default()'s chain runs a gcloud subprocess for project discovery
+        even when GOOGLE_APPLICATION_CREDENTIALS is set, because the
+        well-known ADC path is special-cased back into the gcloud handler.
+        """
+        if _load_creds_from_file is None or creds_path is None:
+            return None
+        try:
+            if not Path(creds_path).exists():
+                return None
+            credentials, _project = _load_creds_from_file(
+                str(creds_path), quota_project_id=quota_project
+            )
+            return credentials
+        except Exception:
+            return None
 
     @staticmethod
     def _prepare_auth_environment(billing_project, creds_path) -> None:
