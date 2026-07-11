@@ -13,13 +13,29 @@ Fix under test: before creating the client, export what we already know
 explicit-environment paths win and the subprocess fallback is unreachable.
 """
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from mcp_server.bigquery_search import (
     BigQueryPatentSearch,
     BigQueryQuotaExhaustedError,
 )
-from tests.test_bigquery_budget import _searcher
+
+
+def _searcher(dry_estimate=None, result_side_effect=None):
+    """Minimal mocked-client searcher (kept local: tests/ is not a package,
+    so cross-module test imports break under CI's import mode)."""
+    searcher = object.__new__(BigQueryPatentSearch)
+    client = MagicMock()
+    job = client.query.return_value
+    job.total_bytes_processed = dry_estimate
+    if result_side_effect is not None:
+        job.result.side_effect = result_side_effect
+    else:
+        job.result.return_value = iter([])
+    searcher.client = client
+    return searcher
 
 
 @pytest.fixture(autouse=True)
