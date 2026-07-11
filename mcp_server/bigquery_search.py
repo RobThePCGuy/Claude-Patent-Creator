@@ -84,6 +84,11 @@ class BigQueryBudgetExceededError(ValueError):
     working, while paths that must not swallow it can re-raise by type."""
 
 
+class BigQueryQuotaExhaustedError(ValueError):
+    """Raised when BigQuery rejects a query because the project's monthly
+    free-tier bytes are exhausted (sandbox projects with no billing account)."""
+
+
 class BigQueryPatentSearch:
     """
     Search patents using Google BigQuery Patents Public Data
@@ -169,6 +174,15 @@ class BigQueryPatentSearch:
                 f"No Google Cloud project ID found.\n{setup_msg}"
             )
 
+        # Tell google.auth what we already resolved. Without this, its default
+        # credential chain re-derives the project id by running a
+        # `gcloud config config-helper` subprocess — which blocks indefinitely
+        # inside an MCP stdio server (no console; stdin/stdout are the JSON-RPC
+        # pipes), presenting to users as a multi-minute search stall.
+        self._prepare_auth_environment(
+            self.billing_project, _get_gcloud_credentials_path()
+        )
+
         try:
             self.client = bigquery.Client(project=self.billing_project)  # type: ignore[union-attr]
 
@@ -180,6 +194,27 @@ class BigQueryPatentSearch:
             raise ValueError(
                 f"Could not initialize BigQuery client: {e}\n{setup_msg}"
             ) from e
+
+    @staticmethod
+    def _prepare_auth_environment(billing_project, creds_path) -> None:
+        """Export resolved auth facts so google.auth never shells out.
+
+        google.auth.default() falls back to a `gcloud config config-helper`
+        subprocess when it cannot determine credentials/project from the
+        environment. That subprocess hangs in console-less MCP server
+        processes. Setting GOOGLE_CLOUD_PROJECT and (when the ADC file
+        exists) GOOGLE_APPLICATION_CREDENTIALS makes the explicit-environment
+        paths win, so the subprocess fallback is unreachable. User-set values
+        are never overridden.
+        """
+        if billing_project and not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+            os.environ["GOOGLE_CLOUD_PROJECT"] = str(billing_project)
+        if (
+            creds_path is not None
+            and not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            and Path(creds_path).exists()
+        ):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_path)
 
     def check_availability(self) -> dict[str, Any]:
         """
@@ -973,6 +1008,15 @@ class BigQueryPatentSearch:
         text = str(exc)
         return "bytesBilledLimitExceeded" in text or "limit for bytes billed" in text.lower()
 
+    @staticmethod
+    def _is_free_tier_quota_rejection(exc: Exception) -> bool:
+        """Recognize the sandbox 'free query bytes scanned' quota rejection."""
+        for err in getattr(exc, "errors", None) or []:
+            if isinstance(err, dict) and err.get("reason") == "quotaExceeded":
+                return True
+        text = str(exc)
+        return "quotaExceeded" in text or "free query bytes" in text.lower()
+
     def _run_query(self, sql: str, parameters: list, narrowing_hint: str = "") -> Any:
         """Pre-flight the cost, then execute the query and return the row iterator.
 
@@ -996,6 +1040,17 @@ class BigQueryPatentSearch:
             except BigQueryBudgetExceededError:
                 raise
             except Exception as e:
+                if self._is_free_tier_quota_rejection(e):
+                    raise BigQueryQuotaExhaustedError(
+                        "BigQuery's monthly free tier for this project is used up "
+                        "(sandbox projects get 1 TiB of query scanning per month; "
+                        "a default patent search scans ~325 GiB, so about 3 free "
+                        "searches). Options: wait for the quota reset on the 1st "
+                        "of the month, attach a billing account to the project in "
+                        "the Google Cloud console (~$2 per default search after "
+                        "the free tier), or use narrower search_fields to cut the "
+                        "per-search scan."
+                    ) from e
                 if self._is_bytes_billed_rejection(e):
                     raise self._budget_error(None, max_bytes, narrowing_hint) from e
                 raise
