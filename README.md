@@ -8,22 +8,35 @@
 
 **An AI-powered patent creation and analysis system for Claude Code.**
 
-I built this because I needed to file a patent myself. I used AI to build the system, used the system to file the patent, and it worked. Now it's open source so anyone can use it, whether you're a developer exploring AI tooling or a patent professional looking to speed up your workflow.
+I built this because I needed to file a patent myself. I used AI to build the system, used the system to file the patent, and it worked. Now it's open source so anyone can use it. You do not need to be a lawyer or a programmer. If you can describe your idea in a chat window, you can use this.
 
 In plain terms, this tool lets you:
 
-- **Search patent regulations instantly.** Ask a question about MPEP, 35 USC, 37 CFR, EPC, or PCT rules and get the relevant sections in under a second, with citations.
-- **Find prior art across 100M+ patents.** Search Google's BigQuery patent database by keywords, CPC/IPC codes, or full-text queries. Link related patents across jurisdictions with family search.
-- **Check your claims for compliance.** Run your draft claims through automated analysis for USPTO (35 USC 112(b)) or EPO (Art. 84 EPC) and get specific feedback on definiteness, two-part form, and structure.
-- **Review your full application.** Specification adequacy, formalities, required sections — checked against USPTO, EPO, or PCT standards.
-- **Search EP patents with full text.** Get full claims and description text for European patents via the EPO OPS API (not available in BigQuery).
-- **Generate patent diagrams.** Block diagrams, flowcharts, and system architectures in patent style, no design tools needed.
-- **Draft a complete patent application.** A guided workflow that walks you through the whole process, from invention disclosure to filing-ready documents — for USPTO or EPO filing.
+- **Ask patent-rule questions in plain English.** "Do my claims have to be numbered?" "How long can the abstract be?" You get the actual rule, with a citation, in about a second. (Under the hood it searches the MPEP, the examiner's rulebook, plus the patent statutes and regulations.)
+- **Find out whether your idea is actually new.** Search more than 100 million existing patents worldwide for anything close to your invention. This is called a *prior art* search, and it is the single most important step — it is how you learn whether a patent is even worth pursuing.
+- **Get your draft checked before a human ever bills you an hour.** The tool reads your claims and application the way an examiner would and flags the mechanical problems: unclear wording, missing sections, an abstract that is too long. It also tells you which checks it *did not* run, so a clean report means what it says.
+- **Make the drawings.** Patent-style diagrams and flowcharts from a description, no design software.
+- **Go from "here is my idea" to a reviewable draft application.** A guided workflow takes your description (or even your source code), hunts for prior art, drafts claims and a specification, checks everything, and hands you a package a patent professional can review quickly — for US or European filing.
+
+New to the vocabulary? Every term this page uses is explained in the [Glossary](#glossary) in plain English.
+
+---
+
+## What this tool will and will not do — read this first
+
+This tool is built for people who cannot afford a mistake, so it is honest to a fault. Know what you are getting:
+
+- **It will tell you "no."** If the search finds your idea already exists, the tool's job is to show you the evidence and save you the filing fee — not to flatter you into spending money. A well-reasoned "this is not new, and here is why" is the tool working, not failing.
+- **It never says "verified" loosely.** Every automated check reports what it ran *and what it skipped*. If a report looks clean, you can trust that the words mean exactly what they say.
+- **It does not file anything for you.** You review, you decide, you file. The tool prepares; you commit.
+- **It is not a lawyer and does not give legal advice.** What it produces is a well-prepared draft plus organized evidence — built so that a patent professional's review is fast and cheap instead of slow and expensive. For anything you intend to file, have a registered patent practitioner look at it. The point of this tool is to make that look-over affordable, not to skip it.
+- **Some judgments are human-only.** Whether your invention is "non-obvious" and whether it is the kind of thing patent law protects at all are legal judgments no software makes reliably. The tool arms you for those conversations; it does not have them for you.
 
 ---
 
 ## Table of Contents
 
+- [What this tool will and will not do](#what-this-tool-will-and-will-not-do--read-this-first)
 - [Quick Start](#quick-start)
 - [What Can I Actually Do With This?](#what-can-i-actually-do-with-this)
 - [How It Works](#how-it-works)
@@ -45,6 +58,8 @@ In plain terms, this tool lets you:
 ---
 
 ## Quick Start
+
+Never used Claude Code? It's Anthropic's AI assistant that runs in a terminal or as a desktop app — [install it first](https://claude.com/claude-code) (a paid Claude subscription is the only cost to start). Then come back here; setup is one command and the tool talks you through the rest.
 
 Pick the path that fits your setup. All three get you to the same place.
 
@@ -98,21 +113,23 @@ You should see a status report showing which components are ready. If something'
 
 ## What Can I Actually Do With This?
 
-Here are some real examples. You can type these directly in Claude Code and the right skill or tool kicks in automatically.
+Here are some real examples. You can type these directly in Claude Code and the right skill or tool kicks in automatically. Say it in your own words — the "what to say" column is a starting point, not a required incantation.
 
 | What you want to do | What to say | What happens |
 |---|---|---|
-| Find the MPEP rule on claim definiteness | "Search MPEP for claim definiteness requirements" | Hybrid search returns the most relevant MPEP sections with citations |
-| Look for prior art | "Search for patents about neural network training filed in 2024" | BigQuery searches 100M+ patents and returns matching results |
-| Check your claims | "Review these claims for 35 USC 112(b) compliance" | Automated analysis flags indefinite terms, missing antecedent basis, structural issues |
-| Review a full application | `/full-review` | Runs claims + specification + formalities checks in parallel |
-| Create a patent from scratch | `/create-patent` | Guided 6-phase workflow, takes 55-80 min, produces a complete filing package |
-| Generate a diagram | "Create a block diagram showing the system architecture" | Generates a patent-style Graphviz diagram |
-| Search prior art thoroughly | "Conduct a prior art search for [your invention]" | Automated novelty and freedom-to-operate analysis |
+| Find out if a rule applies to you | "Search MPEP for claim definiteness requirements" — or just "do my claims have to be written a certain way?" | The tool searches the examiner's rulebook and returns the relevant sections, with citations you can read yourself |
+| See if your idea already exists | "Search for patents about [your idea]" — e.g. "self-heating coffee mug" | Searches 100M+ existing patents and shows you the closest matches, so you know what you're up against |
+| Get your draft claims checked | "Review these claims" (paste them in) | Flags unclear wording, terms used before they're introduced, and structural problems — the mechanical mistakes an examiner rejects first |
+| Check a whole application | `/full-review` | Runs the claims, description, and formatting checks together and reports everything at once |
+| Go from idea to draft application | `/create-patent` | A guided workflow: describe the invention, the tool searches prior art, drafts, checks, and assembles a reviewable package (typically about an hour) |
+| Make a drawing | "Create a block diagram showing [your system]" | Produces a patent-style figure, no design software needed |
+| Dig deep on whether your idea is new | "Conduct a prior art search for [your invention]" | A thorough multi-angle hunt through existing patents, with an honest verdict on what it found |
 
 ---
 
 ## How It Works
+
+*Everything from here down gets progressively more technical. You do not need any of it to use the tool — the sections above plus the [Glossary](#glossary) are enough. This part is for developers, patent professionals, and the curious.*
 
 The system has two modes that can work independently or together:
 
