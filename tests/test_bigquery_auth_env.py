@@ -99,3 +99,43 @@ def test_free_tier_quota_error_is_actionable():
     assert "free" in msg.lower()
     assert "billing" in msg.lower()
     assert "1st" in msg or "month" in msg.lower()
+
+
+def test_explicit_credentials_bypass_default_chain(monkeypatch, tmp_path):
+    """Pointing GOOGLE_APPLICATION_CREDENTIALS at the gcloud well-known path
+    routes google.auth.default() straight back into the gcloud-SDK handler
+    and its config-helper subprocess (verified by stack dump). The client
+    must therefore receive explicitly loaded credentials so default() never
+    runs."""
+    from mcp_server import bigquery_search as bs
+
+    creds_file = tmp_path / "application_default_credentials.json"
+    creds_file.write_text("{}")
+    sentinel = object()
+    monkeypatch.setattr(
+        bs, "_load_creds_from_file", lambda path, quota_project_id=None: (sentinel, None)
+    )
+
+    loaded = BigQueryPatentSearch._load_explicit_credentials(creds_file, "proj")
+
+    assert loaded is sentinel
+
+
+def test_explicit_credentials_none_when_file_missing(tmp_path):
+    loaded = BigQueryPatentSearch._load_explicit_credentials(tmp_path / "missing.json", "proj")
+
+    assert loaded is None
+
+
+def test_explicit_credentials_none_on_load_failure(monkeypatch, tmp_path):
+    from mcp_server import bigquery_search as bs
+
+    creds_file = tmp_path / "application_default_credentials.json"
+    creds_file.write_text("{}")
+
+    def boom(path, quota_project_id=None):
+        raise ValueError("bad file")
+
+    monkeypatch.setattr(bs, "_load_creds_from_file", boom)
+
+    assert BigQueryPatentSearch._load_explicit_credentials(creds_file, "proj") is None
