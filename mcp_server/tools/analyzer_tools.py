@@ -96,6 +96,9 @@ def register_analyzer_tools(
                     "important_issues": analysis_results["important_issues"],
                     "minor_issues": analysis_results["minor_issues"],
                     "issues_by_type": analysis_results["issues_by_type"],
+                    # Skipped-check disclosure must survive the MCP boundary;
+                    # dropping it here silently undid the report's honesty.
+                    "checks_skipped": analysis_results.get("checks_skipped", []),
                     "summary": analysis_results["summary"],
                     "issues": analysis_results["issues"],
                     "mpep_references": mpep_refs,
