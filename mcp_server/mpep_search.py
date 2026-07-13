@@ -227,6 +227,30 @@ class MPEPIndex:
         return filename
 
     @staticmethod
+    def _source_id_map(metadata: list[dict[str, Any]]) -> dict[str, Any]:
+        """Map each source label to the int64 chunk ids carrying it.
+
+        Used to restrict retrieval to one source BEFORE ranking — filtering
+        the global top-k afterwards degrades recall for minority sources
+        (45.7K MPEP chunks vs ~5K per EPO/PCT source; measured live, a
+        filtered EPC_RULES search returned 1 of 5 requested results).
+        """
+        by_source: dict[str, list[int]] = {}
+        for i, m in enumerate(metadata):
+            by_source.setdefault(m.get("source", "MPEP"), []).append(i)
+        return {s: np.asarray(ids, dtype=np.int64) for s, ids in by_source.items()}
+
+    @staticmethod
+    def _masked_bm25_top(scores: Any, allowed_ids: Any, k: int) -> Any:
+        """Top-k chunk ids by BM25 score, restricted to allowed_ids when given."""
+        scores = np.asarray(scores)
+        if allowed_ids is None:
+            return np.argsort(scores)[::-1][:k]
+        allowed_scores = scores[allowed_ids]
+        order = np.argsort(allowed_scores)[::-1][: min(k, len(allowed_ids))]
+        return allowed_ids[order]
+
+    @staticmethod
     def _chunk_to_metadata(c: dict[str, Any]) -> dict[str, Any]:
         """Normalize one extracted chunk into index metadata.
 
@@ -1006,6 +1030,7 @@ class MPEPIndex:
         self.chunks = texts
         # Preserve all metadata from all source types
         self.metadata = [self._chunk_to_metadata(c) for c in all_chunks]
+        self._source_ids_cache = None  # metadata changed; rebuild lazily
 
         # Build BM25 index for hybrid search
         if BM25_AVAILABLE and BM25Okapi:
@@ -1062,6 +1087,33 @@ class MPEPIndex:
         retrieve_k = min(top_k * 4, 50) if retrieve_k is None else min(retrieve_k, 100)
         candidates = {}
 
+        # Restrict retrieval to the requested source BEFORE ranking. The
+        # global candidate pool is dominated by MPEP chunks; filtering after
+        # the fact leaves jurisdiction-scoped searches with whatever scraps
+        # of the source survived the global cut (measured: 1 of 5).
+        allowed_ids = None
+        if source_filter:
+            cache = getattr(self, "_source_ids_cache", None)
+            if cache is None or getattr(self, "_source_ids_len", -1) != len(self.metadata):
+                self._source_ids_cache = cache = self._source_id_map(self.metadata)
+                self._source_ids_len = len(self.metadata)
+            allowed_ids = cache.get(source_filter)
+            if allowed_ids is None or len(allowed_ids) == 0:
+                # Source not indexed at all — nothing to retrieve; callers
+                # (patent_law_tools) report the missing corpus honestly.
+                allowed_ids = np.asarray([], dtype=np.int64)
+        sel_params = None
+        if allowed_ids is not None and len(allowed_ids):
+            try:
+                sel_params = faiss.SearchParameters(  # type: ignore[union-attr]
+                    sel=faiss.IDSelectorBatch(allowed_ids)  # type: ignore[union-attr]
+                )
+            except Exception:
+                # Very old faiss without search-time selectors: the BM25 leg
+                # is still exactly filtered and the post-filter below keeps
+                # correctness (with the old recall limits) for vectors.
+                sel_params = None
+
         # HyDE Query Expansion (if enabled)
         queries_to_search = [query]
         if self.use_hyde and self.hyde_expander:
@@ -1075,6 +1127,9 @@ class MPEPIndex:
             except Exception as e:
                 _log_warning(f"HyDE expansion failed: {e}, using original query", error=str(e))
 
+        if allowed_ids is not None and len(allowed_ids) == 0:
+            queries_to_search = []
+
         # Search with each query variant (original + hypothetical docs)
         for query_idx, search_query in enumerate(queries_to_search):
             query_weight = 1.0 if query_idx == 0 else 0.5  # Weight original query higher
@@ -1082,12 +1137,21 @@ class MPEPIndex:
             # Vector search with BGE query prefix (recommended format)
             query_with_prefix = f"query: {search_query}"
             query_embedding = self.model.encode([query_with_prefix])
-            vec_distances, vec_indices = self.index.search(  # type: ignore[union-attr]
-                query_embedding.astype("float32"), retrieve_k
-            )
+            if sel_params is not None:
+                vec_distances, vec_indices = self.index.search(  # type: ignore[union-attr]
+                    query_embedding.astype("float32"), retrieve_k, params=sel_params
+                )
+            else:
+                vec_distances, vec_indices = self.index.search(  # type: ignore[union-attr]
+                    query_embedding.astype("float32"), retrieve_k
+                )
 
             # Add vector search results with RRF scoring
             for rank, (idx, dist) in enumerate(zip(vec_indices[0], vec_distances[0])):
+                if idx < 0:
+                    # Selector-filtered search pads with -1 when fewer than
+                    # retrieve_k chunks carry the source.
+                    continue
                 rrf_contribution = query_weight * (1.0 / (60 + rank + 1))
 
                 if idx in candidates:
@@ -1107,7 +1171,7 @@ class MPEPIndex:
             if self.bm25:
                 tokenized_query = search_query.lower().split()
                 bm25_scores = self.bm25.get_scores(tokenized_query)
-                bm25_top_indices = np.argsort(bm25_scores)[::-1][:retrieve_k]  # type: ignore[union-attr]
+                bm25_top_indices = self._masked_bm25_top(bm25_scores, allowed_ids, retrieve_k)
 
                 for rank, idx in enumerate(bm25_top_indices):
                     rrf_contribution = query_weight * (1.0 / (60 + rank + 1))
