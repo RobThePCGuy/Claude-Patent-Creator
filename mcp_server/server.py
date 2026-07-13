@@ -48,6 +48,7 @@ from logging_config import get_logger
 from monitoring import log_operation_result, track_performance
 from validation import (
     CheckFormalitiesInput,
+    CheckPackageInput,
     CPCSearchInput,
     FamilySearchInput,
     GetPatentInput,
@@ -77,6 +78,11 @@ except ImportError:
     ClaimsAnalyzer = None
     FormalitiesChecker = None
     SpecificationAnalyzer = None
+
+try:
+    from package_checker import PackageChecker
+except ImportError:
+    PackageChecker = None
 
 # Local modules (imported after the site-packages/env setup above)
 from downloaders import FileDownloader
@@ -310,6 +316,7 @@ from tools.diagram_tools import register_diagram_tools  # noqa: E402
 from tools.epo_analyzer_tools import register_epo_analyzer_tools  # noqa: E402
 from tools.epo_search_tools import register_epo_tools  # noqa: E402
 from tools.mpep_tools import register_mpep_tools  # noqa: E402
+from tools.package_tools import register_package_tools  # noqa: E402
 from tools.patent_law_tools import register_patent_law_tools  # noqa: E402
 from tools.system_tools import register_system_tools  # noqa: E402
 from tools.uspto_search_tools import register_uspto_tools  # noqa: E402
@@ -341,6 +348,17 @@ def _register_all_tools():
         ReviewClaimsInput=ReviewClaimsInput,
         ReviewSpecificationInput=ReviewSpecificationInput,
         CheckFormalitiesInput=CheckFormalitiesInput,
+        track_performance=track_performance,
+        log_operation_result=log_operation_result,
+    )
+
+    register_package_tools(
+        mcp=mcp,
+        PackageChecker=PackageChecker,
+        log_info=_log_info,
+        log_error=_log_error,
+        validate_input=validate_input,
+        CheckPackageInput=CheckPackageInput,
         track_performance=track_performance,
         log_operation_result=log_operation_result,
     )

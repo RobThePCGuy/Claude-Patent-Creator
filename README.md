@@ -231,6 +231,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `review_patent_claims` | 35 USC 112(b) compliance check (definiteness, antecedent basis, structure) |
 | `review_specification` | 35 USC 112(a) adequacy check (written description, enablement, best mode) |
 | `check_formalities` | MPEP 608 compliance (abstract, title, drawings, required sections) |
+| `check_package` | Whole-package consistency: stale verification stamps, claim-count disagreements, status contradictions, commentary inside filing copies, date errors |
 
 ### Generation
 

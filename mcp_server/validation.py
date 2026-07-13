@@ -274,6 +274,14 @@ class CheckFormalitiesInput(BaseModel):  # type: ignore[misc]
     drawings_present: bool = Field(default=False, description="Whether drawings are included")
 
 
+class CheckPackageInput(BaseModel):  # type: ignore[misc]
+    """Input validation for package consistency checking."""
+
+    directory: constr(min_length=1, max_length=4096) = Field(  # type: ignore[valid-type]
+        ..., description="Path to the assembled filing-package directory"
+    )
+
+
 # Diagram Input Models
 
 
