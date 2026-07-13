@@ -152,7 +152,10 @@ def register_diagram_tools(
                 - "id": Unique identifier (e.g., "start", "step1")
                 - "label": Display label (e.g., "Initialize System")
                 - "shape": Node shape - "box" (default), "ellipse" (start/end), "diamond" (decision)
-                - "next": List of next step IDs (e.g., ["step2", "step3"])
+                - "next": List of next steps — plain IDs (e.g., ["step2"]) or
+                  {"id": ..., "label": ...} objects to label the edge
+                  (e.g., [{"id": "step2", "label": "Yes"}, {"id": "end", "label": "No"}]).
+                  Decision-diamond branches MUST be labeled to be unambiguous.
             filename: Output filename (default: "flowchart")
             output_format: Output format - "svg" (default), "png", or "pdf"
 
@@ -163,7 +166,8 @@ def register_diagram_tools(
             [
                 {"id": "start", "label": "Start", "shape": "ellipse", "next": ["step1"]},
                 {"id": "step1", "label": "Process Data", "shape": "box", "next": ["decision"]},
-                {"id": "decision", "label": "Valid?", "shape": "diamond", "next": ["step2", "end"]},
+                {"id": "decision", "label": "Valid?", "shape": "diamond",
+                 "next": [{"id": "step2", "label": "Yes"}, {"id": "end", "label": "No"}]},
                 {"id": "step2", "label": "Save Result", "shape": "box", "next": ["end"]},
                 {"id": "end", "label": "End", "shape": "ellipse", "next": []}
             ]
