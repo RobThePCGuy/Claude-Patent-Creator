@@ -129,10 +129,14 @@ class PatentDiagramGenerator:
             [
                 {"id": "start", "label": "Start", "shape": "ellipse", "next": ["step1"]},
                 {"id": "step1", "label": "Process data", "shape": "box", "next": ["decision"]},
-                {"id": "decision", "label": "Valid?", "shape": "diamond", "next": ["step2", "end"]},
+                {"id": "decision", "label": "Valid?", "shape": "diamond",
+                 "next": [{"id": "step2", "label": "Yes"}, {"id": "end", "label": "No"}]},
                 {"id": "step2", "label": "Save result", "shape": "box", "next": ["end"]},
                 {"id": "end", "label": "End", "shape": "ellipse", "next": []}
             ]
+
+        A "next" entry is either a step-id string or {"id", "label"} to
+        label the edge (required for unambiguous decision branches).
         """
         # Build DOT code
         dot_lines = [
@@ -153,13 +157,27 @@ class PatentDiagramGenerator:
 
         dot_lines.append("")
 
-        # Add edges
+        # Add edges. A `next` entry is a step-id string, or {"id", "label"}
+        # to label the edge — decision-diamond branches need Yes/No labels
+        # to be unambiguous in a patent figure (issue #60).
         for step in steps:
             node_id = step["id"]
             next_nodes = step.get("next", [])
 
             for next_node in next_nodes:
-                dot_lines.append(f'    "{node_id}" -> "{next_node}";')
+                if isinstance(next_node, dict):
+                    target = next_node["id"]
+                    edge_label = next_node.get("label", "")
+                else:
+                    target = next_node
+                    edge_label = ""
+                if edge_label:
+                    escaped = edge_label.replace('"', '\\"')
+                    dot_lines.append(
+                        f'    "{node_id}" -> "{target}" [label="{escaped}"];'
+                    )
+                else:
+                    dot_lines.append(f'    "{node_id}" -> "{target}";')
 
         dot_lines.append("}")
 
