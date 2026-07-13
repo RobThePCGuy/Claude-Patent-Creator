@@ -175,7 +175,13 @@ the defeated element to a dependent — then re-run Phase 4 on the changed
 claims.
 
 **5b. Package red team (the whole artifact).** Attacking the claims is not
-enough: a package can have perfect claims and still be unfit to file. Hand
+enough: a package can have perfect claims and still be unfit to file.
+First run the deterministic gate: `check_package` on the assembled
+directory. It recomputes every content-hash verification stamp (an edit
+after a recorded check is a critical failure), cross-checks claim counts
+against every "N claims" assertion, flags readiness language beside draft
+markers, catches commentary inside filing copies, and sanity-checks
+dates. Fix every critical before spending reviewer effort. Then hand
 the ASSEMBLED package — every file, nothing else — to a fresh adversarial
 reviewer with zero campaign context, tasked to find: internal
 contradictions between README, claims, spec, and figures; statements of
