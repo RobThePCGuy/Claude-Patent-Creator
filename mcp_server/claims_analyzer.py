@@ -130,24 +130,38 @@ class ClaimsAnalyzer(BaseAnalyzer):
         matches = claim_pattern.findall(claims_text)
 
         for claim_num, claim_body in matches:
-            claim = {
-                "number": int(claim_num),
-                "text": claim_body.strip(),
-                # Plural "claims 1 to 5" / "claims 1 and 2" are the standard way
-                # to write multiple-dependent claims; the old `claim \d+` pattern
-                # missed them, mislabeling those dependent claims as independent.
-                "is_independent": not bool(re.search(r"\bclaims?\s+\d+", claim_body, re.IGNORECASE)),
-                "depends_on": None,
-                "elements": {},
-                "limitations": [],
-            }
-
-            # Check for dependency
-            dep_match = re.search(r"\bclaims?\s+(\d+)", claim_body, re.IGNORECASE)
+            # A dependency is a REFERENCE PHRASE in the claim's opening
+            # ("The method of claim 1, wherein..."), per 37 CFR 1.75(c) —
+            # not a bare "claim N" anywhere in the body. The old body-wide
+            # search misclassified independent claims when working-copy
+            # commentary (swallowed into the preceding claim's body by the
+            # split above) mentioned another claim, and when a claim's own
+            # limitations used the word "claims" (issue #65). The phrase
+            # forms cover US and EP styles, including multiple-dependent
+            # "of any one of claims 1 to 5"; searching only the preamble
+            # (text before the first colon, capped at 300 chars) keeps
+            # later prose out of the classification.
+            preamble = claim_body.split(":", 1)[0][:300]
+            dep_match = re.search(
+                r"\b(?:of|according to|as\s+(?:claimed|recited|defined|set\s+forth)\s+in)\s+"
+                r"(?:any\s+(?:one\s+)?of\s+(?:the\s+)?(?:preceding\s+)?)?claims?\s+(\d+)",
+                preamble,
+                re.IGNORECASE,
+            )
+            depends_on = None
             if dep_match:
                 dep_num = int(dep_match.group(1))
                 if dep_num != int(claim_num):  # Prevent self-referencing
-                    claim["depends_on"] = dep_num
+                    depends_on = dep_num
+
+            claim = {
+                "number": int(claim_num),
+                "text": claim_body.strip(),
+                "is_independent": depends_on is None,
+                "depends_on": depends_on,
+                "elements": {},
+                "limitations": [],
+            }
 
             # Extract limitations (a), (b), (c), etc.
             lim_pattern = re.compile(r"\n\s*([a-z])\)\s+(.+?)(?=\n\s*[a-z]\)|$)", re.DOTALL)
