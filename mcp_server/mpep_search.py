@@ -226,6 +226,45 @@ class MPEPIndex:
             return f"MPEP {section}"
         return filename
 
+    @staticmethod
+    def _chunk_to_metadata(c: dict[str, Any]) -> dict[str, Any]:
+        """Normalize one extracted chunk into index metadata.
+
+        Every source's extractor produces a slightly different shape — the
+        EPO/PCT extractors (via _chunk_text_with_metadata) have no "page",
+        and hard-keying c["page"] here crashed the first index build that
+        included the EPO corpus. Missing fields get honest defaults; page
+        is None when the source has no page concept.
+        """
+        meta = {
+            "source": c.get("source", "MPEP"),
+            "file": c.get("file", ""),
+            "page": c.get("page"),
+            "section": c.get("section", c.get("source", "UNKNOWN")),
+            "has_statute": c.get("has_statute", False),
+            "has_mpep_ref": c.get("has_mpep_ref", False),
+            "has_rule_ref": c.get("has_rule_ref", False),
+            "is_statute": c.get("is_statute", False),
+            "is_regulation": c.get("is_regulation", False),
+            "is_update": c.get("is_update", False),
+        }
+        # Source-specific fields
+        if c.get("source") == "37_CFR":
+            meta["part"] = c.get("part")
+            meta["is_fee_schedule"] = c.get("is_fee_schedule", False)
+        elif c.get("source") == "SUBSEQUENT":
+            meta["doc_type"] = c.get("doc_type")
+            meta["fr_citation"] = c.get("fr_citation")
+            meta["effective_date"] = c.get("effective_date")
+            meta["mpep_sections_affected"] = c.get("mpep_sections_affected", [])
+            meta["supersedes_mpep"] = c.get("supersedes_mpep", False)
+        else:
+            # EPO/PCT structural fields, when the extractor recorded them
+            for key in ("part", "article", "rule"):
+                if key in c:
+                    meta[key] = c[key]
+        return meta
+
     def _chunk_text_with_metadata(
         self,
         text: str,
@@ -966,32 +1005,7 @@ class MPEPIndex:
 
         self.chunks = texts
         # Preserve all metadata from all source types
-        self.metadata = []
-        for c in all_chunks:
-            meta = {
-                "source": c.get("source", "MPEP"),
-                "file": c["file"],
-                "page": c["page"],
-                "section": c["section"],
-                "has_statute": c.get("has_statute", False),
-                "has_mpep_ref": c.get("has_mpep_ref", False),
-                "has_rule_ref": c.get("has_rule_ref", False),
-                "is_statute": c.get("is_statute", False),
-                "is_regulation": c.get("is_regulation", False),
-                "is_update": c.get("is_update", False),
-            }
-            # Add source-specific fields
-            if c.get("source") == "37_CFR":
-                meta["part"] = c.get("part")
-                meta["is_fee_schedule"] = c.get("is_fee_schedule", False)
-            elif c.get("source") == "SUBSEQUENT":
-                meta["doc_type"] = c.get("doc_type")
-                meta["fr_citation"] = c.get("fr_citation")
-                meta["effective_date"] = c.get("effective_date")
-                meta["mpep_sections_affected"] = c.get("mpep_sections_affected", [])
-                meta["supersedes_mpep"] = c.get("supersedes_mpep", False)
-
-            self.metadata.append(meta)
+        self.metadata = [self._chunk_to_metadata(c) for c in all_chunks]
 
         # Build BM25 index for hybrid search
         if BM25_AVAILABLE and BM25Okapi:
