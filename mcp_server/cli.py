@@ -67,6 +67,22 @@ except (ImportError, SystemExit) as exc:  # SystemExit: server.py exits if mcp i
     download_35_usc = download_37_cfr = download_mpep_pdfs = None
     download_subsequent_publications = extract_mpep_pdfs = None
 
+# EPO/PCT law corpus downloaders (lightweight: requests only). Guarded the
+# same way so `patent-creator --help` works in a bare environment.
+try:
+    from epo_downloaders import (
+        check_epo_pct_sources,
+        download_epc,
+        download_pct_guidelines,
+        download_pct_rules,
+        download_pct_treaty,
+        scrape_epo_guidelines,
+    )
+except ImportError:
+    check_epo_pct_sources = download_epc = None
+    download_pct_guidelines = download_pct_rules = download_pct_treaty = None
+    scrape_epo_guidelines = None
+
 # Import path utilities for cross-platform path handling
 try:
     from path_utils import PathFormatter
@@ -506,6 +522,53 @@ def _setup_graphviz(ensure_fn=None) -> bool:
     return ready
 
 
+def _setup_epo_pct_sources(dest_dir) -> bool:
+    """Download any missing EPO/PCT law sources into dest_dir (issue #49).
+
+    Best effort by design: EPO/WIPO being unreachable must never block US
+    setup — the law-search tools already say honestly when a corpus is
+    missing (#48). Returns True if at least one new source landed, so the
+    caller knows the index needs a rebuild to make it searchable.
+    """
+    if check_epo_pct_sources is None:
+        return False
+
+    downloaders = {
+        "epc": ("EPC (European Patent Convention)", download_epc),
+        "epo_guidelines": ("EPO Guidelines", scrape_epo_guidelines),
+        "pct_treaty": ("PCT Treaty", download_pct_treaty),
+        "pct_rules": ("PCT Regulations", download_pct_rules),
+        "pct_guidelines": ("PCT Guidelines", download_pct_guidelines),
+    }
+
+    try:
+        status = check_epo_pct_sources(dest_dir)
+    except Exception as e:
+        print(f"  EPO/PCT source check failed: {e}", file=sys.stderr)
+        return False
+
+    got_new = False
+    for key, (label, download_fn) in downloaders.items():
+        if status.get(key):
+            print(f"  {label}: [OK]", file=sys.stderr)
+            continue
+        try:
+            ok = download_fn(dest_dir)
+        except Exception as e:
+            print(f"  {label}: [X] {e}", file=sys.stderr)
+            continue
+        if ok:
+            got_new = True
+            print(f"  {label}: [OK] downloaded", file=sys.stderr)
+        else:
+            print(
+                f"  {label}: [X] download failed (EPO/PCT law search will "
+                "report the missing corpus honestly)",
+                file=sys.stderr,
+            )
+    return got_new
+
+
 def setup_command(args):
     """
     One-command setup: installs PyTorch, downloads all sources, and builds index
@@ -597,10 +660,20 @@ def setup_command(args):
     else:
         print("\n[OK] All sources already present", file=sys.stderr)
 
-    # Build index
-    index_exists = (INDEX_DIR / "mpep_index.faiss").exists()
+    # EPO/PCT law corpus (issue #49): best effort, never blocks US setup.
+    print("\nChecking EPO/PCT law sources...", file=sys.stderr)
+    epo_sources_added = _setup_epo_pct_sources(MPEP_DIR)
 
-    if args.rebuild or not index_exists:
+    # Build index. Newly downloaded EPO/PCT sources require a rebuild —
+    # an existing index knows nothing about them.
+    index_exists = (INDEX_DIR / "mpep_index.faiss").exists()
+    if epo_sources_added and index_exists and not args.rebuild:
+        print(
+            "\n  New EPO/PCT sources downloaded — rebuilding index to include them.",
+            file=sys.stderr,
+        )
+
+    if args.rebuild or not index_exists or epo_sources_added:
         print("\n[4/4] Building search index...", file=sys.stderr)
         print("This will take 5-15 minutes on first run.\n", file=sys.stderr)
 
@@ -998,6 +1071,14 @@ def download_all_command(args):
 
     download_subsequent_publications()
     print("[OK] Updates complete", file=sys.stderr)
+
+    print("\nEPO/PCT law sources:", file=sys.stderr)
+    if _setup_epo_pct_sources(MPEP_DIR):
+        print(
+            "  New EPO/PCT sources downloaded — run `patent-creator setup --rebuild` "
+            "(or build-index) to make them searchable.",
+            file=sys.stderr,
+        )
 
     if success:
         print("\n[OK] All source downloads completed successfully", file=sys.stderr)

@@ -48,7 +48,9 @@ def _log_error(msg: str, **kwargs):
 # =============================================================================
 
 # EPC: 17th edition (Jul 2020) from WIPO Lex - includes Convention + Implementing Regulations
-EPC_DOWNLOAD_URL = "https://www.wipo.int/wipolex/en/text/312166"
+# Direct PDF published on the EPO's own EPC legal-texts page — the old
+# WIPO wipolex URL served an HTML page that got saved as epc_convention.pdf.
+EPC_DOWNLOAD_URL = "https://link.epo.org/web/EPC_17th_edition_2020_en.pdf"
 
 # PCT Treaty text (in force April 1, 2002)
 PCT_TREATY_URL = "https://www.wipo.int/documents/d/pct-system/docs-en-texts-pct.pdf"
@@ -103,11 +105,25 @@ def _download_file(url: str, dest_path: Path, description: str, timeout: int = 1
         dest_path.parent.mkdir(parents=True, exist_ok=True)
 
         downloaded = 0
+        first_bytes = b""
 
         with dest_path.open("wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
+                if len(first_bytes) < 5:
+                    first_bytes += chunk[: 5 - len(first_bytes)]
                 f.write(chunk)
                 downloaded += len(chunk)
+
+        # A .pdf destination must actually be a PDF — servers answer moved
+        # or blocked documents with HTML error/landing pages, and saving one
+        # as .pdf poisons the index build downstream.
+        if dest_path.suffix.lower() == ".pdf" and not first_bytes.startswith(b"%PDF-"):
+            _log_error(
+                f"{description}: server returned non-PDF content "
+                f"(starts with {first_bytes!r}); discarding"
+            )
+            dest_path.unlink()
+            return False
 
         size_mb = downloaded / (1024 * 1024)
         _log_info(f"Downloaded {description} ({size_mb:.1f} MB)")
@@ -200,14 +216,40 @@ def scrape_epo_guidelines(dest_dir: Path, year: Optional[int] = None) -> bool:
 
     _log_info(f"Attempting EPO Guidelines PDF download for {year}...")
     if _download_file(pdf_url, pdf_dest, f"EPO Guidelines {year} PDF"):
-        # If PDF downloaded, we'll use it directly (extractor handles PDF)
-        # Create a symlink or copy reference
-        _log_info(f"EPO Guidelines PDF obtained for {year}")
-        return True
+        # The index build reads EPO_GUIDELINES_FILE (text) only — a stranded
+        # year-stamped PDF would never be indexed and never satisfy the
+        # presence check, so setup would re-download it every run.
+        if _pdf_to_guidelines_text(pdf_dest, dest_path):
+            _log_info(f"EPO Guidelines PDF obtained and extracted for {year}")
+            return True
+        _log_error("Guidelines PDF text extraction failed; trying HTML scrape")
 
     # Fall back to HTML scraping
     _log_info("PDF not available, scraping HTML version...")
     return _scrape_epo_guidelines_html(dest_path)
+
+
+def _pdf_to_guidelines_text(pdf_path: Path, dest_path: Path) -> bool:
+    """Extract the Guidelines PDF into the canonical text file."""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        _log_error("PyMuPDF not available; cannot extract Guidelines PDF")
+        return False
+    try:
+        doc = fitz.open(pdf_path)
+        try:
+            pages = [doc[p].get_text() for p in range(len(doc))]
+        finally:
+            doc.close()
+        text = "\n".join(pages)
+        if not text.strip():
+            return False
+        dest_path.write_text(text, encoding="utf-8")
+        return True
+    except Exception as e:
+        _log_error(f"Failed to extract Guidelines PDF: {e}")
+        return False
 
 
 def _scrape_epo_guidelines_html(dest_path: Path) -> bool:
@@ -379,9 +421,26 @@ def check_epo_pct_sources(dest_dir: Path) -> dict[str, bool]:
         Dict mapping document name to availability
     """
     return {
-        "epc": (dest_dir / EPC_FILE).exists(),
-        "epo_guidelines": (dest_dir / EPO_GUIDELINES_FILE).exists(),
-        "pct_treaty": (dest_dir / PCT_TREATY_FILE).exists(),
-        "pct_rules": (dest_dir / PCT_RULES_FILE).exists(),
-        "pct_guidelines": (dest_dir / PCT_GUIDELINES_FILE).exists(),
+        "epc": _source_present(dest_dir / EPC_FILE),
+        "epo_guidelines": _source_present(dest_dir / EPO_GUIDELINES_FILE),
+        "pct_treaty": _source_present(dest_dir / PCT_TREATY_FILE),
+        "pct_rules": _source_present(dest_dir / PCT_RULES_FILE),
+        "pct_guidelines": _source_present(dest_dir / PCT_GUIDELINES_FILE),
     }
+
+
+def _source_present(path: Path) -> bool:
+    """A source counts as present only if it is what it claims to be.
+
+    The old EPC URL saved a WIPO HTML page as epc_convention.pdf; treating
+    that artifact as present would block the corrected download forever.
+    """
+    if not path.exists():
+        return False
+    if path.suffix.lower() != ".pdf":
+        return True
+    try:
+        with path.open("rb") as f:
+            return f.read(5) == b"%PDF-"
+    except OSError:
+        return False
