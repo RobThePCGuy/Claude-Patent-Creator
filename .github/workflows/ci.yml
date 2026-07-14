@@ -9,6 +9,35 @@ permissions:
   contents: read
 
 jobs:
+  plugin-version-guard:
+    # Merged skill/agent/command changes reach installed users only through
+    # `claude plugin update`, which compares versions — a PR that changes
+    # plugin content without bumping the version ships to nobody, silently.
+    name: Plugin version bumped when plugin content changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Require version bump for plugin-content changes
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch -q origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- skills/ agents/ commands/ hooks/ | wc -l)
+          if [ "$CHANGED" -eq 0 ]; then
+            echo "No plugin content changed; guard passes."
+            exit 0
+          fi
+          if git diff "$BASE"...HEAD -- .claude-plugin/marketplace.json | grep -q '"version"'; then
+            echo "Plugin content changed and marketplace version bumped; guard passes."
+            exit 0
+          fi
+          echo "::error::skills/agents/commands/hooks changed but .claude-plugin/marketplace.json version did not."
+          echo "Bump the version in .claude-plugin/marketplace.json (and plugin.json) or installed users never receive this change."
+          exit 1
+
   lint-and-test:
     name: Lint, type-check, and test
     runs-on: ubuntu-latest
