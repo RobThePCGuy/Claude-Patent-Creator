@@ -224,6 +224,19 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `get_uspto_patent` | Get patent details from USPTO |
 | `get_recent_uspto_patents` | Pull recent filings |
 
+### Getting the campaign workflow (skills)
+
+The MCP server above gives Claude the TOOLS. The campaign workflow — the
+skill that runs mining, prior art, worth-it economics, drafting, and the
+red teams end to end — ships as a Claude Code plugin. Two commands:
+
+```bash
+claude plugin marketplace add RobThePCGuy/Claude-Patent-Creator
+claude plugin install claude-patent-creator-standalone@claude-patent-creator
+```
+
+Re-run the install command after upgrades to refresh the skills.
+
 ### Analysis
 
 | Tool | What it does |
