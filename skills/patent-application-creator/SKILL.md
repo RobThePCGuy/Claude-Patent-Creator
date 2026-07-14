@@ -59,6 +59,32 @@ Then triage (kill/pursue) with these screens:
 - **Unification screen**: look for ONE principle several candidates
   instantiate; a system claim with multiple embodiments beats scattered
   small claims.
+- **Worth-it screen (design-around + enforceability)** — patentable and
+  worth patenting are different questions, and this screen answers the one
+  the user is actually asking. For each surviving candidate, state
+  honestly:
+  - *Design-around cost*: what must a competitor GIVE UP to avoid the
+    claim? If a near-equivalent user experience is reachable by an
+    obvious variant (time-based instead of drift-based, one budget
+    instead of two, score-threshold instead of refusal), say so — the
+    narrowness that survives Phase 2 is the same narrowness that makes a
+    small fence. If avoiding the claim only requires doing the job
+    WORSE, the claim is a bet that the disciplined behavior becomes what
+    the market demands; label it as such.
+  - *Detectability*: can infringement be observed from outside the
+    competitor's product? Server-side internals are effectively
+    unenforceable without discovery; client-shipped or user-visible
+    behavior is provable. A patent on invisible internals is mostly a
+    trophy.
+  - *Honest economics*: a micro-entity provisional is cheap option value
+    (priority date, patent pending, 12 months to decide); the utility
+    conversion is the real money. If the goal is only freedom-to-operate
+    — stopping others from patenting the same mechanism — recommend a
+    defensive publication instead: near-free, permanent, no maintenance.
+  A candidate can pass every legal screen and still earn a no-go here;
+  "not worth your money even though it is patentable" is a first-class
+  outcome and belongs in the report with the same evidence discipline as
+  a prior-art kill.
 
 ## Phase 2 — Prior art: every outlet, adversarially
 
