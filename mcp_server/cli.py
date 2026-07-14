@@ -737,6 +737,23 @@ def setup_command(args):
         print("\n[WARNING] MCP server auto-registration failed", file=sys.stderr)
         print("  See manual registration command above", file=sys.stderr)
 
+    # The skills (incl. the patent-application-creator campaign workflow)
+    # ship as a Claude Code plugin, NOT inside this Python package — without
+    # these two commands a user gets the tools but never the campaign.
+    print("\nClaude Code skills (patent campaign workflow):", file=sys.stderr)
+    print(
+        "  claude plugin marketplace add RobThePCGuy/Claude-Patent-Creator",
+        file=sys.stderr,
+    )
+    print(
+        "  claude plugin install claude-patent-creator-standalone@claude-patent-creator",
+        file=sys.stderr,
+    )
+    print(
+        "  (re-run the install command after upgrades to refresh the skills)",
+        file=sys.stderr,
+    )
+
     # Check BigQuery status for final message
     bq_works = False
     try:
