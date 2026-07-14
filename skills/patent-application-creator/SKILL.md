@@ -68,6 +68,57 @@ Then triage (kill/pursue) with these screens:
   instantiate; a system claim with multiple embodiments beats scattered
   small claims.
 
+## Phase 1-H — History mining (when the material is a git repository)
+
+The current code shows WHAT exists; history shows what it BEAT, how hard
+it was, and when — and it holds mechanisms that no reader of HEAD can ever
+find, because they died in abandoned branches. For an inventor who rebuilds
+often, the abandoned branches are where the cleanest ground lives: **a
+mechanism that never merged never deployed, so it has no disclosure clock
+running and full foreign rights intact.** Run this pass alongside the
+Phase 1 code mining whenever the raw material has git history.
+
+The funnel (validated on a real 808-commit, 9-branch + 92-PR-ref repo:
+~2.5M agent tokens, minutes of wall clock):
+
+1. **Enumerate everything.** Mirror-clone; fetch `+refs/pull/*/head` too.
+   `git rev-list --all` is the universe. State the limit honestly: a host
+   only serves commits still reachable from refs — force-pushed-away
+   history is gone, so the stamp says "what the host still has," never
+   "all that ever existed."
+2. **Collapse by patch-id.** `git rev-list --all | git diff-tree --stdin
+   -p -r | git patch-id --stable` — cherry-picks and rebases across
+   hundreds of branches collapse to one entry each. Cost scales with
+   unique patches, not branches. (Do NOT pass `--no-commit-id`; patch-id
+   needs the commit lines to attribute patches.)
+3. **Mechanical triage into NAMED buckets.** Exclude noise subjects
+   (deps/docs/merges), lockfile/binary-only patches, and tiny diffs —
+   every exclusion lands in a bucket with its subject recorded. Coverage
+   must stay arithmetic: universe = read + excluded, reconcilable.
+4. **Read EVERY survivor.** Batch patches (~30/agent, diffs capped
+   ~7KB with the cap disclosed) and require each reader to return one
+   verdict per patch AND the count of patches it saw — reconcile counts
+   per batch. MECHANISM vs ROUTINE, with "what conventional approach the
+   diff replaces" captured. Instruct readers explicitly: NEVER downgrade
+   abandoned or unfinished work — abandoned cleverness is the target.
+5. **Cluster and locate.** Same mechanism across many commits is one
+   cluster. For each needle: `git branch --contains` and reachability
+   against the default branch, then verify against the SHIPPED code
+   whether the mechanism migrated (a bridge branch can make "stranded"
+   commits' content live elsewhere — check the deployed source, not the
+   branch topology). Only "absent from everything shipped" earns the
+   no-disclosure-clock label.
+6. **Second adversarial pass until dry.** One lens misses; re-read the
+   ROUTINE pile with a "what did pass 1 misjudge?" prompt until a pass
+   finds nothing new.
+
+History also supplies what HEAD cannot: the diff shows the conventional
+alternative being replaced (Phase 1's hardest field to fill), a string of
+failed attempts before the breakthrough is objective non-obviousness
+evidence, and commit dates + authorship are conception records. Feed the
+surviving needles into the Phase 1 triage screens (including worth-it)
+like any other candidate.
+
 ## Phase 2 — Prior art: every outlet, adversarially
 
 Patents alone are NOT sufficient for software: the killing art usually
