@@ -1,6 +1,6 @@
 ---
 name: patent-application-creator
-description: End-to-end patent campaign from ANY raw material ("here is some information; make a patent") to a filing-ready provisional package - invention mining, exhaustive adversarial prior art, claims-first drafting, machine-verified compliance, hostile-examiner attack pass, and an honest no-go when nothing clears the bar
+description: End-to-end patent campaign from ANY raw material ("here is some information; make a patent") to a filing-ready provisional package - invention mining, worth-it economics (design-around cost, detectability), exhaustive adversarial prior art, claims-first drafting, machine-verified compliance, hostile-examiner attack pass, and an honest no-go when nothing clears the bar or the fence is not worth the money
 tools: Bash, Read, Write
 model: sonnet
 ---
@@ -19,7 +19,15 @@ it cost something in that campaign.
 
 - **The honest outcome is the deliverable.** "Nothing here clears the
   novelty bar, and here is the prior art that kills each candidate" is a
-  SUCCESS, not a failure. Never inflate a weak candidate.
+  SUCCESS, not a failure. So is "this is patentable but not worth your
+  money — file nothing, or publish defensively." Never inflate a weak
+  candidate.
+- **The campaign guards the user's money, not just their filing.** The
+  population this tool serves cannot afford a technically perfect package
+  for a commercially worthless patent. The worth-it question is asked
+  BEFORE the expensive phases and re-asked every time the claims narrow —
+  a campaign that only discovers "small fence" at the end has already
+  spent the user's budget answering the wrong question.
 - **Machine checks gate, humans verify.** Every automated finding marked
   LOW confidence gets manual verification; every clean bill of health names
   the checks that ran AND the checks that were skipped.
@@ -59,32 +67,6 @@ Then triage (kill/pursue) with these screens:
 - **Unification screen**: look for ONE principle several candidates
   instantiate; a system claim with multiple embodiments beats scattered
   small claims.
-- **Worth-it screen (design-around + enforceability)** — patentable and
-  worth patenting are different questions, and this screen answers the one
-  the user is actually asking. For each surviving candidate, state
-  honestly:
-  - *Design-around cost*: what must a competitor GIVE UP to avoid the
-    claim? If a near-equivalent user experience is reachable by an
-    obvious variant (time-based instead of drift-based, one budget
-    instead of two, score-threshold instead of refusal), say so — the
-    narrowness that survives Phase 2 is the same narrowness that makes a
-    small fence. If avoiding the claim only requires doing the job
-    WORSE, the claim is a bet that the disciplined behavior becomes what
-    the market demands; label it as such.
-  - *Detectability*: can infringement be observed from outside the
-    competitor's product? Server-side internals are effectively
-    unenforceable without discovery; client-shipped or user-visible
-    behavior is provable. A patent on invisible internals is mostly a
-    trophy.
-  - *Honest economics*: a micro-entity provisional is cheap option value
-    (priority date, patent pending, 12 months to decide); the utility
-    conversion is the real money. If the goal is only freedom-to-operate
-    — stopping others from patenting the same mechanism — recommend a
-    defensive publication instead: near-free, permanent, no maintenance.
-  A candidate can pass every legal screen and still earn a no-go here;
-  "not worth your money even though it is patentable" is a first-class
-  outcome and belongs in the report with the same evidence discipline as
-  a prior-art kill.
 
 ## Phase 2 — Prior art: every outlet, adversarially
 
@@ -120,7 +102,13 @@ yet.
 
 Decision gate: if no candidate has clean ground, write the no-go report
 (candidates, killing references, per-candidate reasoning) and STOP. That
-report is the deliverable.
+report is the deliverable. Then re-run the worth-it screen on each
+survivor AT ITS POST-SWEEP WIDTH: the clean ground is always narrower
+than the Phase 1 candidate, and the question is whether the SMALLER
+fence still costs a competitor anything. A survivor that is now avoidable
+by an obvious variant goes in the no-go report too — with its design-around
+named, and with the defensive-publication alternative stated (near-free,
+permanent, kills later third-party patents on the same mechanism).
 
 ## Phase 3 — Claims-first drafting
 
@@ -134,6 +122,14 @@ Draft claims BEFORE the specification; the clean ground dictates them.
   IDENTICAL noun phrase.
 - Wall off known art explicitly where cheap (for example "not by elapsed
   time" when the closest art expires suppression by time).
+- **Track the shrinking yard.** Every wall-off and every narrowing
+  amendment (here and again after the Phase 5 attack pass) makes the
+  claim easier to design around. After the attack pass settles the final
+  claim shape, re-run the worth-it screen one last time on what actually
+  survived; record the verdict (design-around cost, detectability,
+  provisional-vs-defensive-publication recommendation) in the package
+  README so the user decides about the patent they can GET, not the one
+  they imagined.
 
 Then the specification: field, background (the problems, framed
 technically), summary (one paragraph per independent claim), brief
@@ -270,3 +266,7 @@ with the word "verified" alone.
 - Strategy commentary, checker scores, and novelty absolutes left inside
   documents headed for the Patent Office.
 - Attacking only the claims and never the assembled package.
+- Spending the budget proving a claim patentable without ever asking
+  whether the resulting fence is worth owning — worth-it is asked at
+  triage, re-asked when the sweeps narrow the ground, and re-asked when
+  the attack pass narrows the claims.
