@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "USPTO patent creation and analysis system with hybrid RAG search, BigQuery access to 100M+ patents, automated compliance checking, prior art search, and diagram generation.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "claude-patent-creator-standalone",
       "source": "./",
       "description": "Complete self-contained patent creation system - NO MCP server required. Uses Claude Code skills, agents, commands, and hooks.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "RobThePCGuy"
       },
