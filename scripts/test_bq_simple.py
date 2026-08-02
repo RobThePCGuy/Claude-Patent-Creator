@@ -15,8 +15,12 @@ try:
     status = searcher.check_availability()
 
     print("\nStatus:")
-    for key, value in status.items():
-        print(f"  {key}: {value}")
+    # Named fields only — status["project"] flows from the ADC credentials
+    # file and code scanning flags echoing it.
+    print(f"  available: {status.get('available')}")
+    for field in ("message", "error", "install_command", "total_rows"):
+        if field in status:
+            print(f"  {field}: {status[field]}")
 
 except Exception as e:
     print(f"Error: {e}")

@@ -27,7 +27,6 @@ def test_bigquery_availability():
 
         if status.get("available"):
             print("[OK] BigQuery is ready!")
-            print(f"  Project: {status.get('project')}")
             print(f"  Message: {status.get('message')}")
             if "us_patents" in status:
                 print(f"  US Patents accessible: {status.get('us_patents'):,}")
