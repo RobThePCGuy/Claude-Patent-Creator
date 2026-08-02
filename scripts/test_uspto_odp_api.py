@@ -115,7 +115,7 @@ def main():
     # Get API key from environment
     api_key = os.getenv("USPTO_API_KEY")
     if api_key:
-        print(f"API Key found: {api_key[:10]}..." if len(api_key) > 10 else "API Key found")
+        print("API Key found")
     else:
         print("[WARNING] No USPTO_API_KEY environment variable found")
         print("   Some endpoints may require authentication")

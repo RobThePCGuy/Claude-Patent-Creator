@@ -6,7 +6,6 @@ Downloads legal documents for the European Patent Office (EPO) and
 Patent Cooperation Treaty (PCT) systems for indexing in the RAG pipeline.
 """
 
-import re
 import sys
 import time
 from pathlib import Path
@@ -18,6 +17,13 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
+
+try:
+    from bs4 import BeautifulSoup
+
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
 
 try:
     from logging_config import get_logger
@@ -341,38 +347,38 @@ def _extract_text_from_html(html: str) -> str:
     Returns:
         Extracted plain text
     """
-    # Remove script and style elements
-    html = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    if not BS4_AVAILABLE:
+        raise ImportError("beautifulsoup4 is required for HTML text extraction")
+
+    soup = BeautifulSoup(html, "lxml")
+
+    # Drop script/style bodies entirely; a real parser also handles the
+    # malformed closers (e.g. "</script >") that defeat regex filters.
+    for tag in soup(["script", "style"]):
+        tag.decompose()
 
     # Convert headings to text with markers
-    html = re.sub(r"<h1[^>]*>(.*?)</h1>", r"\n\n## \1\n", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<h2[^>]*>(.*?)</h2>", r"\n\n### \1\n", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<h3[^>]*>(.*?)</h3>", r"\n\n#### \1\n", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<h[4-6][^>]*>(.*?)</h[4-6]>", r"\n\1\n", html, flags=re.DOTALL | re.IGNORECASE)
+    for name, marker in (("h1", "\n\n## "), ("h2", "\n\n### "), ("h3", "\n\n#### ")):
+        for tag in soup.find_all(name):
+            tag.insert_before(marker)
+            tag.insert_after("\n")
+    for tag in soup.find_all(["h4", "h5", "h6"]):
+        tag.insert_before("\n")
+        tag.insert_after("\n")
 
-    # Convert paragraphs and line breaks
-    html = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
-    html = re.sub(r"<p[^>]*>", "\n\n", html, flags=re.IGNORECASE)
-    html = re.sub(r"</p>", "", html, flags=re.IGNORECASE)
+    # Convert paragraphs, line breaks, and list items
+    for tag in soup.find_all("br"):
+        tag.replace_with("\n")
+    for tag in soup.find_all("p"):
+        tag.insert_before("\n\n")
+    for tag in soup.find_all("li"):
+        tag.insert_before("\n- ")
 
-    # Convert list items
-    html = re.sub(r"<li[^>]*>", "\n- ", html, flags=re.IGNORECASE)
-
-    # Remove all remaining HTML tags
-    html = re.sub(r"<[^>]+>", "", html)
-
-    # Decode HTML entities
-    html = html.replace("&amp;", "&")
-    html = html.replace("&lt;", "<")
-    html = html.replace("&gt;", ">")
-    html = html.replace("&quot;", '"')
-    html = html.replace("&#39;", "'")
-    html = html.replace("&nbsp;", " ")
+    # get_text() drops remaining tags and decodes entities
 
     # Clean up whitespace
     lines = []
-    for line in html.split("\n"):
+    for line in soup.get_text().split("\n"):
         line = line.strip()
         if line:
             lines.append(line)

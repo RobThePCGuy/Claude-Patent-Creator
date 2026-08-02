@@ -40,7 +40,7 @@ def test_bigquery_initialization():
 
         if searcher.client:
             print("  [OK] BigQuery client initialized successfully")
-            print(f"  [OK] Billing project: {searcher.billing_project}")
+            print("  [OK] Billing project configured")
         else:
             print("  [WARN] BigQuery client not initialized (credentials not configured)")
 
