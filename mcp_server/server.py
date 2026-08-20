@@ -41,7 +41,7 @@ if user_site in sys.path:
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError:
-    print("Error: mcp package not found. Install with: pip install mcp", file=sys.stderr)
+    print('Error: mcp package not found. Install with: pip install "mcp>=1.21.0,<2.0.0"', file=sys.stderr)
     sys.exit(1)
 
 from logging_config import get_logger
