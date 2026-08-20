@@ -25,9 +25,15 @@ if platform.system() == "Darwin":
 try:
     from dotenv import load_dotenv
 
-    # Load from mcp_server/.env file
-    env_path = Path(__file__).parent / ".env"
-    load_dotenv(env_path, override=True)
+    # Load .env files without overriding real environment variables, matching the
+    # documented precedence in config.py: real env var > .env file > built-in default.
+    # Both the project-root .env (documented in the README) and the legacy
+    # mcp_server/.env are supported.
+    for env_path in (
+        Path(__file__).parent.parent / ".env",  # project root (documented location)
+        Path(__file__).parent / ".env",  # legacy mcp_server/.env
+    ):
+        load_dotenv(env_path, override=False)
 except ImportError:
     pass  # dotenv not required
 

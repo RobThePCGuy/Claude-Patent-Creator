@@ -3,7 +3,7 @@ name = "claude-patent-creator"
 version = "0.2.0"
 description = "MPEP-based Patent Creator for patent creation with examiner-level accuracy"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "RobThePCGuy" }]
 keywords = ["patent", "uspto", "mpep", "mcp", "rag", "ai", "legal"]
@@ -13,7 +13,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

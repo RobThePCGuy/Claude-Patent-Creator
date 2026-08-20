@@ -292,7 +292,7 @@ Query: {query}
 Write a clear, technical answer (2-3 sentences) that would help find relevant MPEP sections:"""
 
             message = self.api_client.messages.create(  # type: ignore[union-attr]
-                model="claude-3-haiku-20240307",  # Fast, cheap model
+                model=os.environ.get("HYDE_ANTHROPIC_MODEL", "claude-haiku-4-5"),  # Fast, cheap model
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -314,7 +314,7 @@ Query: {query}
 Write a clear, technical answer (2-3 sentences) that would help find relevant MPEP sections:"""
 
             response = self.api_client.chat.completions.create(  # type: ignore[union-attr]
-                model="gpt-3.5-turbo",  # Fast, cheap model
+                model=os.environ.get("HYDE_OPENAI_MODEL", "gpt-4o-mini"),  # Fast, cheap model
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}],
             )
