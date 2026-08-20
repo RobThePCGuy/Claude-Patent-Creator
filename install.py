@@ -534,8 +534,12 @@ def install_graphviz():
     response = input("\nInstall Graphviz? (y/n): ").lower()
     if response == "y":
         print_info("Attempting automatic installation...")
+        # Quote sys.executable (may contain spaces) and resolve the script path
+        # relative to this file so it works regardless of the current directory.
+        # run_command uses shell=True, so paths are quoted rather than passed as a list.
+        graphviz_script = Path(__file__).parent / "scripts" / "install_graphviz.py"
         run_command(
-            f"{sys.executable} scripts/install_graphviz.py",
+            f'"{sys.executable}" "{graphviz_script}"',
             "Installing Graphviz",
             check=False,
             show_output=True,
