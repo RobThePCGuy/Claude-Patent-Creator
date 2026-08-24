@@ -23,7 +23,7 @@ dependencies = [
     # is functional out of the box. `patent-creator setup` detects GPUs and
     # swaps in a CUDA/MPS torch wheel for a 5-10x speedup on index building.
     "torch>=2.0",                          # CPU baseline; setup may swap to GPU build
-    "mcp>=1.21.0,<2.0.0",                  # MCP Server Framework (includes FastMCP)
+    "mcp>=1.21.0,<3.0.0",                  # MCP Server Framework (includes FastMCP)
     "PyMuPDF>=1.26.0",                     # PDF processing (verified Jan 2025)
     "sentence-transformers>=5.1.2,<7.0.0", # Embedding models (verified Jan 2025)
     "faiss-cpu>=1.13.2",                   # Vector search (numpy 2.x support, latest patch)
