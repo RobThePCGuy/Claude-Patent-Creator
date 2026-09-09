@@ -410,12 +410,12 @@ claude mcp add ... -- "C:\Users\YourName\venv\Scripts\python.exe"
 
 | Package | Version | Purpose |
 |---|---|---|
-| mcp | >=1.21.0 | MCP server framework |
-| sentence-transformers | >=5.1.2, <6.0.0 | Text embeddings |
+| mcp | >=2.0.0, <3.0.0 | MCP Python SDK (MCPServer) |
+| sentence-transformers | >=5.1.2, <7.0.0 | Text embeddings |
 | faiss-cpu | >=1.13.2 | Vector similarity search |
 | numpy | >=1.26.0, <3.0.0 | Array operations |
 | rank-bm25 | >=0.2.2 | Lexical search |
-| transformers | >=4.57.6, <5.0.0 | HuggingFace models |
+| transformers | >=4.57.6, <6.0.0 | HuggingFace models |
 | google-cloud-bigquery | >=3.41.0 | Patent search |
 | pydantic | >=2.12.5 | Data validation |
 | graphviz | >=0.21 | Diagram generation |
