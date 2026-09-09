@@ -25,7 +25,7 @@ def register_package_tools(
     """Register package-consistency tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         PackageChecker: Package checker class (None if unavailable)
         log_info: Logging function for info messages
         log_error: Logging function for error messages

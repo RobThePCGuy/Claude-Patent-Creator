@@ -11,7 +11,7 @@ Expert system for developing and extending the Claude Patent Creator MCP server.
 
 ## Expertise
 
-- FastMCP framework and MCP tool development
+- MCP Python SDK 2.x (MCPServer) and MCP tool development
 - Patent analyzer implementation (Claims, Specification, Formalities)
 - RAG search architecture (FAISS + BM25 + HyDE + reranking)
 - BigQuery integration for patent search
@@ -65,7 +65,7 @@ Use this agent when:
 
 ```
 mcp_server/
-├── server.py (main FastMCP server)
+├── server.py (main MCPServer entry point)
 ├── tools/ (MCP tool modules)
 ├── analysis/ (patent analyzers)
 ├── core_search/ (RAG search)

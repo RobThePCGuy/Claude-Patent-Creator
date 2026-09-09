@@ -38,7 +38,7 @@ def register_analyzer_tools(
     """Register patent analyzer tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         mpep_index: Initialized MPEPIndex for MPEP searches
         ClaimsAnalyzer: Claims analyzer class (None if unavailable)
         SpecificationAnalyzer: Specification analyzer class (None if unavailable)

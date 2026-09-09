@@ -43,11 +43,12 @@ user_site = site.getusersitepackages()
 if user_site in sys.path:
     sys.path.remove(user_site)
 
-# FastMCP for building MCP servers
+# MCPServer from the MCP Python SDK 2.x (1.x called this class FastMCP and
+# shipped it at mcp.server.fastmcp; 2.0 removed that path, see issue #78).
 try:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 except ImportError:
-    print('Error: mcp package not found. Install with: pip install "mcp>=1.21.0,<2.0.0"', file=sys.stderr)
+    print('Error: mcp 2.x not found. Install with: pip install "mcp>=2.0.0,<3.0.0"', file=sys.stderr)
     sys.exit(1)
 
 from logging_config import get_logger
@@ -95,7 +96,7 @@ from downloaders import FileDownloader
 from mpep_search import MPEPIndex
 
 # Initialize MCP server
-mcp = FastMCP("claude-patent-creator")
+mcp = MCPServer("claude-patent-creator")
 
 # Initialize logger
 logger = get_logger()

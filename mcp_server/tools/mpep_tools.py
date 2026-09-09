@@ -29,7 +29,7 @@ def register_mpep_tools(
     """Register MPEP search tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         mpep_index: Initialized MPEPIndex for search operations
         log_info: Logging function for info messages
         log_error: Logging function for error messages

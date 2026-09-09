@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![MCP Server](https://img.shields.io/badge/MCP-FastMCP-purple.svg)](https://github.com/jlowin/fastmcp)
+[![MCP Server](https://img.shields.io/badge/MCP-Python%20SDK%202.x-purple.svg)](https://github.com/modelcontextprotocol/python-sdk)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.9+-red.svg)](https://pytorch.org/)
 [![Status](https://img.shields.io/badge/status-beta%20(WIP)-orange.svg)](#project-status)
 
@@ -433,7 +433,7 @@ See `pyproject.toml` for the complete list.
 claude-patent-creator/
 ├── .claude-plugin/          # Plugin manifest and marketplace config
 ├── mcp_server/              # Core MCP server
-│   ├── server.py            # FastMCP entry point
+│   ├── server.py            # MCPServer entry point
 │   ├── mpep_search.py       # Hybrid RAG search engine
 │   ├── bigquery_search.py   # BigQuery patent search
 │   ├── claims_analyzer.py   # 35 USC 112(b) analyzer
@@ -533,7 +533,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, branch naming,
 
 ### Open Source Dependencies
 
-This project builds on excellent open source work: [FastMCP](https://github.com/jlowin/fastmcp), [FAISS](https://github.com/facebookresearch/faiss) (Meta AI Research), [Sentence Transformers](https://www.sbert.net/) (UKP Lab), [HuggingFace Transformers](https://huggingface.co/transformers/), [PyTorch](https://pytorch.org/), [rank-bm25](https://github.com/dorianbrown/rank-bm25), [PyMuPDF](https://pymupdf.readthedocs.io/), [Graphviz](https://graphviz.org/), [Pydantic](https://docs.pydantic.dev/), and [Google Cloud BigQuery](https://cloud.google.com/bigquery).
+This project builds on excellent open source work: [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk), [FAISS](https://github.com/facebookresearch/faiss) (Meta AI Research), [Sentence Transformers](https://www.sbert.net/) (UKP Lab), [HuggingFace Transformers](https://huggingface.co/transformers/), [PyTorch](https://pytorch.org/), [rank-bm25](https://github.com/dorianbrown/rank-bm25), [PyMuPDF](https://pymupdf.readthedocs.io/), [Graphviz](https://graphviz.org/), [Pydantic](https://docs.pydantic.dev/), and [Google Cloud BigQuery](https://cloud.google.com/bigquery).
 
 ### Data Sources
 

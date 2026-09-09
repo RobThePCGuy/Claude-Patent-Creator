@@ -41,7 +41,7 @@ def register_epo_analyzer_tools(
     """Register EPO and PCT analyzer tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         mpep_index: Initialized MPEPIndex for legal document searches
         EPOClaimsAnalyzer: EPO claims analyzer class (None if unavailable)
         EPOSpecificationAnalyzer: EPO specification analyzer class (None if unavailable)

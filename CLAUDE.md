@@ -80,7 +80,7 @@ pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git && pate
 ### Technology Stack
 
 ```
-FastMCP (MCP Server Framework)
+MCP Python SDK 2.x (MCPServer)
 +- RAG Pipeline: FAISS + BM25 + HyDE + Cross-Encoder Reranking
 +- Embeddings: BGE-base-en-v1.5 (768-dim)
 +- Reranker: MS-MARCO MiniLM-L-6-v2
@@ -182,7 +182,7 @@ Quick-access workflows for common patent tasks:
 +----------------+----------------------------------------+
                  | MCP Protocol (stdio)
 +----------------v----------------------------------------+
-|              FastMCP Server (server.py)                  |
+|              MCPServer (server.py)                       |
 |  +-------------------------------------------------+   |
 |  | MCP Tools: 35+ tools for patent review & search |   |
 |  +-------------------------------------------------+   |
@@ -211,7 +211,7 @@ Quick-access workflows for common patent tasks:
 +-- marketplace.json     # Marketplace catalog for distribution
 
 mcp_server/              # Core MCP server and tools
-+-- server.py            # FastMCP server entry point (main)
++-- server.py            # MCPServer entry point (main)
 +-- mpep_search.py       # US + EPO + PCT hybrid RAG search
 +-- bigquery_search.py   # BigQuery patent search (100M+ patents)
 +-- epo_api.py           # EPO OPS API v3.2 client
