@@ -50,7 +50,7 @@ def register_diagram_tools(
     """Register diagram generation tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         log_info: Logging function for info messages
         log_error: Logging function for error messages
         log_warning: Logging function for warning messages

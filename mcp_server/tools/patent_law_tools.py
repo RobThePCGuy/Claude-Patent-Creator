@@ -30,7 +30,7 @@ def register_patent_law_tools(
     """Register cross-jurisdiction patent law search tools.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         mpep_index: The unified FAISS+BM25 index (contains US, EPO, PCT sources)
         log_info: Logging function for info messages
         log_error: Logging function for error messages

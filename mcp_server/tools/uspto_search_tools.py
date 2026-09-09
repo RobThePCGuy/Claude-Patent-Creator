@@ -32,7 +32,7 @@ def register_uspto_tools(
     """Register USPTO API search tools with the MCP server.
 
     Args:
-        mcp: FastMCP server instance
+        mcp: MCPServer instance
         log_info: Logging function for info messages
         log_error: Logging function for error messages
         validate_input: Input validation function
