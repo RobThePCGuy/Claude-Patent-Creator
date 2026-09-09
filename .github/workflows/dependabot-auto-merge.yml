@@ -12,8 +12,14 @@ jobs:
     steps:
       - uses: dependabot/fetch-metadata@v3
         id: meta
-      - name: Auto-merge patch and minor updates
-        if: steps.meta.outputs.update-type != 'version-update:semver-major'
+      - name: Auto-merge Dependabot's minor/patch group PRs
+        # Merge only PRs Dependabot itself filed as a minor/patch group. Group
+        # membership is decided from versions Dependabot could actually compare;
+        # anything outside a group is a major, a security update, or a
+        # requirement range it could not classify. fetch-metadata's update-type
+        # is not a safe gate for those: Claude-Patent-Creator #82 widened mcp
+        # from <2.0.0 to <3.0.0 and it reported "version-update:semver-patch".
+        if: endsWith(steps.meta.outputs.dependency-group, 'minor-patch')
         run: gh pr merge "$PR_URL" --auto --squash
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}

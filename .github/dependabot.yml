@@ -1,26 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "00:00"
-      timezone: "America/Chicago"
-    open-pull-requests-limit: 10
-    reviewers:
-      - "RobThePCGuy"
-    labels:
-      - "dependencies"
-      - "javascript"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    groups:
-      all-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -39,6 +18,12 @@ updates:
       include: "scope"
     groups:
       all-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      security-minor-patch:
+        applies-to: security-updates
         update-types:
           - "minor"
           - "patch"
@@ -58,3 +43,8 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      actions-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
