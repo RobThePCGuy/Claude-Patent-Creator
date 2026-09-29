@@ -7,7 +7,8 @@ Searches across 100M+ worldwide patents with full text indexing for US patents.
 Tools:
     - check_bigquery_status: Verify BigQuery availability and configuration
     - search_patents_bigquery: Fast keyword search across patent database
-    - get_patent_bigquery: Retrieve full patent details by publication number
+    - get_patent_bigquery: Retrieve patent details by publication number
+    - get_patents_bigquery: Retrieve details for up to 50 patents in one query
     - search_patents_by_cpc_bigquery: Search patents by CPC classification code
     - search_patents_by_ipc_bigquery: Search patents by IPC classification code
     - search_patent_family_bigquery: Find related patents across jurisdictions
@@ -177,15 +178,34 @@ def register_bigquery_tools(
             return [{"error": f"BigQuery search failed: {str(e)}"}]
 
     @mcp.tool()
-    async def get_patent_bigquery(patent_number: str) -> dict[str, Any]:
+    async def get_patent_bigquery(
+        patent_number: str,
+        include_abstract: bool = False,
+        include_claims: bool = True,
+        include_description: bool = False,
+    ) -> dict[str, Any]:
         """
-        Get full patent details from BigQuery by publication number.
+        Get patent details from BigQuery by publication number.
+
+        Always returns bibliographic data (title, dates, family_id, country,
+        CPC/IPC codes). Text sections are opt-in because BigQuery bills each
+        as a scan of that column across the whole corpus, even for one
+        patent: claims ~119 GiB (default on), abstract ~201 GiB (search
+        results already include it), description ~1 TiB (exceeds the default
+        cost cap; only request it when the full text is essential).
+        Sections not requested are omitted from the result.
+
+        For more than one patent, use get_patents_bigquery: a batch of up to
+        50 costs the same as one lookup.
 
         Args:
             patent_number: Patent publication number (e.g., "US10123456B2", "EP1234567A1")
+            include_abstract: Include the abstract
+            include_claims: Include the claims text
+            include_description: Include the full description
 
         Returns:
-            Patent details including title, abstract, claims, description, CPC codes
+            Patent details: bibliographic fields plus the requested sections
         """
         log_info("get_patent_bigquery called", patent_number=patent_number)
         try:
@@ -195,7 +215,12 @@ def register_bigquery_tools(
 
             def _do_get():
                 searcher = _ensure_bigquery_searcher()
-                return searcher.get_patent_details(patent_number)
+                return searcher.get_patent_details(
+                    patent_number,
+                    include_abstract=include_abstract,
+                    include_claims=include_claims,
+                    include_description=include_description,
+                )
 
             log_info("get_patent_bigquery: running query in thread")
             result = await anyio.to_thread.run_sync(_do_get)
@@ -213,6 +238,60 @@ def register_bigquery_tools(
         except Exception as e:
             log_error("get_patent_bigquery exception", exc_info=True, error=str(e))
             return {"error": f"Failed to retrieve patent: {str(e)}"}
+
+    @mcp.tool()
+    async def get_patents_bigquery(
+        patent_numbers: list[str],
+        include_abstract: bool = False,
+        include_claims: bool = True,
+        include_description: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Get details for up to 50 patents from BigQuery in one query.
+
+        Costs the same as a single get_patent_bigquery call with the same
+        include_* flags (BigQuery bills per column scanned, not per patent),
+        so use this whenever you need details for several patents, e.g. the
+        top hits of a prior-art search. Same section options and costs as
+        get_patent_bigquery.
+
+        Args:
+            patent_numbers: Publication numbers (e.g., ["US10123456B2", "EP1234567A1"])
+            include_abstract: Include abstracts
+            include_claims: Include claims text
+            include_description: Include full descriptions
+
+        Returns:
+            {"patents": {number: details}, "not_found": [numbers]}
+        """
+        log_info("get_patents_bigquery called", count=len(patent_numbers))
+        try:
+            numbers = [
+                validate_input(GetPatentInput, patent_number=n).patent_number
+                for n in patent_numbers
+            ]
+
+            def _do_get():
+                searcher = _ensure_bigquery_searcher()
+                return searcher.get_patents_details(
+                    numbers,
+                    include_abstract=include_abstract,
+                    include_claims=include_claims,
+                    include_description=include_description,
+                )
+
+            patents = await anyio.to_thread.run_sync(_do_get)
+            return {
+                "patents": patents,
+                "not_found": [n for n in dict.fromkeys(numbers) if n not in patents],
+            }
+
+        except ValueError as e:
+            log_error("get_patents_bigquery ValueError", exc_info=True, error=str(e))
+            return {"error": str(e)}
+        except Exception as e:
+            log_error("get_patents_bigquery exception", exc_info=True, error=str(e))
+            return {"error": f"Failed to retrieve patents: {str(e)}"}
 
     @mcp.tool()
     async def search_patents_by_cpc_bigquery(

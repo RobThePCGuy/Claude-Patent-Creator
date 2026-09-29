@@ -341,15 +341,27 @@ def search_prior_art(
         }
 
 
-def get_patent_details(patent_id: str) -> dict[str, Any]:
+def get_patent_details(
+    patent_id: str,
+    include_abstract: bool = False,
+    include_claims: bool = True,
+    include_description: bool = False,
+) -> dict[str, Any]:
     """
-    Retrieve full patent document by patent number using Google BigQuery.
+    Retrieve a patent document by patent number using Google BigQuery.
 
     This function provides REAL patent retrieval backed by BigQuery Patents Public Data.
+    Text sections are opt-in because each is billed as a full-corpus column
+    scan (see BigQueryPatentSearch.get_patent_details); sections not
+    requested come back as an empty abstract / None description.
 
     Args:
         patent_id: Patent publication number (e.g., "US-10123456-B2", "US10123456")
                   Various formats accepted, will be normalized.
+        include_abstract: Include the abstract (~201 GiB scan)
+        include_claims: Include the claims (~119 GiB scan)
+        include_description: Include the full description (~1 TiB scan;
+                  exceeds the default cost cap)
 
     Returns:
         Dictionary with:
@@ -381,7 +393,12 @@ def get_patent_details(patent_id: str) -> dict[str, Any]:
         searcher = _get_bigquery_searcher()
 
         # Fetch patent details
-        patent_data = searcher.get_patent_details(normalized_id)
+        patent_data = searcher.get_patent_details(
+            normalized_id,
+            include_abstract=include_abstract,
+            include_claims=include_claims,
+            include_description=include_description,
+        )
 
         if patent_data is None:
             return {
@@ -602,12 +619,13 @@ def check_backend_availability() -> dict[str, Any]:
 
 def normalize_patent_id(patent_id: str) -> str:
     """
-    Normalize patent ID to BigQuery format.
+    Strip spaces and commas from a patent ID.
 
-    BigQuery uses format like "US-1234567-B2" (with hyphens, no spaces/commas).
+    BigQuery stores "US-1234567-B2" (hyphenated) and matches exactly;
+    BigQueryPatentSearch.get_patent_details() maps any common form to that
+    via to_publication_number(), so this only needs to remove noise.
 
     Examples:
-        "US10123456" -> "US10123456" (BigQuery accepts this)
         "US-10123456-B2" -> "US-10123456-B2"
         "US 10,123,456" -> "US10123456"
         "US10123456B2" -> "US10123456B2"

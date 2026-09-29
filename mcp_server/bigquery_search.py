@@ -91,6 +91,27 @@ class BigQueryQuotaExhaustedError(ValueError):
     free-tier bytes are exhausted (sandbox projects with no billing account)."""
 
 
+_PUBLICATION_NUMBER_RE = re.compile(r"^([A-Z]{2})([A-Z]{0,2}\d+)([A-Z]\d?)?$")
+
+
+def to_publication_number(patent_number: str) -> str:
+    """Canonicalize a patent number to the corpus' publication_number format.
+
+    The table stores ``CC-NUMBER-KIND`` with hyphens ("US-10000000-B2",
+    "US-RE41548-E"), matched by exact equality, so the common written forms
+    ("US10000000B2", "us 10,000,000 b2", "US-10000000-B2") must all map to
+    it. Without a kind code the result is ``CC-NUMBER``, which lookups match
+    as a prefix. Input that does not parse is returned stripped and
+    upper-cased so it can still match verbatim.
+    """
+    compact = re.sub(r"[\s,/-]", "", patent_number).upper()
+    match = _PUBLICATION_NUMBER_RE.match(compact)
+    if not match:
+        return compact
+    country, number, kind = match.groups()
+    return f"{country}-{number}-{kind}" if kind else f"{country}-{number}"
+
+
 class BigQueryPatentSearch:
     """
     Search patents using Google BigQuery Patents Public Data
@@ -518,12 +539,43 @@ class BigQueryPatentSearch:
 
             raise
 
-    def get_patent_details(self, patent_number: str) -> Optional[dict[str, Any]]:
+    # The publications table is neither partitioned nor clustered, so a
+    # WHERE on publication_number prunes nothing: every query scans each
+    # selected column across all ~170M rows, whether it matches one patent
+    # or fifty. Cost is set entirely by which columns are selected
+    # (dry-run sizes, 2026-09):
+    #   bibliographic (title, dates, ids, CPC/IPC codes)  ~57 GiB
+    #   abstract                                          ~201 GiB
+    #   claims                                            ~119 GiB
+    #   description                                       ~1,078 GiB
+    # So text sections are opt-in, and lookups are batched.
+    MAX_DETAILS_BATCH = 50
+
+    def get_patent_details(
+        self,
+        patent_number: str,
+        include_abstract: bool = False,
+        include_claims: bool = True,
+        include_description: bool = False,
+    ) -> Optional[dict[str, Any]]:
         """
-        Get full details for a specific patent by publication number
+        Get details for a specific patent by publication number
+
+        Bibliographic fields are always returned. Text sections are opt-in
+        because each is priced as a full-corpus column scan (see the cost
+        table above); keys for sections not requested are omitted rather
+        than returned empty. The default (bibliographic + claims) scans
+        ~176 GiB. include_description adds ~1 TiB and exceeds the default
+        cost cap, so it needs PATENT_BIGQUERY_MAX_BYTES_BILLED raised.
+
+        To fetch several patents, use get_patents_details(): one batched
+        query costs the same as a single lookup.
 
         Args:
             patent_number: Patent publication number (e.g., "US10123456B2")
+            include_abstract: Include the abstract (~201 GiB)
+            include_claims: Include the claims text (~119 GiB)
+            include_description: Include the full description (~1,078 GiB)
 
         Returns:
             Patent details dictionary, or None only when the patent does not
@@ -535,97 +587,163 @@ class BigQueryPatentSearch:
                 collapsed into None, so callers can distinguish "not found"
                 from "lookup failed".
         """
+        return self.get_patents_details(
+            [patent_number],
+            include_abstract=include_abstract,
+            include_claims=include_claims,
+            include_description=include_description,
+        ).get(patent_number)
+
+    def get_patents_details(
+        self,
+        patent_numbers: list[str],
+        include_abstract: bool = False,
+        include_claims: bool = True,
+        include_description: bool = False,
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Get details for up to MAX_DETAILS_BATCH patents in one query
+
+        Costs the same as a single get_patent_details() call with the same
+        include_* flags, so batch whenever more than one patent is needed.
+
+        Numbers may be in any common form; each is canonicalized with
+        to_publication_number(). A number without a kind code ("US10000000")
+        matches its most recent publication.
+
+        Returns:
+            Dict mapping each requested number, exactly as passed, to its
+            details. Numbers not in the corpus are absent from the dict.
+
+        Raises:
+            ValueError: empty list or more than MAX_DETAILS_BATCH numbers.
+            BigQueryBudgetExceededError: query would exceed the cost cap.
+            Exception: query/auth/network failures propagate.
+        """
         if not self.client:
             raise RuntimeError("BigQuery client not initialized")
 
+        numbers = list(dict.fromkeys(patent_numbers))
+        if not numbers:
+            raise ValueError("patent_numbers must not be empty")
+        if len(numbers) > self.MAX_DETAILS_BATCH:
+            raise ValueError(
+                f"At most {self.MAX_DETAILS_BATCH} patents per lookup (got {len(numbers)})"
+            )
+
         # Log retrieval start
-        log_extra = {"patent_number": patent_number}
+        log_extra = {
+            "patent_numbers": numbers,
+            "include_abstract": include_abstract,
+            "include_claims": include_claims,
+            "include_description": include_description,
+        }
 
         if LOGGING_AVAILABLE and logger:
             logger.info("bigquery_get_patent_started", extra=log_extra)
 
+        sections = []
+        if include_abstract:
+            sections.append("abstract_localized[SAFE_OFFSET(0)].text AS abstract")
+        if include_claims:
+            sections.append("claims_localized[SAFE_OFFSET(0)].text AS claims")
+        if include_description:
+            sections.append("description_localized[SAFE_OFFSET(0)].text AS description")
+        section_sql = "".join(f"{s},\n            " for s in sections)
+
+        # CPC/IPC select only .code: the full structs scan more for fields
+        # this method never returns.
         sql = f"""
         SELECT
             publication_number,
             title_localized[SAFE_OFFSET(0)].text AS title,
-            abstract_localized[SAFE_OFFSET(0)].text AS abstract,
-            claims_localized[SAFE_OFFSET(0)].text AS claims,
-            description_localized[SAFE_OFFSET(0)].text AS description,
-            CAST(filing_date AS STRING) AS filing_date,
+            {section_sql}CAST(filing_date AS STRING) AS filing_date,
             CAST(grant_date AS STRING) AS grant_date,
             CAST(publication_date AS STRING) AS publication_date,
             application_number,
             family_id,
             country_code,
-            cpc,
-            ipc
+            ARRAY(SELECT c.code FROM UNNEST(cpc) AS c) AS cpc_codes,
+            ARRAY(SELECT c.code FROM UNNEST(ipc) AS c) AS ipc_codes
         FROM `{self.FULL_TABLE_ID}`
-        WHERE publication_number = @patent_number
-        LIMIT 1
+        WHERE publication_number IN UNNEST(@exact_numbers)
+           OR EXISTS (
+               SELECT 1 FROM UNNEST(@number_prefixes) AS p
+               WHERE STARTS_WITH(publication_number, CONCAT(p, '-'))
+           )
+        ORDER BY publication_date DESC
         """
+
+        # Canonical form -> requested inputs; kind-less canonicals are prefixes.
+        wanted: dict[str, list[str]] = {}
+        for n in numbers:
+            wanted.setdefault(to_publication_number(n), []).append(n)
+        prefixes = [c for c in wanted if c.count("-") == 1]
+        exact = [c for c in wanted if c not in prefixes]
 
         try:
             results = self._run_query(
                 sql,
-                [bigquery.ScalarQueryParameter("patent_number", "STRING", patent_number)],  # type: ignore[union-attr]
+                [
+                    bigquery.ArrayQueryParameter("exact_numbers", "STRING", exact),  # type: ignore[union-attr]
+                    bigquery.ArrayQueryParameter("number_prefixes", "STRING", prefixes),  # type: ignore[union-attr]
+                ],
+                narrowing_hint=(
+                    "Request fewer text sections (include_description alone scans ~1 TiB)."
+                ),
             )
 
-            # Process results
+            patents: dict[str, dict[str, Any]] = {}
             for row in results:
-                # Extract CPC codes
-                cpc_codes = []
-                if row.cpc:
-                    for cpc in row.cpc:
-                        if hasattr(cpc, "code"):
-                            cpc_codes.append(cpc.code)
-
-                # Extract IPC codes
-                ipc_codes = []
-                if row.ipc:
-                    for ipc in row.ipc:
-                        if hasattr(ipc, "code"):
-                            ipc_codes.append(ipc.code)
-
-                patent_data = {
+                pub = row.publication_number
+                prefix = pub.rsplit("-", 1)[0]
+                # Rows arrive newest first, so a kind-less request keeps the
+                # most recent publication.
+                requested = [
+                    n
+                    for n in wanted.get(pub, []) + wanted.get(prefix, [])
+                    if n not in patents
+                ]
+                if not requested:
+                    continue
+                patent_data: dict[str, Any] = {
                     "patent_number": row.publication_number,
                     "application_number": row.application_number,
                     "title": row.title or "",
-                    "abstract": row.abstract or "",
-                    "claims": row.claims or "",
-                    "description": row.description or "",
                     "filing_date": self._format_date(row.filing_date),
                     "grant_date": self._format_date(row.grant_date),
                     "publication_date": self._format_date(row.publication_date),
                     "country": row.country_code,
                     "family_id": row.family_id,
-                    "cpc_codes": cpc_codes,
-                    "ipc_codes": ipc_codes,
+                    # The corpus repeats codes (inventive/additional/first); dedupe in order.
+                    "cpc_codes": list(dict.fromkeys(row.cpc_codes or [])),
+                    "ipc_codes": list(dict.fromkeys(row.ipc_codes or [])),
                 }
+                if include_abstract:
+                    patent_data["abstract"] = row.abstract or ""
+                if include_claims:
+                    patent_data["claims"] = row.claims or ""
+                if include_description:
+                    patent_data["description"] = row.description or ""
+                for n in requested:
+                    patents[n] = patent_data
 
-                # Log successful retrieval
-                completion_extra = {
-                    **log_extra,
-                    "found": True,
-                    "cpc_codes_count": len(cpc_codes),
-                    "has_claims": bool(row.claims),
-                    "has_description": bool(row.description),
-                    "bytes_processed": (
-                        results.total_bytes_processed
-                        if hasattr(results, "total_bytes_processed")
-                        else 0
-                    ),
-                }
-
-                if LOGGING_AVAILABLE and logger:
-                    logger.info("bigquery_get_patent_completed", extra=completion_extra)
-
-                return patent_data
-
-            # Patent not found
             if LOGGING_AVAILABLE and logger:
-                logger.warning("bigquery_get_patent_not_found", extra={**log_extra, "found": False})
+                logger.info(
+                    "bigquery_get_patent_completed",
+                    extra={
+                        **log_extra,
+                        "found": sorted(patents),
+                        "missing": [n for n in numbers if n not in patents],
+                        "bytes_processed": (
+                            results.total_bytes_processed
+                            if hasattr(results, "total_bytes_processed")
+                            else 0
+                        ),
+                    },
+                )
 
-            return None
+            return patents
 
         except Exception as e:
             error_extra = {**log_extra, "error_type": type(e).__name__, "error_message": str(e)}
@@ -636,8 +754,8 @@ class BigQueryPatentSearch:
                 print(f"BigQuery get patent error: {e}", file=sys.stderr)
 
             # Errors are not "patent not found" — collapsing them into None made
-            # auth/network/budget failures masquerade as missing patents. None is
-            # reserved for a genuinely empty result set (handled above).
+            # auth/network/budget failures masquerade as missing patents. Absence
+            # from the result is reserved for a genuinely empty match.
             raise
 
     def search_by_cpc(

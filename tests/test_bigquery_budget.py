@@ -169,6 +169,145 @@ def test_get_patent_details_surfaces_infrastructure_errors():
         searcher.get_patent_details("US1234567B2")
 
 
+def _details_sql(searcher):
+    """SQL of the real (non-dry-run) query the searcher sent."""
+    sql, *_ = searcher.client.query.call_args_list[-1].args
+    return sql
+
+
+def test_get_patent_details_default_skips_expensive_sections():
+    """The table is unclustered, so each selected text column is a
+    full-corpus scan (description alone ~1 TiB). Default: claims only."""
+    searcher = _searcher(dry_estimate=1)
+
+    searcher.get_patent_details("US1234567B2")
+
+    sql = _details_sql(searcher)
+    assert "claims_localized" in sql
+    assert "abstract_localized" not in sql
+    assert "description_localized" not in sql
+
+
+def test_get_patent_details_selects_only_requested_sections():
+    searcher = _searcher(dry_estimate=1)
+
+    searcher.get_patent_details(
+        "US1234567B2", include_abstract=True, include_claims=False, include_description=True
+    )
+
+    sql = _details_sql(searcher)
+    assert "abstract_localized" in sql
+    assert "description_localized" in sql
+    assert "claims_localized" not in sql
+
+
+def test_get_patent_details_omits_unrequested_keys():
+    """'Not fetched' must not look like 'empty': unrequested keys are absent."""
+    searcher = _searcher(dry_estimate=1)
+    row = MagicMock(
+        publication_number="US-1234567-B2",
+        application_number="US-1",
+        title="T",
+        claims="1. A thing.",
+        filing_date="20200101",
+        grant_date="0",
+        publication_date="20210101",
+        country_code="US",
+        family_id="42",
+        cpc_codes=["G06F16/00"],
+        ipc_codes=[],
+    )
+    searcher.client.query.return_value.result.return_value = iter([row])
+
+    result = searcher.get_patent_details("US1234567B2")
+
+    assert result["claims"] == "1. A thing."
+    assert result["cpc_codes"] == ["G06F16/00"]
+    assert "abstract" not in result
+    assert "description" not in result
+
+
+def test_get_patents_details_is_one_query_for_many():
+    """Billing is per column scanned, not per row: a batch must be a single
+    query, not one query per patent."""
+    searcher = _searcher(dry_estimate=1)
+
+    found = searcher.get_patents_details(["US1B2", "US2B2", "US1B2"])
+
+    assert found == {}
+    real_queries = [
+        c for c in searcher.client.query.call_args_list if not c.kwargs["job_config"].dry_run
+    ]
+    assert len(real_queries) == 1
+    exact, prefixes = real_queries[0].kwargs["job_config"].query_parameters
+    assert exact.values == ["US-1-B2", "US-2-B2"]
+    assert prefixes.values == []
+
+
+@pytest.mark.parametrize(
+    ("given", "canonical"),
+    [
+        ("US10000000B2", "US-10000000-B2"),
+        ("US-10000000-B2", "US-10000000-B2"),
+        ("us 10,000,000 b2", "US-10000000-B2"),
+        ("USRE41548E", "US-RE41548-E"),
+        ("EP1000000A1", "EP-1000000-A1"),
+        ("WO2020/123456A1", "WO-2020123456-A1"),
+        ("US10000000", "US-10000000"),
+    ],
+)
+def test_to_publication_number(given, canonical):
+    """The corpus stores hyphenated CC-NUMBER-KIND and matches exactly;
+    unhyphenated input used to miss every patent."""
+    from mcp_server.bigquery_search import to_publication_number
+
+    assert to_publication_number(given) == canonical
+
+
+def _row(pub, date):
+    return MagicMock(
+        publication_number=pub,
+        application_number="",
+        title="T",
+        claims="",
+        filing_date="0",
+        grant_date="0",
+        publication_date=date,
+        country_code=pub[:2],
+        family_id="1",
+        cpc_codes=[],
+        ipc_codes=[],
+    )
+
+
+def test_get_patents_details_keys_results_by_requested_form():
+    searcher = _searcher(dry_estimate=1)
+    # ORDER BY publication_date DESC: the B2 grant precedes the A1 pre-grant.
+    searcher.client.query.return_value.result.return_value = iter(
+        [_row("US-10000000-B2", "20180619"), _row("US-10000000-A1", "20161201")]
+    )
+
+    found = searcher.get_patents_details(["US10000000B2", "US10000000"])
+
+    assert found["US10000000B2"]["patent_number"] == "US-10000000-B2"
+    # kind-less request keeps the most recent publication
+    assert found["US10000000"]["patent_number"] == "US-10000000-B2"
+    exact, prefixes = searcher.client.query.call_args_list[-1].kwargs["job_config"].query_parameters
+    assert exact.values == ["US-10000000-B2"]
+    assert prefixes.values == ["US-10000000"]
+
+
+def test_get_patents_details_rejects_empty_and_oversized():
+    searcher = _searcher(dry_estimate=1)
+
+    with pytest.raises(ValueError):
+        searcher.get_patents_details([])
+    with pytest.raises(ValueError):
+        searcher.get_patents_details(
+            [f"US{i}B2" for i in range(BigQueryPatentSearch.MAX_DETAILS_BATCH + 1)]
+        )
+
+
 def test_keyword_budget_error_carries_narrowing_hint():
     over = BigQueryPatentSearch.DEFAULT_MAX_BYTES_BILLED * 10
     searcher = _searcher(dry_estimate=over)
