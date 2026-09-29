@@ -102,8 +102,9 @@ OPTIONS: tuple[Option, ...] = (
     Option(
         "PATENT_MPEP_USE_HYDE", "Search", "Enable HyDE expansion",
         "Whether MPEP semantic search expands the query with a hypothetical "
-        "document before retrieval.",
-        "bool", default="true",
+        "document before retrieval. Off by default: with the local model it "
+        "adds ~3.5s per search and changed ~1 in 13 top-5 results in testing.",
+        "bool", default="false",
     ),
     Option(
         "PATENT_ENABLE_ANTECEDENT_CHECK", "Search", "Claim antecedent-basis check",
@@ -242,6 +243,16 @@ def get_effective(key: str) -> tuple[str, str]:
     if file_vals.get(key, "") != "":
         return file_vals[key], "file"
     return OPTIONS_BY_KEY[key].default, "default"
+
+
+def hyde_enabled() -> bool:
+    """Whether MPEP search should use HyDE query expansion.
+
+    The single source of truth for the HyDE default: the server, CLI,
+    MPEPIndex and health check all ask this rather than defaulting on
+    their own. --no-hyde still forces it off where offered."""
+    value, _ = get_effective("PATENT_MPEP_USE_HYDE")
+    return value.lower() in _BOOL_TRUE
 
 
 def validate(key: str, value: str) -> Optional[str]:

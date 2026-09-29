@@ -56,10 +56,25 @@ except ImportError:
     BM25_AVAILABLE = False
     BM25Okapi = None
 
+# Sibling modules resolve as bare names under the server/CLI sys.path setup
+# and as mcp_server.* when imported as a package (tests, skills, scripts).
+try:
+    import config as _config
+except ImportError:
+    try:
+        from mcp_server import config as _config
+    except ImportError:
+        _config = None
+
 # Import device utilities
 try:
     from utils.device import get_device
 except ImportError:
+    try:
+        from mcp_server.utils.device import get_device
+    except ImportError:
+        get_device = None  # type: ignore[assignment]
+if get_device is None:
     # Fallback: simple device detection
     def get_device() -> str:  # type: ignore[misc]
         """Detect device (GPU/CPU) with fallback"""
@@ -139,7 +154,10 @@ def _log_debug(message: str, **kwargs):
 class MPEPIndex:
     """Manages indexing and retrieval of MPEP documents with advanced RAG techniques"""
 
-    def __init__(self, use_hyde: bool = True):
+    def __init__(self, use_hyde: Optional[bool] = None):
+        """use_hyde: None follows PATENT_MPEP_USE_HYDE (default off)."""
+        if use_hyde is None:
+            use_hyde = _config.hyde_enabled() if _config else False
         # Check dependencies
         if not VECTOR_SEARCH_AVAILABLE:
             raise ImportError(
@@ -163,7 +181,10 @@ class MPEPIndex:
         self.hyde_expander = None
         if use_hyde:
             try:
-                from hyde import HyDEQueryExpander
+                try:
+                    from hyde import HyDEQueryExpander
+                except ImportError:
+                    from mcp_server.hyde import HyDEQueryExpander
 
                 self.hyde_expander = HyDEQueryExpander(backend="auto")
                 _log_info("HyDE query expansion enabled")

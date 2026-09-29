@@ -118,6 +118,29 @@ class TestApplyToEnv:
         assert os.environ["PATENT_LOG_LEVEL"] == "ERROR"
 
 
+class TestHyde:
+    """HyDE is off unless enabled; every caller resolves it via hyde_enabled()."""
+
+    def test_off_by_default(self):
+        assert cfg.hyde_enabled() is False
+
+    def test_env_enables(self, monkeypatch):
+        monkeypatch.setenv("PATENT_MPEP_USE_HYDE", "true")
+        assert cfg.hyde_enabled() is True
+
+    def test_config_file_enables(self):
+        cfg.save_value("PATENT_MPEP_USE_HYDE", "true")
+        assert cfg.hyde_enabled() is True
+
+    def test_mpep_index_follows_setting(self, monkeypatch):
+        """MPEPIndex() with no argument must ask the setting, not default on."""
+        import inspect
+
+        from mcp_server.mpep_search import MPEPIndex
+
+        assert inspect.signature(MPEPIndex.__init__).parameters["use_hyde"].default is None
+
+
 def test_module_reimport_is_stable():
     """Re-importing config must not raise (schema is module-level)."""
     importlib.reload(cfg)

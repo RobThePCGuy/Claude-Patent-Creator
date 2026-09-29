@@ -44,7 +44,7 @@ Deploy this agent for:
 ```python
 from python.mpep_search import MPEPIndex
 
-mpep_index = MPEPIndex(use_hyde=True)
+mpep_index = MPEPIndex()
 
 results = mpep_index.search(
     query="claim definiteness requirements",
@@ -345,7 +345,9 @@ Returns complete section content for deep analysis.
 
 ### HyDE Query Expansion
 
-For better recall on complex queries:
+Off by default (enable server-wide with `PATENT_MPEP_USE_HYDE=true`). With the
+local model it adds ~3.5s per search and rarely changes the top results. To opt
+in for one index:
 ```python
 mpep_index = MPEPIndex(use_hyde=True)
 results = mpep_index.search("complex legal question", top_k=10)

@@ -28,7 +28,7 @@ def _get_mpep_index() -> MPEPIndex:
     """Get or initialize the MPEP index singleton."""
     global _mpep_index
     if _mpep_index is None:
-        _mpep_index = MPEPIndex(use_hyde=True)
+        _mpep_index = MPEPIndex()  # HyDE follows PATENT_MPEP_USE_HYDE (default off)
 
         # Load the index (should already be built)
         if not _mpep_index.index_file.exists():
