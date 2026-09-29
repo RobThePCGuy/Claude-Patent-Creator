@@ -73,7 +73,7 @@ def test_guidelines_pdf_becomes_canonical_text_file(tmp_path):
     """The index build reads epo_guidelines.txt only; a downloaded PDF must
     be extracted into it or it is never indexed and never satisfies the
     presence check (setup would re-download 10+ MB every run)."""
-    fitz = pytest.importorskip("fitz")
+    fitz = pytest.importorskip("pymupdf")
     pdf_path = tmp_path / "epo_guidelines_2026.pdf"
     doc = fitz.open()
     page = doc.new_page()
