@@ -99,6 +99,7 @@ patent-creator health
 python -c "
 from mcp_server.mpep_search import MPEPIndex
 index = MPEPIndex()
+index.build_index()
 print(f'Chunks: {len(index.chunks)}')
 results = index.search('claim definiteness', top_k=3)
 print(f'Search results: {len(results)}')

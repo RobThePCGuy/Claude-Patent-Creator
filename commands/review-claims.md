@@ -77,7 +77,7 @@ END
 I'll run the claims through the automated analyzer:
 
 ```python
-from python.claims_analyzer import ClaimsAnalyzer
+from mcp_server.claims_analyzer import ClaimsAnalyzer
 analyzer = ClaimsAnalyzer()
 results = analyzer.analyze_claims(claims_text)
 ```

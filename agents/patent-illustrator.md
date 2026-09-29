@@ -38,7 +38,7 @@ Generate patent-style method flowcharts:
 
 **Process**:
 ```python
-from python.diagram_generator import PatentDiagramGenerator
+from mcp_server.diagram_generator import PatentDiagramGenerator
 generator = PatentDiagramGenerator()
 
 steps = [
