@@ -58,13 +58,15 @@ except ImportError:
 
 # Sibling modules resolve as bare names under the server/CLI sys.path setup
 # and as mcp_server.* when imported as a package (tests, skills, scripts).
+# Import the function, not the module: a host's own unrelated "config"
+# module would satisfy "import config" and then lack hyde_enabled.
 try:
-    import config as _config
+    from config import hyde_enabled as _hyde_enabled
 except ImportError:
     try:
-        from mcp_server import config as _config
+        from mcp_server.config import hyde_enabled as _hyde_enabled
     except ImportError:
-        _config = None
+        _hyde_enabled = None
 
 # Import device utilities
 try:
@@ -157,7 +159,7 @@ class MPEPIndex:
     def __init__(self, use_hyde: Optional[bool] = None):
         """use_hyde: None follows PATENT_MPEP_USE_HYDE (default off)."""
         if use_hyde is None:
-            use_hyde = _config.hyde_enabled() if _config else False
+            use_hyde = _hyde_enabled() if _hyde_enabled else False
         # Check dependencies
         if not VECTOR_SEARCH_AVAILABLE:
             raise ImportError(
