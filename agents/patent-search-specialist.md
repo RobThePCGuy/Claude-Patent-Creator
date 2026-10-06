@@ -80,7 +80,8 @@ Use this agent when:
 
 Via MCP server:
 - `search_patents_bigquery` - Keyword search 100M+ patents
-- `get_patent_bigquery` - Retrieve full patent details
+- `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
+- `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - CPC classification search
 - `search_mpep` - USPTO law/regulation research
 

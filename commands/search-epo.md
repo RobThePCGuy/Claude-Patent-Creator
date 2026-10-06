@@ -5,6 +5,7 @@ allowed-tools:
   - search_epo_patents
   - search_patents_bigquery
   - get_patent_bigquery
+  - get_patents_bigquery
   - search_patents_by_cpc_bigquery
 model: claude-sonnet-4-5-20250929
 ---
