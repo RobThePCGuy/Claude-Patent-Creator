@@ -124,11 +124,12 @@ like any other candidate.
 Patents alone are NOT sufficient for software: the killing art usually
 lives in products, open source, standards, and papers. Sweep ALL of:
 
-1. **Patents**: `search_patents_bigquery` (keyword search is term-AND, so
-   3-4 terms max), `search_patents_by_cpc_bigquery` (identify the CPC
-   classes first), Google Patents pages for deep reads (free). Cost
-   awareness: a default keyword search scans roughly 325 GiB (about $2
-   billed, or a third of a sandbox project's free month).
+1. **Patents**: `search_patents_google` (full text worldwide, claims
+   included; all words must match, so lead with distinctive terms; add
+   `CPC=G06F16/00`-style terms to stay inside a class), Google Patents pages
+   for deep reads (free). Fallback without a SerpApi key:
+   `search_patents_bigquery` and `search_patents_by_cpc_bigquery`, but a
+   keyword search there scans ~341 GiB (about $2, a third of a free month).
 2. **Non-patent literature**: fan out adversarial web-research agents per
    claim cluster, each instructed to KILL the claim: products (what do the
    incumbent writing/coding assistants actually do?), open source (read

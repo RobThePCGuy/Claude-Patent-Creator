@@ -47,6 +47,7 @@ class SystemHealthChecker:
         self.results = {
             "timestamp": datetime.now().isoformat(),
             "mpep_index": self._check_mpep_index(),
+            "google_patents": self._check_google_patents(),
             "bigquery": self._check_bigquery(),
             "uspto_api": self._check_uspto_api(),
             "graphviz": self._check_graphviz(),
@@ -156,6 +157,32 @@ class SystemHealthChecker:
                 "details": "Index files exist but are corrupted. Rebuild required.",
             }
 
+    def _check_google_patents(self) -> dict[str, Any]:
+        """Check whether Google Patents full-text search (SerpApi) is configured.
+
+        Offline check: only looks for the key, so it never spends a search."""
+        try:
+            from google_patents_search import GooglePatentsSearch
+        except ImportError:
+            from mcp_server.google_patents_search import GooglePatentsSearch
+
+        if GooglePatentsSearch().is_configured():
+            return {
+                "status": "ready",
+                "ready": True,
+                "coverage": "Worldwide full text, claims included",
+                "cost": "1 search credit per search (free plan: 250/month)",
+                "details": "Google Patents search ready (SERPAPI_API_KEY set)",
+                "provides": ["search_patents_google (RECOMMENDED for prior art)"],
+            }
+        return {
+            "status": "not_configured",
+            "ready": False,
+            "fix": GooglePatentsSearch.setup_message(),
+            "details": "Keyword search falls back to BigQuery (~$2 a search).",
+            "provides": ["search_patents_google (RECOMMENDED for prior art)"],
+        }
+
     def _check_bigquery(self) -> dict[str, Any]:
         """Check if BigQuery patent search is available"""
         try:
@@ -173,7 +200,7 @@ class SystemHealthChecker:
                     "ready": True,
                     "project": status.get("project"),
                     "coverage": "100M+ worldwide patents, 12M+ US patents",
-                    "cost": "Free for typical usage (1TB/month)",
+                    "cost": "Keyword search ~341 GiB (~$2) each; the free 1 TiB/month covers ~3",
                     "details": "Google BigQuery patent search ready",
                     "provides": [
                         "search_patents_bigquery",
@@ -196,7 +223,7 @@ class SystemHealthChecker:
                     ),
                     "details": "BigQuery not available. Install dependencies or configure credentials.",
                     "provides": [
-                        "search_patents_bigquery (RECOMMENDED for prior art)",
+                        "search_patents_bigquery",
                         "get_patent_bigquery",
                         "get_patents_bigquery",
                         "search_patents_by_cpc_bigquery",

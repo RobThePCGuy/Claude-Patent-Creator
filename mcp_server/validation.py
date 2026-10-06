@@ -124,6 +124,42 @@ class SearchUSPTOInput(BaseModel):  # type: ignore[misc]
     status: Optional[str] = Field(default=None, description="Filter by patent status")
 
 
+class SearchGooglePatentsInput(BaseModel):  # type: ignore[misc]
+    """Input validation for Google Patents full-text search."""
+
+    query: constr(min_length=1, max_length=500) = Field(  # type: ignore[valid-type]
+        ..., description="Search keywords; all must match. Quote phrases."
+    )
+    limit: conint(ge=1, le=100) = Field(  # type: ignore[valid-type]
+        default=20, description="Maximum number of results (1-100)"
+    )
+    country: Optional[constr(min_length=2, max_length=2)] = Field(  # type: ignore[valid-type]
+        default=None, description="Two-letter country code, or None for worldwide"
+    )
+    start_year: Optional[conint(ge=1, le=2100)] = Field(  # type: ignore[valid-type]
+        default=None, description="Filter patents filed on or after this year"
+    )
+    end_year: Optional[conint(ge=1, le=2100)] = Field(  # type: ignore[valid-type]
+        default=None, description="Filter patents filed on or before this year"
+    )
+
+    @field_validator("end_year")
+    @classmethod
+    def validate_year_range(cls, v: Optional[int], info) -> Optional[int]:
+        if v is not None and info.data.get("start_year") is not None and v < info.data["start_year"]:
+            raise ValueError("end_year must be >= start_year")
+        return v
+
+    @field_validator("country")
+    @classmethod
+    def validate_country_code(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not _COUNTRY_CODE_RE.match(v):
+            raise ValueError("country must be two letters (ISO 3166 alpha-2)")
+        return v.upper()
+
+
 class GetPatentInput(BaseModel):  # type: ignore[misc]
     """Input validation for getting patent details."""
 

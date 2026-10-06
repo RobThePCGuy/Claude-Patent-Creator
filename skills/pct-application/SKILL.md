@@ -58,7 +58,7 @@ Provides comprehensive PCT application support:
 **MCP Tools Available**:
 - `check_pct_formalities` - PCT Rules 5-12 formalities checking
 - `search_patent_law` - Search PCT rules, regulations, administrative instructions
-- `search_patents_bigquery` - Prior art search for unity assessment
+- `search_patents_google` - Prior art search for unity assessment (fallback: `search_patents_bigquery`)
 
 ## How to Use
 

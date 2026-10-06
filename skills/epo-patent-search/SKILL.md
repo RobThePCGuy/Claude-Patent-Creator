@@ -79,9 +79,10 @@ When this skill is invoked:
 
 2. **Execute search**:
 
-   **BigQuery keyword search (EP patents)**:
+   **Full-text keyword search (EP patents)**, falling back to
+   `search_patents_bigquery` with the same arguments if not configured:
    ```python
-   results = search_patents_bigquery(
+   results = search_patents_google(
        query="blockchain authentication",
        country="EP",
        limit=20,

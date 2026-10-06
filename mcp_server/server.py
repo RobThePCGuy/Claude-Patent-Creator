@@ -64,6 +64,7 @@ from validation import (
     ReviewClaimsInput,
     ReviewSpecificationInput,
     SearchBigQueryInput,
+    SearchGooglePatentsInput,
     SearchMPEPInput,
     SearchPatentLawInput,
     SearchUSPTOInput,
@@ -323,6 +324,7 @@ from tools.bigquery_tools import register_bigquery_tools  # noqa: E402
 from tools.diagram_tools import register_diagram_tools  # noqa: E402
 from tools.epo_analyzer_tools import register_epo_analyzer_tools  # noqa: E402
 from tools.epo_search_tools import register_epo_tools  # noqa: E402
+from tools.google_patents_tools import register_google_patents_tools  # noqa: E402
 from tools.mpep_tools import register_mpep_tools  # noqa: E402
 from tools.package_tools import register_package_tools  # noqa: E402
 from tools.patent_law_tools import register_patent_law_tools  # noqa: E402
@@ -413,6 +415,15 @@ def _register_all_tools():
         log_info=_log_info,
         log_error=_log_error,
         validate_input=validate_input,
+        track_performance=track_performance,
+    )
+
+    register_google_patents_tools(
+        mcp=mcp,
+        log_info=_log_info,
+        log_error=_log_error,
+        validate_input=validate_input,
+        SearchGooglePatentsInput=SearchGooglePatentsInput,
         track_performance=track_performance,
     )
 

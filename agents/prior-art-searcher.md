@@ -26,7 +26,8 @@ DO NOT use when:
 This subagent has access to patent search and MPEP tools:
 
 **Patent Search:**
-- `search_patents_bigquery` - Search 100M+ worldwide patents
+- `search_patents_google` - Full-text search worldwide, claims included (recommended)
+- `search_patents_bigquery` - Fallback keyword search (~$2 a search)
 - `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
@@ -121,7 +122,7 @@ SEARCH QUERIES (Prioritized):
 - Fields: Title, abstract, claims
 
 **Tools Used:**
-- `search_patents_bigquery` with 2-3 keyword combinations
+- `search_patents_google` with several keyword combinations, limit=100 (fallback: `search_patents_bigquery`)
 
 **Output:**
 ```
