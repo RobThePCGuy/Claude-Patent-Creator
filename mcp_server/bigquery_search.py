@@ -551,11 +551,11 @@ class BigQueryPatentSearch:
     # WHERE on publication_number prunes nothing: every query scans each
     # selected column across all ~170M rows, whether it matches one patent
     # or fifty. Cost is set entirely by which columns are selected
-    # (dry-run sizes, 2026-09):
-    #   bibliographic (title, dates, ids, CPC/IPC codes)  ~57 GiB
-    #   abstract                                          ~201 GiB
-    #   claims                                            ~119 GiB
-    #   description                                       ~1,078 GiB
+    # (dry-run sizes, 2026-10):
+    #   bibliographic (title, dates, ids, CPC/IPC codes)  ~44 GiB
+    #   abstract                                          ~198 GiB
+    #   claims                                            ~116 GiB
+    #   description                                       ~1,075 GiB
     # So text sections are opt-in, and lookups are batched.
     MAX_DETAILS_BATCH = 50
 
@@ -573,7 +573,7 @@ class BigQueryPatentSearch:
         because each is priced as a full-corpus column scan (see the cost
         table above); keys for sections not requested are omitted rather
         than returned empty. The default (bibliographic + claims) scans
-        ~176 GiB. include_description adds ~1 TiB and exceeds the default
+        ~160 GiB. include_description adds ~1 TiB and exceeds the default
         cost cap, so it needs PATENT_BIGQUERY_MAX_BYTES_BILLED raised.
 
         To fetch several patents, use get_patents_details(): one batched
@@ -581,9 +581,9 @@ class BigQueryPatentSearch:
 
         Args:
             patent_number: Patent publication number (e.g., "US10123456B2")
-            include_abstract: Include the abstract (~201 GiB)
-            include_claims: Include the claims text (~119 GiB)
-            include_description: Include the full description (~1,078 GiB)
+            include_abstract: Include the abstract (~198 GiB)
+            include_claims: Include the claims text (~116 GiB)
+            include_description: Include the full description (~1,075 GiB)
 
         Returns:
             Patent details dictionary, or None only when the patent does not

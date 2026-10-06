@@ -358,8 +358,8 @@ def get_patent_details(
     Args:
         patent_id: Patent publication number (e.g., "US-10123456-B2", "US10123456")
                   Various formats accepted, will be normalized.
-        include_abstract: Include the abstract (~201 GiB scan)
-        include_claims: Include the claims (~119 GiB scan)
+        include_abstract: Include the abstract (~198 GiB scan)
+        include_claims: Include the claims (~116 GiB scan)
         include_description: Include the full description (~1 TiB scan;
                   exceeds the default cost cap)
 
