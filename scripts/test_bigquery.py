@@ -90,7 +90,10 @@ def test_patent_details():
         patent_number = "US10000000B2"
         print(f"\nGetting details for {patent_number}...")
 
-        result = searcher.get_patent_details(patent_number)
+        # Abstract alone: abstract + claims together scan past the default cost cap.
+        result = searcher.get_patent_details(
+            patent_number, include_abstract=True, include_claims=False
+        )
 
         if result:
             print("[OK] Patent found!")

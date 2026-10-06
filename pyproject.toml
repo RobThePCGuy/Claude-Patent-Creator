@@ -167,6 +167,7 @@ module = [
     "anthropic.*",
     "mcp.*",
     "fitz.*",
+    "pymupdf.*",
     "bs4.*",
     "graphviz.*",
 ]

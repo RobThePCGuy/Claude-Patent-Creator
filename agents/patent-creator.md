@@ -30,7 +30,8 @@ This subagent has access to all patent creator MCP tools:
 
 **Patent Search:**
 - `search_patents_bigquery` - Search 100M+ patents for prior art references
-- `get_patent_bigquery` - Get full patent details
+- `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
+- `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
 
 **Analysis & Validation:**

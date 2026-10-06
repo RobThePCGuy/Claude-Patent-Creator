@@ -178,6 +178,7 @@ class SystemHealthChecker:
                     "provides": [
                         "search_patents_bigquery",
                         "get_patent_bigquery",
+                        "get_patents_bigquery",
                         "search_patents_by_cpc_bigquery",
                     ],
                 }
@@ -197,6 +198,7 @@ class SystemHealthChecker:
                     "provides": [
                         "search_patents_bigquery (RECOMMENDED for prior art)",
                         "get_patent_bigquery",
+                        "get_patents_bigquery",
                         "search_patents_by_cpc_bigquery",
                     ],
                 }
