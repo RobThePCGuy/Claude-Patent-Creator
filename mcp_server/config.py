@@ -73,6 +73,14 @@ OPTIONS: tuple[Option, ...] = (
         "secret",
     ),
     Option(
+        "SERPAPI_API_KEY", "Credentials", "SerpApi key (Google Patents search)",
+        "Key for SerpApi's Google Patents API, used by search_patents_google for "
+        "worldwide full-text search (claims included). Free plan: 250 searches a "
+        "month at https://serpapi.com. Without it, keyword search falls back to "
+        "BigQuery (~$2 a search past the free monthly TiB).",
+        "secret",
+    ),
+    Option(
         "ANTHROPIC_API_KEY", "Credentials", "Anthropic API key",
         "Used only for API-backed HyDE query expansion when HYDE_BACKEND=api. "
         "Otherwise unused.",

@@ -3,6 +3,7 @@ description: Search European patents using EPO OPS API and BigQuery (100M+ paten
 argument-hint: "query [optional: --cpc CODE] [--year-range START-END] [--applicant NAME] [--limit N]"
 allowed-tools:
   - search_epo_patents
+  - search_patents_google
   - search_patents_bigquery
   - get_patent_bigquery
   - get_patents_bigquery
@@ -86,8 +87,8 @@ For comprehensive EP patent research:
 5. **Family analysis** - Use family_id to find related filings worldwide
 
 ```
-> Step 1: BigQuery broad search
-search_patents_bigquery("voice biometric", country="EP", limit=20)
+> Step 1: Broad full-text search
+search_patents_google("voice biometric", country="EP", limit=100)
 
 > Step 2: Found CPC G10L17, search more
 search_patents_by_cpc_bigquery("G10L17", country="EP", limit=50)

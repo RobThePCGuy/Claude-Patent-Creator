@@ -112,10 +112,12 @@ def register_bigquery_tools(
         end_year: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """
-        Search patents using Google BigQuery (fast, cloud-based, 100M+ patents).
+        Search patents using Google BigQuery (100M+ patents).
 
-        This is the RECOMMENDED method for patent prior art search. No local indexing required.
-        Searches across 100M+ worldwide patents or 12M+ US patents with full text.
+        Prefer search_patents_google when it is configured: it searches the same
+        full text for one search credit, while this tool reads ~341 GiB per call
+        (about $2 past Google's free 1 TiB a month, so ~3 searches a month).
+        Use this as the fallback when no SerpApi key is set.
 
         Args:
             query: Search keywords or phrase

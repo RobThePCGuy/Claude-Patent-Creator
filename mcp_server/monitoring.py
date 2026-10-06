@@ -29,6 +29,7 @@ latency analysis.
 """
 
 import functools
+import inspect
 import threading
 import time
 from collections import defaultdict, deque
@@ -139,6 +140,12 @@ def track_performance(operation_name: str, log_params: bool = True):
     """
 
     def decorator(func: Callable) -> Callable:
+        # A sync wrapper around a coroutine function returns the un-awaited
+        # coroutine, and MCPServer rejects it, so every call to the tool failed
+        # (search_epo_patents, get_epo_patent, get_epo_patent_family).
+        if inspect.iscoroutinefunction(func):
+            return track_async_performance(operation_name, log_params)(func)
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             start_time = time.perf_counter()

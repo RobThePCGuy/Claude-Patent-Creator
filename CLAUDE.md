@@ -63,7 +63,7 @@ pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git && pate
 |---------|-------------|--------|
 | **MPEP Search** | Search Manual of Patent Examining Procedure + 35 USC + 37 CFR | Ready |
 | **Patent Law Search** | Cross-jurisdiction search across US, EPO, and PCT law | Ready |
-| **Patent Search** | Search 100M+ worldwide patents via BigQuery | Ready |
+| **Patent Search** | Full-text worldwide search via Google Patents (SerpApi), BigQuery fallback | Ready |
 | **EPO Patent Search** | Search EP patents via EPO OPS API (full-text claims) | Ready |
 | **IPC Search** | Search patents by IPC classification code | Ready |
 | **Patent Family Search** | Find related patents across jurisdictions | Ready |
@@ -399,6 +399,9 @@ ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
 # EPO OPS API (optional — for EP patent search with full-text claims)
 EPO_OPS_KEY=your_epo_consumer_key          # Free at developers.epo.org
 EPO_OPS_SECRET=your_epo_consumer_secret
+
+# Google Patents full-text search (optional, recommended for prior art)
+SERPAPI_API_KEY=your_serpapi_key        # Free plan (250 searches/month) at serpapi.com
 
 # Optional (with defaults)
 PATENT_LOG_LEVEL=INFO              # Logging level

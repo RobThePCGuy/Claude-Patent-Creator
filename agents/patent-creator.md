@@ -29,7 +29,8 @@ This subagent has access to all patent creator MCP tools:
 - `get_mpep_section` - Retrieve complete MPEP sections
 
 **Patent Search:**
-- `search_patents_bigquery` - Search 100M+ patents for prior art references
+- `search_patents_google` - Full-text prior art search worldwide, claims included (recommended)
+- `search_patents_bigquery` - Fallback keyword search when Google Patents search is not configured
 - `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
@@ -80,7 +81,7 @@ This subagent has access to all patent creator MCP tools:
 
 **Tools Used:**
 - `search_mpep` for 35 USC 101/102/103 requirements
-- `search_patents_bigquery` for prior art
+- `search_patents_google` for prior art (fallback: `search_patents_bigquery`)
 - `search_patents_by_cpc_bigquery` for classification search
 
 **Output:** Patentability assessment with prior art references

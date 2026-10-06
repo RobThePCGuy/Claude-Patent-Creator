@@ -10,6 +10,7 @@ from the source so a new tool never needs this file touched.
 
 import asyncio
 import importlib
+import inspect
 import json
 import re
 import sys
@@ -48,6 +49,14 @@ def test_server_imports_and_registers_every_tool(tmp_path, monkeypatch):
     assert len(tools) == _decorated_tool_count(), sorted(names)
     for required in ("search_mpep", "review_patent_claims", "check_package", "search_patent_law"):
         assert required in names
+
+    # A sync decorator around an async tool returns an un-awaited coroutine, so
+    # every call fails while listing still looks fine (the EPO search tools
+    # shipped that way). Each registered callable must stay async if the
+    # function it wraps is async.
+    for tool in fresh._tool_manager.list_tools():
+        if inspect.iscoroutinefunction(inspect.unwrap(tool.fn)):
+            assert inspect.iscoroutinefunction(tool.fn), f"{tool.name} lost its async wrapper"
 
     resources = asyncio.run(fresh.list_resources())
     assert {str(r.uri) for r in resources} == {"mpep://index/stats"}
