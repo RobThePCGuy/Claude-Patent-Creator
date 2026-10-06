@@ -12,7 +12,8 @@ from typing import Any, Optional
 
 # PDF processing
 try:
-    import fitz  # PyMuPDF
+    # "import fitz" prints a deprecation warning to stdout, corrupting MCP stdio.
+    import pymupdf as fitz
 
     PYMUPDF_AVAILABLE = True
 except ImportError:

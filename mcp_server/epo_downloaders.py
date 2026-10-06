@@ -238,7 +238,7 @@ def scrape_epo_guidelines(dest_dir: Path, year: Optional[int] = None) -> bool:
 def _pdf_to_guidelines_text(pdf_path: Path, dest_path: Path) -> bool:
     """Extract the Guidelines PDF into the canonical text file."""
     try:
-        import fitz  # PyMuPDF
+        import pymupdf as fitz  # PyMuPDF ("import fitz" warns on stdout)
     except ImportError:
         _log_error("PyMuPDF not available; cannot extract Guidelines PDF")
         return False
