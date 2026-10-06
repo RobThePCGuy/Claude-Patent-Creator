@@ -268,10 +268,13 @@ def register_bigquery_tools(
         """
         log_info("get_patents_bigquery called", count=len(patent_numbers))
         try:
-            numbers = [
-                validate_input(GetPatentInput, patent_number=n).patent_number
+            # Validation strips separators, so two spellings of one patent can
+            # collapse; keep each caller's spelling as its result key.
+            validated = {
+                n: validate_input(GetPatentInput, patent_number=n).patent_number
                 for n in patent_numbers
-            ]
+            }
+            numbers = list(dict.fromkeys(validated.values()))
 
             def _do_get():
                 searcher = _ensure_bigquery_searcher()
@@ -282,10 +285,10 @@ def register_bigquery_tools(
                     include_description=include_description,
                 )
 
-            patents = await anyio.to_thread.run_sync(_do_get)
+            found = await anyio.to_thread.run_sync(_do_get)
             return {
-                "patents": patents,
-                "not_found": [n for n in dict.fromkeys(numbers) if n not in patents],
+                "patents": {n: found[v] for n, v in validated.items() if v in found},
+                "not_found": [n for n, v in validated.items() if v not in found],
             }
 
         except ValueError as e:

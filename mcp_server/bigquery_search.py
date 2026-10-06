@@ -113,6 +113,10 @@ def to_publication_number(patent_number: str) -> str:
     if not match:
         return compact
     country, number, kind = match.groups()
+    if country == "US" and len(number) == 11 and number[:2] in ("19", "20") and number[4] == "0":
+        # US pre-grant publications are written YYYY/0NNNNNN but stored as
+        # YYYYNNNNNN ("US2013/0333342A1" -> "US-2013333342-A1").
+        number = number[:4] + number[5:]
     return f"{country}-{number}-{kind}" if kind else f"{country}-{number}"
 
 

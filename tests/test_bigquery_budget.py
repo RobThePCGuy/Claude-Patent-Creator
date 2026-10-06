@@ -256,6 +256,8 @@ def test_get_patents_details_is_one_query_for_many():
         ("US10000000", "US-10000000"),
         ("10,000,000", "US-10000000"),
         ("10000000B2", "US-10000000-B2"),
+        ("US2013/0333342A1", "US-2013333342-A1"),
+        ("US20130333342A1", "US-2013333342-A1"),
     ],
 )
 def test_to_publication_number(given, canonical):
