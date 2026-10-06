@@ -190,7 +190,7 @@ def register_bigquery_tools(
         Always returns bibliographic data (title, dates, family_id, country,
         CPC/IPC codes). Text sections are opt-in because BigQuery bills each
         as a scan of that column across the whole corpus, even for one
-        patent: claims ~119 GiB (default on), abstract ~201 GiB (search
+        patent: claims ~116 GiB (default on), abstract ~198 GiB (search
         results already include it), description ~1 TiB (exceeds the default
         cost cap; only request it when the full text is essential).
         Abstract together with claims also exceeds the default cap, so pass
