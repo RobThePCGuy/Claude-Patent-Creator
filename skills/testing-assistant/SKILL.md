@@ -109,6 +109,7 @@ from mcp_server.mpep_search import MPEPIndex
 import time
 
 index = MPEPIndex()
+index.build_index()
 index.search("test", top_k=5)  # Warm up
 
 start = time.time()

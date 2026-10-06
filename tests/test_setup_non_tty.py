@@ -41,6 +41,24 @@ def test_explicit_flag_is_never_downgraded(monkeypatch):
     assert args.non_interactive is True
 
 
+def test_devnull_stdin_is_not_interactive():
+    # Unmocked: on Windows, NUL reports isatty() True, which let setup reach
+    # input() and crash with EOFError when run in the background.
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "-c", "from mcp_server import cli; print(cli._stdin_is_interactive())"],
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "False"
+
+
 def test_setup_command_wires_normalization():
     import inspect
 

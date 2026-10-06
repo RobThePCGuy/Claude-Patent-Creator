@@ -31,7 +31,8 @@ Review patent applications for USPTO compliance, analyze claims/specifications/f
 ### Patent Search
 
 - `search_patents_bigquery` - Search 100M+ patents
-- `get_patent_bigquery` - Get full patent details
+- `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
+- `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
 
 ### Patent Analysis

@@ -57,9 +57,10 @@ When this skill is invoked:
 
 1. **Load the claims analyzer**:
    ```python
+   import os
    import sys
-   sys.path.insert(0, os.path.join(os.environ.get('CLAUDE_PLUGIN_ROOT', '.'), 'python'))
-   from python.claims_analyzer import ClaimsAnalyzer
+   sys.path.insert(0, os.environ.get('CLAUDE_PLUGIN_ROOT', '.'))
+   from mcp_server.claims_analyzer import ClaimsAnalyzer
 
    analyzer = ClaimsAnalyzer()
    ```

@@ -73,9 +73,10 @@ When this skill is invoked:
 
 1. **Load diagram generator**:
    ```python
+   import os
    import sys
-   sys.path.insert(0, os.path.join(os.environ.get('CLAUDE_PLUGIN_ROOT', '.'), 'python'))
-   from python.diagram_generator import PatentDiagramGenerator
+   sys.path.insert(0, os.environ.get('CLAUDE_PLUGIN_ROOT', '.'))
+   from mcp_server.diagram_generator import PatentDiagramGenerator
 
    generator = PatentDiagramGenerator()
    ```

@@ -123,7 +123,7 @@ Uses automated analyzers:
 
 **Claims Analysis (35 USC 112(b))**:
 ```python
-from python.claims_analyzer import ClaimsAnalyzer
+from mcp_server.claims_analyzer import ClaimsAnalyzer
 analyzer = ClaimsAnalyzer()
 results = analyzer.analyze_claims(claims_text)
 ```
@@ -136,9 +136,11 @@ results = analyzer.analyze_claims(claims_text)
 
 **Specification Analysis (35 USC 112(a))**:
 ```python
-from python.specification_analyzer import SpecificationAnalyzer
+from mcp_server.claims_analyzer import ClaimsAnalyzer
+from mcp_server.specification_analyzer import SpecificationAnalyzer
+parsed_claims = ClaimsAnalyzer()._parse_claims(claims_text)
 analyzer = SpecificationAnalyzer()
-results = analyzer.analyze_specification(claims_text, spec_text)
+results = analyzer.analyze_specification_support(parsed_claims, spec_text)
 ```
 
 **Checks**:
@@ -149,9 +151,11 @@ results = analyzer.analyze_specification(claims_text, spec_text)
 
 **Formalities Check (MPEP 608)**:
 ```python
-from python.formalities_checker import FormalitiesChecker
+from mcp_server.formalities_checker import FormalitiesChecker
 checker = FormalitiesChecker()
-results = checker.check_formalities(title, abstract, spec, has_drawings)
+results = checker.check_all_formalities(
+    abstract=abstract, title=title, specification=spec, drawings_present=has_drawings
+)
 ```
 
 **Checks**:

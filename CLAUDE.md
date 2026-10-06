@@ -442,6 +442,7 @@ def your_tool(param: str) -> dict:
 ```python
 from mcp_server.mpep_search import MPEPIndex
 index = MPEPIndex()
+index.build_index()  # loads the on-disk index; search() raises until this runs
 results = index.search("claim definiteness", top_k=5)
 ```
 
@@ -449,7 +450,7 @@ results = index.search("claim definiteness", top_k=5)
 ```python
 from mcp_server.bigquery_search import BigQueryPatentSearch
 search = BigQueryPatentSearch()
-results = search.search_patents("neural networks", limit=10)
+results = search.search_by_keywords("neural networks", limit=10)
 ```
 
 ---

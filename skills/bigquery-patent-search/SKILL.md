@@ -70,16 +70,17 @@ When this skill is invoked:
 
 1. **Initialize BigQuery searcher**:
    ```python
+   import os
    import sys
-   sys.path.insert(0, os.path.join(os.environ.get('CLAUDE_PLUGIN_ROOT', '.'), 'python'))
-   from python.bigquery_search import BigQueryPatentSearch
+   sys.path.insert(0, os.environ.get('CLAUDE_PLUGIN_ROOT', '.'))
+   from mcp_server.bigquery_search import BigQueryPatentSearch
 
    searcher = BigQueryPatentSearch()
    ```
 
 2. **Search by keywords**:
    ```python
-   results = searcher.search_patents(
+   results = searcher.search_by_keywords(
        query="blockchain authentication",
        limit=20,
        country="US",  # Optional: filter by country
@@ -99,7 +100,7 @@ When this skill is invoked:
 
 4. **Get patent details**:
    ```python
-   patent = searcher.get_patent(
+   patent = searcher.get_patent_details(
        patent_number="US10123456B2"  # Publication number
    )
    ```

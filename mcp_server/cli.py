@@ -474,7 +474,18 @@ def setup_bigquery_auth_prompt():
 def _stdin_is_interactive() -> bool:
     """True when stdin can answer input() prompts."""
     try:
-        return sys.stdin is not None and sys.stdin.isatty()
+        if sys.stdin is None or not sys.stdin.isatty():
+            return False
+        if sys.platform == "win32":
+            # NUL is a character device, so isatty() is True for it; only a
+            # real console handle accepts GetConsoleMode.
+            import ctypes
+            import msvcrt
+
+            handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+            mode = ctypes.c_uint32()
+            return bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode)))
+        return True
     except Exception:
         return False
 
