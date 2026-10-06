@@ -688,8 +688,8 @@ def setup_command(args):
         print("\n[4/4] Building search index...", file=sys.stderr)
         print("This will take 5-15 minutes on first run.\n", file=sys.stderr)
 
-        use_hyde = not args.no_hyde
-        mpep_index = MPEPIndex(use_hyde=use_hyde)
+        # HyDE only expands search queries; building never uses it.
+        mpep_index = MPEPIndex(use_hyde=False)
         mpep_index.build_index(force_rebuild=True)
 
         print("\n[OK] Index built successfully", file=sys.stderr)
@@ -1050,12 +1050,12 @@ def rebuild_index_command(args):
         print("\n[X] MPEP PDFs not found. Run 'patent-creator download-mpep' or 'setup' first.", file=sys.stderr)
         return 1
 
-    use_hyde = not getattr(args, "no_hyde", False)
     # Propagate env var for use_hyde
     if getattr(args, "no_hyde", False):
         os.environ["PATENT_MPEP_USE_HYDE"] = "false"
 
-    mpep_index = MPEPIndex(use_hyde=use_hyde)
+    # HyDE only expands search queries; building never uses it.
+    mpep_index = MPEPIndex(use_hyde=False)
     mpep_index.build_index(force_rebuild=True)
 
     print("\n[OK] MPEP index rebuilt successfully", file=sys.stderr)
@@ -1255,7 +1255,11 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
     # Setup command
     setup_parser = subparsers.add_parser("setup", help="Download sources and build index")
     setup_parser.add_argument("--rebuild", action="store_true", help="Force rebuild of index")
-    setup_parser.add_argument("--no-hyde", action="store_true", help="Disable HyDE query expansion")
+    setup_parser.add_argument(
+        "--no-hyde",
+        action="store_true",
+        help="Disable HyDE query expansion (already off unless PATENT_MPEP_USE_HYDE=true)",
+    )
     setup_parser.add_argument(
         "--non-interactive",
         action="store_true",
@@ -1265,7 +1269,11 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
 
     # Serve command
     serve_parser = subparsers.add_parser("serve", help="Run the MCP server")
-    serve_parser.add_argument("--no-hyde", action="store_true", help="Disable HyDE query expansion")
+    serve_parser.add_argument(
+        "--no-hyde",
+        action="store_true",
+        help="Disable HyDE query expansion (already off unless PATENT_MPEP_USE_HYDE=true)",
+    )
     serve_parser.set_defaults(func=run_server)
 
     # Status command
@@ -1278,7 +1286,11 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
 
     # Rebuild index command
     rebuild_parser = subparsers.add_parser("rebuild-index", help="Rebuild MPEP index")
-    rebuild_parser.add_argument("--no-hyde", action="store_true", help="Disable HyDE query expansion")
+    rebuild_parser.add_argument(
+        "--no-hyde",
+        action="store_true",
+        help="Disable HyDE query expansion (already off unless PATENT_MPEP_USE_HYDE=true)",
+    )
     rebuild_parser.set_defaults(func=rebuild_index_command)
 
     # Download MPEP command

@@ -140,7 +140,8 @@ class LazyMPEPIndex:
     concurrent first-uses both triggering an index build.
     """
 
-    def __init__(self, use_hyde: bool = True):
+    def __init__(self, use_hyde: "bool | None" = None):
+        """use_hyde: None defers to MPEPIndex, which follows PATENT_MPEP_USE_HYDE."""
         import threading
 
         # __dict__ writes here bypass __getattr__ during init.
@@ -486,7 +487,11 @@ def _parse_args():
     parser.add_argument(
         "--mpep-url", type=str, default=MPEP_DOWNLOAD_URL, help="Custom MPEP download URL"
     )
-    parser.add_argument("--no-hyde", action="store_true", help="Disable HyDE query expansion")
+    parser.add_argument(
+        "--no-hyde",
+        action="store_true",
+        help="Disable HyDE query expansion (already off unless PATENT_MPEP_USE_HYDE=true)",
+    )
     return parser.parse_args()
 
 
@@ -691,7 +696,9 @@ def main():
 
     # Initialize MPEP index
     global mpep_index
-    use_hyde = not args.no_hyde
+    # None: MPEPIndex follows PATENT_MPEP_USE_HYDE (default off); the config
+    # bridge above has already applied any file-backed value.
+    use_hyde = False if args.no_hyde else None
 
     if args.rebuild_index:
         # Eager loading for index rebuild

@@ -474,9 +474,12 @@ class SystemHealthChecker:
             except Exception as e:
                 models_status["reranker"] = {"ready": False, "error": str(e)}
 
-            # Test HyDE (optional) — skip when explicitly disabled via env var
-            use_hyde = os.environ.get("PATENT_MPEP_USE_HYDE", "true").lower() != "false"
-            if use_hyde:
+            # Test HyDE (optional) — only when enabled (PATENT_MPEP_USE_HYDE, default off)
+            try:
+                from config import hyde_enabled
+            except ImportError:
+                from mcp_server.config import hyde_enabled
+            if hyde_enabled():
                 try:
                     from hyde import HyDEQueryExpander
 
@@ -496,7 +499,7 @@ class SystemHealthChecker:
                 models_status["hyde"] = {
                     "ready": False,
                     "optional": True,
-                    "note": "HyDE disabled by --no-hyde flag",
+                    "note": "HyDE off (enable with PATENT_MPEP_USE_HYDE=true)",
                 }
 
         except ImportError as e:

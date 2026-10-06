@@ -44,7 +44,7 @@ Deploy this agent for:
 ```python
 from mcp_server.mpep_search import MPEPIndex
 
-mpep_index = MPEPIndex(use_hyde=True)
+mpep_index = MPEPIndex()
 mpep_index.build_index()  # loads the on-disk index
 
 results = mpep_index.search(
@@ -346,7 +346,9 @@ Returns complete section content for deep analysis.
 
 ### HyDE Query Expansion
 
-For better recall on complex queries:
+Off by default (enable server-wide with `PATENT_MPEP_USE_HYDE=true`). With the
+local model it adds ~3.5s per search and rarely changes the top results. To opt
+in for one index:
 ```python
 mpep_index = MPEPIndex(use_hyde=True)
 mpep_index.build_index()
