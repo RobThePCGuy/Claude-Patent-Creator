@@ -102,9 +102,13 @@ def to_publication_number(patent_number: str) -> str:
     ("US10000000B2", "us 10,000,000 b2", "US-10000000-B2") must all map to
     it. Without a kind code the result is ``CC-NUMBER``, which lookups match
     as a prefix. Input that does not parse is returned stripped and
-    upper-cased so it can still match verbatim.
+    upper-cased so it can still match verbatim. A number with no country
+    code is taken as US.
     """
     compact = re.sub(r"[\s,/-]", "", patent_number).upper()
+    if compact[:1].isdigit():
+        # A bare number ("10123456") is a US patent, as the search tools assume.
+        compact = "US" + compact
     match = _PUBLICATION_NUMBER_RE.match(compact)
     if not match:
         return compact

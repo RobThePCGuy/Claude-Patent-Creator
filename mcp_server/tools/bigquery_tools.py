@@ -193,6 +193,8 @@ def register_bigquery_tools(
         patent: claims ~119 GiB (default on), abstract ~201 GiB (search
         results already include it), description ~1 TiB (exceeds the default
         cost cap; only request it when the full text is essential).
+        Abstract together with claims also exceeds the default cap, so pass
+        include_claims=False when asking for the abstract.
         Sections not requested are omitted from the result.
 
         For more than one patent, use get_patents_bigquery: a batch of up to
