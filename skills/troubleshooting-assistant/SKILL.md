@@ -92,13 +92,13 @@ python scripts/test_install.py
 ```python
 # Test MPEP search
 python -c "from mcp_server.mpep_search import MPEPIndex; \
-           index = MPEPIndex(); \
+           index = MPEPIndex(); index.build_index(); \
            print('OK' if index.search('test', top_k=1) else 'FAILED')"
 
 # Test BigQuery
 python -c "from mcp_server.bigquery_search import BigQueryPatentSearch; \
            search = BigQueryPatentSearch(); \
-           print('OK' if search.search_patents('neural network', limit=1) else 'FAILED')"
+           print('OK' if search.search_by_keywords('neural network', limit=1) else 'FAILED')"
 
 # Test analyzers
 python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \

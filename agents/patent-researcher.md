@@ -75,11 +75,11 @@ Implements professional 7-step methodology:
 
 Access to Google's public patent dataset:
 ```python
-from python.bigquery_search import BigQueryPatentSearch
+from mcp_server.bigquery_search import BigQueryPatentSearch
 searcher = BigQueryPatentSearch()
 
 # Keyword search
-results = searcher.search_patents(
+results = searcher.search_by_keywords(
     query="blockchain authentication",
     limit=50,
     country="US",
@@ -94,7 +94,7 @@ cpc_results = searcher.search_by_cpc(
 )
 
 # Get full patent details
-patent = searcher.get_patent("US10123456B2")
+patent = searcher.get_patent_details("US10123456B2")
 ```
 
 ### 3. CPC Classification Expertise

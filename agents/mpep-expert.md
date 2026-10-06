@@ -42,9 +42,10 @@ Deploy this agent for:
 
 **Search Process**:
 ```python
-from python.mpep_search import MPEPIndex
+from mcp_server.mpep_search import MPEPIndex
 
 mpep_index = MPEPIndex(use_hyde=True)
+mpep_index.build_index()  # loads the on-disk index
 
 results = mpep_index.search(
     query="claim definiteness requirements",
@@ -348,6 +349,7 @@ Returns complete section content for deep analysis.
 For better recall on complex queries:
 ```python
 mpep_index = MPEPIndex(use_hyde=True)
+mpep_index.build_index()
 results = mpep_index.search("complex legal question", top_k=10)
 ```
 
