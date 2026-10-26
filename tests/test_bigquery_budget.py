@@ -13,6 +13,7 @@ import pytest
 
 from mcp_server.bigquery_search import (
     BigQueryBudgetExceededError,
+    BigQueryConfigError,
     BigQueryPatentSearch,
 )
 
@@ -77,13 +78,14 @@ def test_budget_guard_respects_env_override(monkeypatch):
         searcher._assert_within_budget("SELECT 1", [])
 
 
-def test_env_below_schema_minimum_falls_back_to_default(monkeypatch):
-    """The config schema rejects caps under 1 GiB; the resolver must agree
-    instead of silently accepting a 5-byte cap that kills every query."""
+def test_env_below_schema_minimum_fails_closed(monkeypatch):
+    """The config schema rejects caps under 1 GiB; the resolver must agree,
+    but must not fall back to the more permissive default (#101)."""
     monkeypatch.setenv("PATENT_BIGQUERY_MAX_BYTES_BILLED", "5")
     searcher = _searcher(dry_estimate=1)
 
-    assert searcher._resolve_max_bytes_billed() == BigQueryPatentSearch.DEFAULT_MAX_BYTES_BILLED
+    with pytest.raises(BigQueryConfigError):
+        searcher._resolve_max_bytes_billed()
 
 
 def test_config_file_value_respected(tmp_path):

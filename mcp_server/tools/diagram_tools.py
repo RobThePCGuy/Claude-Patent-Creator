@@ -300,7 +300,6 @@ def register_diagram_tools(
             if not svg_path:
                 return {"success": False, "error": "svg_path is required"}
 
-            generator = PatentDiagramGenerator()
             try:
                 input_path = _resolve_under_cwd(svg_path, "diagrams")
             except ValueError as ve:
@@ -308,6 +307,10 @@ def register_diagram_tools(
 
             if not input_path.is_file():
                 return {"success": False, "error": f"SVG file not found: {svg_path}"}
+
+            # The create_*/render tools write under cwd, not the data-dir default,
+            # so scope the generator to the (already cwd-confined) SVG's folder.
+            generator = PatentDiagramGenerator(output_dir=input_path.parent)
 
             output_path = generator.add_reference_numbers(
                 svg_path=input_path, reference_map=reference_map

@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Optional stdio handshake workaround and troubleshooting guidance for the
+  Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator
 - GitHub issue templates (bug report, feature request, question) and PR template
 - Code quality tooling config (Ruff lint rules, isort, mypy, pytest, coverage, bandit)
@@ -15,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- Reject invalid explicit BigQuery spending caps before any query instead of
+  silently substituting the 350 GiB default (#101).
+- Bind patent family IDs as strings for the BigQuery public-data schema (#97).
+- Annotate project-local diagram outputs while retaining path confinement (#98).
+- Parse multi-hit EPO search wrappers and prefer family docdb country/kind fields
+  (#99, #100). Reports and detailed reproductions for #97–#101 by @DanielTillett.
 - `downloaders`: MPEP/USPTO downloads now verify TLS against the bundled `certifi`
   CA store, fixing `SSL: CERTIFICATE_VERIFY_FAILED` on python.org macOS Python (#23)
 - `utils/device`: honor the documented `PATENT_MPEP_DEVICE` env var (`cpu`/`gpu`/

@@ -484,6 +484,7 @@ Things to be aware of:
 - **Some diagram types need Graphviz installed** as a system package (not just the Python bindings).
 - **HyDE query expansion requires API keys** (Anthropic or OpenAI). It's optional and off by default.
 - **Windows users need Git Bash** for the `claude mcp add` command. See [Windows setup notes](#configuration).
+- **Claude Code 2.1.280 handshake error `-32022`:** see the [optional stdio workaround](CLAUDE.md#claude-code-handshake-error--32022) for the reported client negotiation bug. Reported by [DanielTillett](https://github.com/RobThePCGuy/Claude-Patent-Creator/issues/102).
 
 See [CLAUDE.md](CLAUDE.md) for the full troubleshooting guide.
 

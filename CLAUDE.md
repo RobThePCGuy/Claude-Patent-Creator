@@ -318,6 +318,46 @@ CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe
 
 ### Debugging MCP Server Issues
 
+#### Claude Code handshake error `-32022`
+
+Claude Code 2.1.280 has been reported to send `server/discover` followed by
+legacy `initialize` on the same stdio connection. With MCP 2.x, this can produce:
+
+```text
+-32022: connection is serving the 2026-07-28 protocol; the initialize handshake is not accepted
+```
+
+The matching client bug is tracked in
+[anthropics/claude-code#96183](https://github.com/anthropics/claude-code/issues/96183).
+[DanielTillett reported its effect here](https://github.com/RobThePCGuy/Claude-Patent-Creator/issues/102).
+No particular fixed client version has been verified for this project.
+
+If you encounter this exact error, the optional
+[`scripts/legacy_handshake_shim.py`](scripts/legacy_handshake_shim.py) wrapper
+rejects the discovery probe with JSON-RPC `-32601`, allowing the affected client
+to send `initialize` first to the server. It forwards all other messages
+unchanged. From a source checkout, use this launch command in place of the
+existing server command, retaining the existing environment settings:
+
+```text
+/absolute/path/to/venv/bin/python /absolute/path/to/Claude-Patent-Creator/scripts/legacy_handshake_shim.py -- /absolute/path/to/venv/bin/patent-creator serve
+```
+
+In a JSON MCP configuration, set `command` to the Python path and `args` to
+the shim path, `"--"`, the `patent-creator` executable path and `"serve"`.
+Use the corresponding `Scripts/python.exe` and `Scripts/patent-creator.exe`
+paths on Windows. This is an opt-in compatibility workaround; the regular
+server registration is unchanged. Remove the wrapper after verifying that
+your updated client connects without it. Subprocess tests verify forwarding
+and discovery rejection; this does not establish a fix in any client release.
+
+For slow startup with **both embedding and reranker models already cached**,
+you can also add `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1` to the server
+environment to avoid online model checks. These settings prevent downloading
+missing models; omit them when initially setting up or changing models.
+
+#### Other MCP diagnostics
+
 **Enable debug logging:**
 ```bash
 PATENT_LOG_LEVEL=DEBUG patent-creator health

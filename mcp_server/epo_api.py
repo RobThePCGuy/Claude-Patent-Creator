@@ -841,7 +841,14 @@ class EPOClient:
             if not exchange_docs:
                 exchange_docs = search_result.get("ops:exchange-documents", {})
 
-            doc_list = exchange_docs.get("exchange-document", [])
+            # Multi-hit responses arrive as a list of {"exchange-document": {...}}
+            # wrappers; a single hit arrives as one wrapper dict.
+            if isinstance(exchange_docs, list):
+                doc_list = [
+                    w.get("exchange-document", w) for w in exchange_docs if isinstance(w, dict)
+                ]
+            else:
+                doc_list = exchange_docs.get("exchange-document", [])
 
             # Ensure doc_list is a list (single results come as dict)
             if isinstance(doc_list, dict):
@@ -1261,9 +1268,10 @@ class EPOClient:
                 pub_ref = member.get("publication-reference", {})
                 doc_id = pub_ref.get("document-id", {})
                 if isinstance(doc_id, list):
-                    # Use epodoc format if available
+                    # Use docdb format if available: it carries country and kind
+                    # separately, whereas epodoc packs them into doc-number.
                     for d in doc_id:
-                        if isinstance(d, dict) and d.get("@document-id-type") == "epodoc":
+                        if isinstance(d, dict) and d.get("@document-id-type") == "docdb":
                             doc_id = d
                             break
                     else:

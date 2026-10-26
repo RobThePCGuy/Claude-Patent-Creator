@@ -86,6 +86,13 @@ class BigQueryBudgetExceededError(ValueError):
     working, while paths that must not swallow it can re-raise by type."""
 
 
+class BigQueryConfigError(ValueError):
+    """Raised when an explicitly configured BigQuery setting is invalid.
+
+    Raised before any client.query call (dry runs included) so a bad cost cap
+    fails closed and visibly instead of falling back to a more permissive one."""
+
+
 class BigQueryQuotaExhaustedError(ValueError):
     """Raised when BigQuery rejects a query because the project's monthly
     free-tier bytes are exhausted (sandbox projects with no billing account)."""
@@ -1005,7 +1012,8 @@ class BigQueryPatentSearch:
             results = self._run_query(
                 sql,
                 [
-                    bigquery.ScalarQueryParameter("family_id", "INT64", family_id),  # type: ignore[union-attr]
+                    # family_id is a STRING column in patents.publications
+                    bigquery.ScalarQueryParameter("family_id", "STRING", str(family_id)),  # type: ignore[union-attr]
                     bigquery.ScalarQueryParameter("limit", "INT64", limit),  # type: ignore[union-attr]
                 ],
             )
@@ -1054,34 +1062,33 @@ class BigQueryPatentSearch:
         Delegates to the config layer (env > config file > default, schema
         minimum enforced) so this knob cannot diverge from what
         ``patent-creator config`` validates and documents. Falls back to
-        env-only parsing when the config module is unavailable.
+        env-only parsing when the config module is unavailable. An explicitly
+        set but invalid value raises BigQueryConfigError (fail closed).
         """
         key = "PATENT_BIGQUERY_MAX_BYTES_BILLED"
         if _config is not None:
-            raw, _source = _config.get_effective(key)
-            if _config.validate(key, raw) is None:
-                return int(raw)
-            if LOGGING_AVAILABLE and logger:
-                logger.warning(
-                    "patent_bigquery_max_bytes_billed_invalid",
-                    extra={"value": raw, "fallback_bytes": self.DEFAULT_MAX_BYTES_BILLED},
-                )
-            return self.DEFAULT_MAX_BYTES_BILLED
-        max_bytes = self.DEFAULT_MAX_BYTES_BILLED
-        env_value = os.environ.get(key)
-        if env_value:
+            raw, source = _config.get_effective(key)
+            error = _config.validate(key, raw)
+        else:
+            raw, source = os.environ.get(key, ""), "env"
+            if not raw:
+                return self.DEFAULT_MAX_BYTES_BILLED
             try:
-                parsed = int(env_value)
+                error = None if int(raw) >= GIB else f"must be >= {GIB}"
             except ValueError:
-                parsed = 0
-            if parsed >= GIB:
-                max_bytes = parsed
-            elif LOGGING_AVAILABLE and logger:
-                logger.warning(
+                error = "must be an integer"
+        if error is not None:
+            # Fail closed: never substitute a cap more permissive than the one set.
+            if LOGGING_AVAILABLE and logger:
+                logger.error(
                     "patent_bigquery_max_bytes_billed_invalid",
-                    extra={"value": env_value, "fallback_bytes": max_bytes},
+                    extra={"value": raw, "source": source},
                 )
-        return max_bytes
+            raise BigQueryConfigError(
+                f"{key}={raw!r} (from {source}) is invalid: {error} (minimum is "
+                f"{GIB} bytes = 1 GiB); no query was run. Fix or unset the setting."
+            )
+        return int(raw)
 
     def _make_job_config(self, parameters: list, max_bytes: Optional[int] = None) -> Any:
         """Build a QueryJobConfig with parameters and the bytes-billed ceiling."""
