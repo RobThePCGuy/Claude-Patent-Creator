@@ -1,9 +1,10 @@
 """Exercise the optional compatibility shim against a real stdio subprocess."""
 
 import json
-import select
+import queue
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -75,8 +76,11 @@ def test_discovery_then_initialize_with_real_mcp_sdk(tmp_path):
     def request(message):
         process.stdin.write(json.dumps(message).encode() + b"\n")
         process.stdin.flush()
-        assert select.select([process.stdout], [], [], 10)[0], "MCP reply timed out"
-        return json.loads(process.stdout.readline())
+        # Windows select() cannot wait on subprocess pipes.
+        replies = queue.Queue()
+        threading.Thread(target=lambda: replies.put(process.stdout.readline()),
+                         daemon=True).start()
+        return json.loads(replies.get(timeout=10))
 
     try:
         reply = request({"jsonrpc": "2.0", "id": 1, "method": "server/discover"})
