@@ -54,11 +54,42 @@ def test_child_exit_code_and_stderr_are_preserved():
     assert "child failure" in run.stderr
 
 
+def test_child_exit_preserved_while_client_keeps_stdin_open():
+    process = subprocess.Popen(
+        [sys.executable, str(SHIM), "--", sys.executable, "-c",
+         "import time; time.sleep(0.2); raise SystemExit(7)"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    try:
+        # MCP clients keep this pipe open until the server has exited.
+        process.wait(timeout=10)
+        assert process.returncode == 7, process.stderr.read().decode()
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        process.stdin.close()
+        process.stdout.close()
+        process.stderr.close()
+
+
 def test_missing_command_is_actionable():
     run = subprocess.run([sys.executable, str(SHIM)], input="", text=True,
                          capture_output=True, timeout=10)
     assert run.returncode != 0
     assert "usage:" in run.stderr.lower()
+
+
+def test_large_and_unterminated_messages_forwarded_without_changes():
+    wire = json.dumps({"jsonrpc": "2.0", "id": 1, "payload": "é" * 100000},
+                      ensure_ascii=False).encode() + b"\nlast unterminated line"
+    run = subprocess.run(
+        [sys.executable, str(SHIM), "--", sys.executable, "-u", "-c",
+         "import sys\nfor line in sys.stdin.buffer: sys.stdout.buffer.write(line); sys.stdout.buffer.flush()"],
+        input=wire, capture_output=True, timeout=10,
+    )
+    assert run.returncode == 0, run.stderr
+    assert run.stdout == wire
 
 
 def test_discovery_then_initialize_with_real_mcp_sdk(tmp_path):

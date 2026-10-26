@@ -8,10 +8,36 @@ Remove this wrapper once the client's negotiation bug is fixed.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import threading
 from contextlib import suppress
+
+
+def read_lines(fd):
+    """Read JSONL without holding a buffered stream lock during shutdown."""
+    pending = bytearray()
+    while True:
+        chunk = os.read(fd, 65536)
+        if not chunk:
+            if pending:
+                yield bytes(pending)
+            return
+        pending.extend(chunk)
+        while (end := pending.find(b"\n")) >= 0:
+            yield bytes(pending[:end + 1])
+            del pending[:end + 1]
+
+
+def write_all(fd, data):
+    """Raw pipe writes can be partial, especially for large MCP messages."""
+    remaining = memoryview(data)
+    while remaining:
+        written = os.write(fd, remaining)
+        if written == 0:
+            raise BrokenPipeError("MCP pipe closed")
+        remaining = remaining[written:]
 
 
 def main():
@@ -23,19 +49,18 @@ def main():
     if not command:
         parser.error("provide -- followed by the MCP server command")
     try:
-        child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
     except OSError as exc:
         parser.exit(1, f"Cannot start MCP server: {exc}\n")
     output_lock = threading.Lock()
 
     def write_output(line):
         with output_lock:
-            sys.stdout.buffer.write(line)
-            sys.stdout.buffer.flush()
+            write_all(sys.stdout.fileno(), line)
 
     def forward_input():
         try:
-            for line in sys.stdin.buffer:
+            for line in read_lines(sys.stdin.fileno()):
                 try:
                     message = json.loads(line)
                 except (ValueError, UnicodeDecodeError):
@@ -46,8 +71,7 @@ def main():
                                  "error": {"code": -32601, "message": "Method not found"}}
                         write_output(json.dumps(reply).encode("utf-8") + b"\n")
                     continue
-                child.stdin.write(line)
-                child.stdin.flush()
+                write_all(child.stdin.fileno(), line)
         except (BrokenPipeError, OSError):
             pass  # The child has exited; main preserves its exit status.
         finally:
@@ -56,7 +80,7 @@ def main():
 
     threading.Thread(target=forward_input, daemon=True).start()
     try:
-        for line in child.stdout:
+        for line in read_lines(child.stdout.fileno()):
             write_output(line)
         return child.wait()
     except (KeyboardInterrupt, BrokenPipeError):
