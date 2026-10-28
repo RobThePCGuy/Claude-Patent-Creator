@@ -48,6 +48,7 @@ class SystemHealthChecker:
             "timestamp": datetime.now().isoformat(),
             "mpep_index": self._check_mpep_index(),
             "google_patents": self._check_google_patents(),
+            "non_patent_literature": self._check_non_patent_literature(),
             "bigquery": self._check_bigquery(),
             "uspto_api": self._check_uspto_api(),
             "graphviz": self._check_graphviz(),
@@ -181,6 +182,29 @@ class SystemHealthChecker:
             "fix": GooglePatentsSearch.setup_message(),
             "details": "Keyword search falls back to BigQuery (~$2 a search).",
             "provides": ["search_patents_google (RECOMMENDED for prior art)"],
+        }
+
+    def _check_non_patent_literature(self) -> dict[str, Any]:
+        """Check whether non-patent literature search (Firecrawl) is configured.
+
+        Offline check that never spends a search. The key is optional, so the
+        result has no "ready" field and does not count toward overall health."""
+        try:
+            from firecrawl_search import FirecrawlSearch
+        except ImportError:
+            from mcp_server.firecrawl_search import FirecrawlSearch
+
+        if FirecrawlSearch().is_configured():
+            return {
+                "status": "configured",
+                "details": "Non-patent literature search ready (FIRECRAWL_API_KEY set)",
+                "provides": ["search_non_patent_literature"],
+            }
+        return {
+            "status": "not_configured",
+            "fix": FirecrawlSearch.setup_message(),
+            "details": "Optional: research-paper and web search for non-patent prior art.",
+            "provides": ["search_non_patent_literature"],
         }
 
     def _check_bigquery(self) -> dict[str, Any]:

@@ -19,6 +19,7 @@ This skill points Claude at the BigQuery patent-search tools registered by the p
 |------|--------------|
 | `search_patents_google` | **Recommended.** Full-text keyword search worldwide (claims and description included), one search credit per call. Needs `SERPAPI_API_KEY` (free plan: 250/month). |
 | `check_google_patents_status` | Is the key set, and how many searches are left this month (free to call). |
+| `search_non_patent_literature` | Research papers and web publications as prior art (`research_only=False` searches the whole web). Needs `FIRECRAWL_API_KEY`. |
 | `search_patents_bigquery` | Fallback keyword search across title / abstract / claims (US only for claims). ~341 GiB, about $2, per search. |
 | `get_patent_bigquery` | Patent details by publication number: bibliographic data + claims by default; abstract and description are opt-in. |
 | `get_patents_bigquery` | Same, for up to 50 patents in one query at the cost of one lookup. |

@@ -28,6 +28,7 @@ This subagent has access to patent search and MPEP tools:
 **Patent Search:**
 - `search_patents_google` - Full-text search worldwide, claims included (recommended)
 - `search_patents_bigquery` - Fallback keyword search (~$2 a search)
+- `search_non_patent_literature` - Research papers and web publications (needs FIRECRAWL_API_KEY)
 - `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
@@ -378,7 +379,7 @@ CONFIDENCE LEVEL: HIGH/MEDIUM/LOW
 
 SEARCH LIMITATIONS:
 - This search covered BigQuery patent database (100M+ worldwide patents, updated weekly)
-- NOT searched: non-patent literature (academic papers, white papers, product documentation)
+- Non-patent literature (academic papers, white papers, product documentation): searched only if search_non_patent_literature was used (needs FIRECRAWL_API_KEY)
 - NOT searched: unpublished patent applications (18-month publication delay)
 - NOT searched: foreign-language patents without English abstracts
 - NOT searched: trade secrets, proprietary systems, or non-indexed publications
@@ -528,7 +529,7 @@ EXECUTIVE SUMMARY:
 - Novelty: Preliminary Assessment: NOVEL (no single reference found with all elements)
 - Obviousness: Preliminary Assessment: LIKELY NON-OBVIOUS (unique replay-resistance mechanism)
 - Confidence: HIGH (based on 287 patents reviewed across 3 CPC codes)
-- Search Limitations: Non-patent literature not searched; unpublished applications not covered
+- Search Limitations: Non-patent literature not searched (no FIRECRAWL_API_KEY); unpublished applications not covered
 - Action: Consider proceeding with patent application (attorney review recommended)
 
 [Complete report with search methodology, top 10 prior art, 102/103 analysis, claim strategy, and IDS list]

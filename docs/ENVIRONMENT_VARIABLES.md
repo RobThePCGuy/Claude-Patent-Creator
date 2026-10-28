@@ -84,6 +84,7 @@ $env:VARIABLE_NAME
 - `USPTO_API_KEY` - USPTO Open Data Portal API key (optional)
 - `EPO_OPS_KEY` / `EPO_OPS_SECRET` - EPO OPS API credentials (optional)
 - `SERPAPI_API_KEY` - SerpApi key for `search_patents_google`, worldwide full-text Google Patents search with claims (optional, recommended; free plan 250 searches/month)
+- `FIRECRAWL_API_KEY` - Firecrawl API key for `search_non_patent_literature`, research-paper and web search for non-patent prior art (optional)
 - `HYDE_BACKEND` - Set to `api` to use Anthropic/OpenAI for HyDE query expansion
 - `PATENT_BIGQUERY_MAX_BYTES_BILLED` - Override the per-query BigQuery cost ceiling, in bytes
   (default: 350 GiB, which covers a normal keyword prior-art search — those scan ~325 GiB of

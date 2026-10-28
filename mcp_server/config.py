@@ -81,6 +81,13 @@ OPTIONS: tuple[Option, ...] = (
         "secret",
     ),
     Option(
+        "FIRECRAWL_API_KEY", "Credentials", "Firecrawl key (non-patent literature)",
+        "Key for Firecrawl's search API, used by search_non_patent_literature to "
+        "find research papers and web publications as prior art. Optional; "
+        "without it that tool returns setup instructions.",
+        "secret",
+    ),
+    Option(
         "ANTHROPIC_API_KEY", "Credentials", "Anthropic API key",
         "Used only for API-backed HyDE query expansion when HYDE_BACKEND=api. "
         "Otherwise unused.",

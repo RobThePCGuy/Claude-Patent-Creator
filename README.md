@@ -219,6 +219,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `get_mpep_section` | Pull full content of a specific MPEP section |
 | `search_patents_google` | Full-text keyword search worldwide, claims included (recommended; free SerpApi key, 250 searches/month) |
 | `search_patents_bigquery` | Keyword search fallback when no SerpApi key is set (~$2 a search past the free monthly TiB) |
+| `search_non_patent_literature` | Research-paper and web search for non-patent prior art (optional; needs a [Firecrawl](https://www.firecrawl.dev/?utm_source=Claude-Patent-Creator&utm_medium=integration) API key) |
 | `get_patent_bigquery` | Get details on a specific patent (claims by default; abstract/description opt-in) |
 | `get_patents_bigquery` | Get details on up to 50 patents in one query, same cost as one |
 | `search_patents_by_cpc_bigquery` | Search by CPC classification code |
@@ -330,6 +331,9 @@ GOOGLE_CLOUD_PROJECT=your-project-id
 # Free registration at https://developers.epo.org
 EPO_OPS_KEY=your-consumer-key
 EPO_OPS_SECRET=your-consumer-secret
+
+# Optional: non-patent literature search (research papers, web publications)
+FIRECRAWL_API_KEY=fc-...
 
 # Optional API keys (for HyDE query expansion)
 ANTHROPIC_API_KEY=sk-ant-...

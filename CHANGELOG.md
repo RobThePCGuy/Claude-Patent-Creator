@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `search_non_patent_literature`: optional research-paper and web search for
+  non-patent prior art through Firecrawl search. Enabled by `FIRECRAWL_API_KEY`;
+  without it the tool returns setup instructions.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator

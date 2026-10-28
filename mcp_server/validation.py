@@ -160,6 +160,20 @@ class SearchGooglePatentsInput(BaseModel):  # type: ignore[misc]
         return v.upper()
 
 
+class SearchNonPatentLiteratureInput(BaseModel):  # type: ignore[misc]
+    """Input validation for non-patent literature search."""
+
+    query: constr(strip_whitespace=True, min_length=1, max_length=500) = Field(  # type: ignore[valid-type]
+        ..., description="What to search for, in plain technical words"
+    )
+    limit: conint(ge=1, le=20) = Field(  # type: ignore[valid-type]
+        default=10, description="Maximum number of results (1-20)"
+    )
+    research_only: bool = Field(
+        default=True, description="Research papers only (True) or the whole web (False)"
+    )
+
+
 class GetPatentInput(BaseModel):  # type: ignore[misc]
     """Input validation for getting patent details."""
 
