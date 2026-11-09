@@ -515,7 +515,7 @@ def test_late_doi_on_an_old_paper_gets_a_soft_note_not_a_warning():
     rec = ls._record(title="t", publication_date="1905-07-16")
     info = {"registered": ls.date(2026, 6, 4), "dates": [("print", ls.date(1905, 7, 16))]}
     assert ls.crossref_caution(rec, info, "2025-01-01") is None
-    assert "digitized back issue" in ls.crossref_note(rec, info, "2025-01-01")
+    assert "nothing else confirms" in ls.crossref_note(rec, info, "2025-01-01")
     # Recorded live: 10.53383/100353, a 2022 paper listed 1998-06-30 online-only, DOI registered 2023.
     online_only = {"registered": ls.date(2023, 1, 18), "dates": [("online", ls.date(1998, 6, 30))]}
     old = ls._record(title="t", publication_date="1998-06-30")
@@ -533,9 +533,31 @@ def test_search_applies_the_doi_year_check_and_the_soft_note(monkeypatch):
     }]}})
     out = _search_with(monkeypatch, [
         _openalex_work("Eating the cost: food prices and the pandemic", "10.21916/mlr.2026.20", "1915-07-01"),
-        _openalex_work("El advenimiento (2022)", "10.2307/jj.43178328.9", "1905-07-16"),
+        _openalex_work("El advenimiento Covid-19 (2022)", "10.2307/jj.43178328.9", "1905-07-16"),
     ], crossref, "2025-01-01")
     by_doi = {r["doi"]: r for r in out["results"]}
     assert "contains the year 2026" in by_doi["10.21916/mlr.2026.20"]["date_check"]
     jstor = by_doi["10.2307/jj.43178328.9"]
-    assert "date_check" not in jstor and "digitized back issue" in jstor["date_note"]
+    assert "contains the year 2026" in by_doi["10.21916/mlr.2026.20"]["date_check"]
+    # 2022 is before a 2025 cutoff, so the title year changes nothing here.
+    assert "date_check" not in jstor and "nothing else confirms" in jstor["date_note"]
+    # Before 2000 it matters: the title's "(2022)" escalates the unconfirmed 1905 date.
+    out = _search_with(monkeypatch, [_openalex_work("El advenimiento Covid-19 (2022)", "10.2307/jj.43178328.9",
+                                                    "1905-07-16")], crossref, "2000-01-01")
+    jstor = out["results"][0]
+    assert "mentions 2022" in jstor["date_check"] and "date_note" not in jstor
+
+
+def test_unconfirmed_old_print_date_gets_a_plain_note(monkeypatch):
+    # Shape recorded live for 10.59015/wlr/nevu3395 (a 2023 article printed as 1920).
+    crossref = json.dumps({"status": "ok", "message": {"items": [{
+        "DOI": "10.59015/wlr/nevu3395", "created": {"date-time": "2023-11-03T00:00:00Z"},
+        "issued": {"date-parts": [[1920]]}, "published-print": {"date-parts": [[1920]]},
+        "published-online": {"date-parts": [[2005]]},
+    }]}})
+    out = _search_with(monkeypatch, [_openalex_work("States of Emergency: Separation of Powers",
+                                                    "10.59015/wlr/nevu3395", "1920-01-01")],
+                       crossref, "2000-01-01")
+    hit = out["results"][0]
+    assert "nothing else confirms" in hit["date_note"]
+    assert "only an unconfirmed print date" in out["note"] and "normal" not in out["note"]

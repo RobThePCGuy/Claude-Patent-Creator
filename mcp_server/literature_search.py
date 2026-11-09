@@ -502,15 +502,39 @@ def _late_old_doi(rec: dict[str, Any], info: dict[str, Any], cutoff: date) -> Op
 
 
 def crossref_note(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
-    """A milder remark when an old paper's DOI came after the cutoff but the
-    publisher records an old print date: the digitized-back-issue pattern
-    (seen live: ECS 1990s journals put online with DOIs in 2019). A wrong date
-    the publisher repeats in print looks the same, so it is still mentioned."""
+    """When an old paper's DOI came after the cutoff and only the publisher's
+    old print date vouches for its age. Digitized back issues look like this
+    (seen live: ECS 1990s journals given DOIs in 2019), and so do modern papers
+    whose publisher entered a wrong print date (seen live: 2023 law review
+    articles printed as 1920). Nothing free tells them apart, so the note says
+    exactly that and claims nothing more."""
     late = _late_old_doi(rec, info, date.fromisoformat(published_before))
     if late and late[1]:
-        return (f"Its DOI was registered on {late[0].isoformat()}, after your cutoff. The publisher "
-                "records an old print date, the usual sign of a digitized back issue; confirm the "
-                "date if this paper matters.")
+        return (f"Its DOI was registered on {late[0].isoformat()}, after your cutoff, so the only "
+                "evidence of its age is the publisher's print date, which nothing else confirms. "
+                "Digitized old issues look like this, and so do wrong dates; confirm the date "
+                "before relying on it as prior art.")
+    return None
+
+
+def text_year_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
+    """Used only for results whose age rests on an unconfirmed print date: a
+    year in the title or abstract later than the listed date and not before
+    the cutoff year (seen live: "El advenimiento Covid-19 (2022)" listed as
+    1905). Not applied to every result, since papers also mention future years
+    in forecasts."""
+    try:
+        listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
+    except ValueError:
+        return None
+    cutoff = date.fromisoformat(published_before)
+    text = f"{rec.get('title') or ''} {rec.get('abstract') or ''}"
+    years = [int(y) for y in _DOI_YEAR_RE.findall(text) if int(y) <= date.today().year]
+    later = [y for y in years if y > listed.year + 1 and y >= cutoff.year]
+    if later:
+        return (f"Listed as {listed.isoformat()}, but its title or abstract mentions {max(later)}, and "
+                "only an unconfirmed print date vouches for the old date; confirm when it first "
+                "became public.")
     return None
 
 
@@ -799,7 +823,11 @@ class LiteratureSearch:
                     cautions.append(crossref_caution(r, info, published_before))
                     note_text = crossref_note(r, info, published_before)
                     if note_text and not any(cautions):
-                        r["date_note"] = note_text
+                        escalate = text_year_caution(r, published_before)
+                        if escalate:
+                            cautions.append(escalate)
+                        else:
+                            r["date_note"] = note_text
                 elif (r.get("dates_by_source") or {}).get("arxiv") and \
                         str(r["dates_by_source"]["arxiv"])[:10] == str(r.get("publication_date") or "")[:10]:
                     r["date_source"] = "arXiv submission date"
@@ -839,8 +867,8 @@ class LiteratureSearch:
             if flagged:
                 note += f" {flagged} carry a date_check: confirm those dates before citing them as prior art."
             if noted:
-                note += (f" {noted} older papers got their DOIs after your cutoff (date_note), "
-                         "which is normal for digitized back issues.")
+                note += (f" For {noted} more, only an unconfirmed print date shows they predate your "
+                         "cutoff (date_note); confirm those dates too before relying on them.")
 
         out = {"results": results, "sources": report, "note": note}
         if cross_check:

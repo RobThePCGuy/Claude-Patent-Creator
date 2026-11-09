@@ -27,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   in disguise, caught on 2020-2021 papers), publisher dates years apart
   including the journal issue's, a year inside the DOI later than the listed
   date, and sources that disagree on a merged paper's date. Older papers whose
-  DOI came after the cutoff get a milder `date_note`.
+  DOI came after the cutoff, and whose age rests only on the publisher's print
+  date, get a `date_note` saying so.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator

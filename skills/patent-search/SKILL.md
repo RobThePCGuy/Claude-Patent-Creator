@@ -59,7 +59,7 @@ So: batch with `get_patents_bigquery`, pass `include_claims=False` when you only
 
 `search_non_patent_literature`:
 - Papers use academic wording, not claim language: search "lithium dendrite suppression", not "means for inhibiting growth".
-- Set `published_before` to the priority date; only papers the indexes date before that day come back. Index dates are sometimes wrong, so each result's date is cross-checked with the publisher's DOI record (Crossref); a result with `date_check` must have its date confirmed on the publisher's page before it is cited as prior art. `date_source` says where each date came from; treat "index only, not cross-checked" dates with the same care. `date_note` is a milder remark (an old paper whose DOI came late).
+- Set `published_before` to the priority date; only papers the indexes date before that day come back. Index dates are sometimes wrong, so each result's date is cross-checked with the publisher's DOI record (Crossref); a result with `date_check` must have its date confirmed on the publisher's page before it is cited as prior art. `date_source` says where each date came from; treat "index only, not cross-checked" dates with the same care. `date_note` means only an unconfirmed print date shows the paper is old enough; confirm it too before relying on it.
 - Read `sources` in the result. A source marked busy or failed was not searched; say so in any report. No results is never proof that no prior art exists.
 
 ## Common workflows
