@@ -20,6 +20,7 @@ This skill points Claude at the BigQuery patent-search tools registered by the p
 | `search_patents_google` | **Recommended.** Full-text keyword search worldwide (claims and description included), one search credit per call. Needs `SERPAPI_API_KEY` (free plan: 250/month). |
 | `check_google_patents_status` | Is the key set, and how many searches are left this month (free to call). |
 | `search_patents_bigquery` | Fallback keyword search across title / abstract / claims (US only for claims). ~341 GiB, about $2, per search. |
+| `search_non_patent_literature` | Papers and preprints (OpenAlex, arXiv, Semantic Scholar) as prior art. Free, no key. `published_before` = priority date. |
 | `get_patent_bigquery` | Patent details by publication number: bibliographic data + claims by default; abstract and description are opt-in. |
 | `get_patents_bigquery` | Same, for up to 50 patents in one query at the cost of one lookup. |
 | `search_patents_by_cpc_bigquery` | Search by CPC classification prefix. |
@@ -56,12 +57,18 @@ So: batch with `get_patents_bigquery`, pass `include_claims=False` when you only
 - For non-US patents, `claims` is empty in the dataset; the MCP keyword tool already searches title/abstract for those jurisdictions. For full text on EP/WO, use the EPO OPS tools instead.
 - Use `search_patent_family_bigquery` to bridge from an EP/WO hit to its US family member when you need claims.
 
+`search_non_patent_literature`:
+- Papers use academic wording, not claim language: search "lithium dendrite suppression", not "means for inhibiting growth".
+- Set `published_before` to the priority date; only papers published before that day come back.
+- Read `sources` in the result. A source marked busy or failed was not searched; say so in any report. No results is never proof that no prior art exists.
+
 ## Common workflows
 
 **Prior art sweep:**
 1. `search_patents_google(query=…, limit=100)` — broad full-text scan, worldwide (fallback: `search_patents_bigquery(query=…, country="US")`).
 2. Pick the top hits' CPC codes with one `get_patents_bigquery(patent_numbers=[…], include_claims=False)`.
-3. `search_patents_google(query="<terms> CPC=<group>/00", limit=100)` — pull adjacent technology (fallback: `search_patents_by_cpc_bigquery`, ~234 GiB a search).
+3. `search_non_patent_literature(query=…, published_before="<priority date>")` — papers and preprints on the same concepts, free.
+4. `search_patents_google(query="<terms> CPC=<group>/00", limit=100)` — pull adjacent technology (fallback: `search_patents_by_cpc_bigquery`, ~234 GiB a search).
 
 **Cross-jurisdiction lookup:**
 1. `search_patents_google(query=…, country="EP")` (fallback: `search_patents_bigquery(query=…, country="EP")`).

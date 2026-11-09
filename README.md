@@ -219,6 +219,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `get_mpep_section` | Pull full content of a specific MPEP section |
 | `search_patents_google` | Full-text keyword search worldwide, claims included (recommended; free SerpApi key, 250 searches/month) |
 | `search_patents_bigquery` | Keyword search fallback when no SerpApi key is set (~$2 a search past the free monthly TiB) |
+| `search_non_patent_literature` | Papers and preprints as prior art (OpenAlex, arXiv, Semantic Scholar), free with no key, filter by priority date |
 | `get_patent_bigquery` | Get details on a specific patent (claims by default; abstract/description opt-in) |
 | `get_patents_bigquery` | Get details on up to 50 patents in one query, same cost as one |
 | `search_patents_by_cpc_bigquery` | Search by CPC classification code |

@@ -81,6 +81,21 @@ OPTIONS: tuple[Option, ...] = (
         "secret",
     ),
     Option(
+        "OPENALEX_API_KEY", "Credentials", "OpenAlex key (paper search)",
+        "Optional free key for OpenAlex, used by search_non_patent_literature. "
+        "Paper search works without it (about 100 searches a day); the key "
+        "raises that allowance. Free at https://openalex.org/settings/api-key.",
+        "secret",
+    ),
+    Option(
+        "SEMANTIC_SCHOLAR_API_KEY", "Credentials", "Semantic Scholar key (paper search)",
+        "Optional free key for Semantic Scholar, used by "
+        "search_non_patent_literature. Without it Semantic Scholar's shared "
+        "pool is often busy and gets skipped; OpenAlex and arXiv still run. "
+        "Free at https://www.semanticscholar.org/product/api#api-key-form.",
+        "secret",
+    ),
+    Option(
         "ANTHROPIC_API_KEY", "Credentials", "Anthropic API key",
         "Used only for API-backed HyDE query expansion when HYDE_BACKEND=api. "
         "Otherwise unused.",
@@ -280,10 +295,9 @@ def validate(key: str, value: str) -> Optional[str]:
     elif opt.type == "bool":
         if value.lower() not in _BOOL_TRUE | _BOOL_FALSE:
             return "must be true or false"
-    elif opt.type == "choice":
-        if value != "" and value not in opt.choices:
-            allowed = ", ".join(c for c in opt.choices if c)
-            return f"must be one of: {allowed}"
+    elif opt.type == "choice" and value != "" and value not in opt.choices:
+        allowed = ", ".join(c for c in opt.choices if c)
+        return f"must be one of: {allowed}"
     return None
 
 

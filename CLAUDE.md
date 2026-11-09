@@ -443,6 +443,10 @@ EPO_OPS_SECRET=your_epo_consumer_secret
 # Google Patents full-text search (optional, recommended for prior art)
 SERPAPI_API_KEY=your_serpapi_key        # Free plan (250 searches/month) at serpapi.com
 
+# Paper search (optional; search_non_patent_literature works without keys)
+OPENALEX_API_KEY=your_openalex_key      # Free; raises the ~100/day keyless allowance
+SEMANTIC_SCHOLAR_API_KEY=your_s2_key    # Free; keyless pool is often busy
+
 # Optional (with defaults)
 PATENT_LOG_LEVEL=INFO              # Logging level
 PATENT_LOG_FORMAT=human            # Log format
