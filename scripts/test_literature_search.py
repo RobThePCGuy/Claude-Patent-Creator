@@ -12,6 +12,7 @@ What it proves:
 2. published_before excludes the cutoff day itself: with a cutoff of
    2017-06-12 the paper disappears, with 2017-06-13 it is back.
 3. Every source reports a status; a source that is not "ok" carries a message.
+4. The results' dates were cross-checked with Crossref.
 """
 
 import sys
@@ -65,11 +66,24 @@ def main() -> int:
 
     time.sleep(3)  # arXiv asks for about one request every three seconds
     excluded = s.search(QUERY, limit=10, published_before="2017-06-12")
-    if _find(excluded):
+    # Absent only proves exclusion if the sources that found it answered again.
+    finders = hit["found_in"] if hit else list(SOURCES)
+    silent = [n for n in finders if excluded["sources"][n]["status"] != "ok"]
+    if silent:
+        print(f"FAIL cutoff run could not be judged: {silent} did not answer the second search")
+        failures += 1
+    elif _find(excluded):
         print("FAIL paper published 2017-06-12 returned for cutoff 2017-06-12")
         failures += 1
     else:
         print("ok   cutoff day excluded")
+
+    check = found.get("date_cross_check") or {}
+    if check.get("status") != "ok" or not check.get("checked"):
+        print(f"FAIL dates not cross-checked with Crossref: {check}")
+        failures += 1
+    else:
+        print(f"ok   Crossref cross-checked {check['checked']} DOIs")
 
     print("PASS" if not failures else f"{failures} FAILED")
     return 1 if failures else 0

@@ -126,7 +126,7 @@ SEARCH QUERIES (Prioritized):
 
 **Tools Used:**
 - `search_patents_google` with several keyword combinations, limit=100 (fallback: `search_patents_bigquery`)
-- `search_non_patent_literature` with the same concepts in academic wording, `published_before` set to the priority date. Papers are prior art too; list the closest ones beside the patents. Record which sources answered (the `sources` field); a source reported busy or failed was not searched.
+- `search_non_patent_literature` with the same concepts in academic wording, `published_before` set to the priority date. Papers are prior art too; list the closest ones beside the patents. Record which sources answered (the `sources` field); a source reported busy or failed was not searched. A paper with a `date_check` has a date that may be wrong or too close to call; say so beside it and never present it as confirmed prior art.
 
 **Output:**
 ```

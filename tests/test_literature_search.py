@@ -353,3 +353,211 @@ def test_whitespace_inside_a_phrase_cannot_split_it(monkeypatch):
     monkeypatch.setattr(ls.LiteratureSearch, "_get", capture)
     ls.LiteratureSearch().search('"neural\tOR\tnetwork"', sources=["arxiv"])
     assert "all%3A%22neural+OR+network%22" in seen["arxiv"]
+
+
+# --- Crossref cross-check of listed dates -------------------------------------
+# crossref_dates.json was recorded live on 2026-11-09 (full records trimmed to
+# their date fields). Three of its DOIs carry wrong dates: a 2026 paper listed
+# as 2016-03-16 (DOI registered 2026-04-23), a 2022 Springer chapter listed as
+# 2012-02-24 (print 2022), and a 2021 article dated 1970-01-01 (journal issue
+# 2021-12-07). The Nature and 1999 Elsevier papers are correctly dated.
+
+
+def _openalex_work(title, doi, published):
+    return {"id": f"https://openalex.org/W{abs(hash(doi))}", "doi": f"https://doi.org/{doi}",
+            "title": title, "publication_date": published, "publication_year": int(published[:4])}
+
+
+def _crossref():
+    return (FIX / "crossref_dates.json").read_text(encoding="utf-8")
+
+
+def test_crossref_parse_reads_registration_and_publisher_dates():
+    found = ls.parse_crossref_dates(_crossref())
+    assert found["10.66108/mna.v5i01.90"]["registered"].isoformat() == "2026-04-23"
+    assert ("print", ls.date(2022, 1, 1)) in found["10.1007/978-3-031-04122-8_16"]["dates"]
+    with pytest.raises(ls.SourceError):
+        ls.parse_crossref_dates(json.dumps({"status": "error", "message": "bad filter"}))
+
+
+def _search_with(monkeypatch, works, crossref, cutoff):
+    monkeypatch.setattr(ls.LiteratureSearch, "_get", _fake_get({
+        "openalex": json.dumps({"meta": {"count": len(works)}, "results": works}),
+        "crossref": crossref,
+    }))
+    return ls.LiteratureSearch().search("q", sources=["openalex"], published_before=cutoff)
+
+
+def test_misdated_papers_are_flagged_and_true_dates_are_not(monkeypatch):
+    out = _search_with(monkeypatch, [
+        _openalex_work("Sign language recognition with MediaPipe", "10.66108/mna.v5i01.90", "2016-03-16"),
+        _openalex_work("Synthesizing dynamic time-series data under shock", "10.1007/978-3-031-04122-8_16",
+                       "2012-02-24"),
+        _openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27"),
+        _openalex_work("A 2021 article with an epoch date", "10.32332/ejipd.v7i2.2613", "1970-01-01"),
+        _openalex_work("Fuel cell electrodes", "10.1016/s0378-7753(98)00161-x", "1999-01-01"),
+    ], _crossref(), "2017-06-12")
+    by_doi = {r["doi"]: r for r in out["results"]}
+    assert "registered on 2026-04-23" in by_doi["10.66108/mna.v5i01.90"]["date_check"]
+    assert "registered on 2022-07-04" in by_doi["10.1007/978-3-031-04122-8_16"]["date_check"]
+    assert "date_check" not in by_doi["10.1038/nature14539"]
+    assert "1970-01-01" in by_doi["10.32332/ejipd.v7i2.2613"]["date_check"]
+    assert "journal issue" in by_doi["10.32332/ejipd.v7i2.2613"]["date_check"]
+    assert "date_check" not in by_doi["10.1016/s0378-7753(98)00161-x"]
+    assert out["date_cross_check"] == {"status": "ok", "checked": 5, "unchecked": 0}
+
+
+def test_crossref_down_still_returns_results_and_says_dates_are_unchecked(monkeypatch):
+    out = _search_with(monkeypatch, [_openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27")],
+                       ls.SourceError("failed", "crossref search failed: HTTP 503"), "2017-06-12")
+    assert out["results"] and out["date_cross_check"]["status"] == "failed"
+    assert "could not be cross-checked" in out["note"]
+    out = _search_with(monkeypatch, [_openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27")],
+                       KeyError("unexpected"), "2017-06-12")
+    assert out["results"] and out["date_cross_check"]["status"] == "failed"
+
+
+def test_publisher_date_on_or_after_the_cutoff_is_flagged():
+    rec = ls._record(title="t", publication_date="2019-11-20")
+    late_print = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2020, 3, 1))]}
+    assert "gives 2020-03-01 (print) as its earliest" in ls.crossref_caution(rec, late_print, "2020-01-15")
+    early = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2019, 12, 1))]}
+    assert ls.crossref_caution(rec, early, "2020-01-15") is None
+    # Online before the cutoff is public, even when the print issue came after.
+    online_first = {"registered": ls.date(2012, 9, 1),
+                    "dates": [("print", ls.date(2013, 1, 1)), ("online", ls.date(2012, 9, 4))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="2012-09-04"), online_first, "2013-01-01") is None
+
+
+def test_late_doi_for_a_paper_older_than_dois_is_not_suspicious():
+    # Recorded live: Elsevier 10.1016/s0378-7753(98)00161-x, published 1999-01-01, DOI registered 2002.
+    old = {"registered": ls.date(2002, 3, 1), "dates": [("print", ls.date(1999, 1, 1))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="1999-01-01"), old, "2000-01-01") is None
+    # The same lag on a paper listed inside the DOI era is flagged.
+    new = {"registered": ls.date(2026, 4, 23), "dates": [("online", ls.date(2016, 3, 16))]}
+    assert "registered on 2026-04-23" in ls.crossref_caution(
+        ls._record(title="t", publication_date="2016-03-16"), new, "2017-06-12")
+
+
+def test_dates_crossref_does_not_know_are_labeled_unchecked(monkeypatch):
+    out = _search_with(monkeypatch, [
+        _openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27"),
+        _openalex_work("RAG accuracy", "10.5281/zenodo.8430247", "2023-10-11"),
+    ], _crossref(), "2024-01-01")
+    by_doi = {r["doi"]: r for r in out["results"]}
+    assert by_doi["10.1038/nature14539"]["date_source"].startswith("checked against")
+    assert by_doi["10.5281/zenodo.8430247"]["date_source"] == "index only, not cross-checked"
+    assert out["date_cross_check"]["unchecked"] == 1
+    assert "1 of these dates come from the index alone" in out["note"]
+
+
+def test_epoch_publisher_date_is_never_trusted_and_issue_date_exposes_it():
+    info = {"registered": ls.date(2022, 7, 28),
+            "dates": [("online", ls.EPOCH), ("journal issue online", ls.date(2021, 12, 7))]}
+    msg = ls.crossref_caution(ls._record(title="t", publication_date="1999-05-01"), info, "2000-01-01")
+    assert msg and "2021-12-07" in msg
+
+
+def test_merged_dates_are_kept_per_source_and_disagreement_is_flagged(monkeypatch):
+    work = _openalex_work("Attention is all you need", "10.48550/arxiv.1706.03762", "2016-06-12")
+    monkeypatch.setattr(ls.LiteratureSearch, "_get", _fake_get({
+        "openalex": json.dumps({"meta": {"count": 1}, "results": [work]}),
+        "arxiv": _arxiv(),
+    }))
+    out = ls.LiteratureSearch().search("attention", sources=["openalex", "arxiv"], published_before="2018-01-01")
+    hit = next(r for r in out["results"] if (r.get("arxiv_id") or "").startswith("1706.03762"))
+    assert hit["dates_by_source"]["openalex"] == "2016-06-12"
+    assert hit["date_source"] == "index only, not cross-checked", "claimed arXiv's date for OpenAlex's"
+    assert "Sources give different dates" in hit["date_check"]
+
+
+def test_unchecked_count_is_reported_when_crossref_is_down(monkeypatch):
+    out = _search_with(monkeypatch, [_openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27")],
+                       ls.SourceError("failed", "crossref search failed: HTTP 503"), "2017-06-12")
+    assert out["date_cross_check"]["unchecked"] == 1
+
+
+def test_publisher_dates_years_apart_are_flagged_even_when_the_earliest_predates_the_cutoff():
+    # DOI registered on time, so only the spread between publisher dates can catch it.
+    info = {"registered": ls.date(2012, 2, 25),
+            "dates": [("online", ls.date(2012, 2, 24)), ("print", ls.date(2022, 1, 1))]}
+    msg = ls.crossref_caution(ls._record(title="t", publication_date="2012-02-24"), info, "2014-06-10")
+    assert msg and "more than a year apart" in msg
+
+
+def test_digitized_back_issue_is_not_suspicious():
+    # Recorded live: ECS 10.1149/1.2069439, print 1992-05-01, put online 2019-12-07.
+    info = {"registered": ls.date(2019, 12, 7),
+            "dates": [("print", ls.date(1992, 5, 1)), ("online", ls.date(2019, 12, 7))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="1992-05-01"), info, "2000-01-01") is None
+    shifted = {"registered": ls.date(2022, 9, 1),
+               "dates": [("online", ls.date(1969, 12, 31)), ("journal issue online", ls.date(2022, 9, 30))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="1969-12-31"), shifted, "2000-01-01")
+    assert ls.date_caution(ls._record(title="t", publication_date="1969-12-31"), "2000-01-01")
+
+
+@pytest.mark.parametrize("doi,listed,cutoff,flagged", [
+    ("10.21916/mlr.2026.20", "1915-07-01", "2000-01-01", True),       # recorded live
+    ("10.58225/tim.2024-2-120-124", "1996-01-01", "2024-06-01", True),  # recorded live
+    ("10.58225/tim.2024-2-120-124", "1996-01-01", "2025-01-01", False),  # 2024 is before it: prior art either way
+    ("10.1115/imece1998-0845", "1998-11-15", "2000-01-01", False),     # year matches
+    ("10.1149/1.2069439", "1992-05-01", "2000-01-01", False),          # digits, not a year
+    ("10.1016/0378-7753(94)87014-4", "1994-01-01", "2000-01-01", False),
+    ("10.1016/c2009-0-21189-5", "1995-01-01", "1996-01-01", False),    # recorded live: an ID, not a year
+    ("10.21916/mlr.2026.20", "2025-07-01", "2027-01-01", False),       # listed year is close
+])
+def test_year_inside_the_doi_exposes_a_wrong_listed_date(doi, listed, cutoff, flagged):
+    rec = ls._record(title="t", doi=doi, publication_date=listed)
+    assert bool(ls.doi_year_caution(rec, cutoff)) is flagged
+
+
+def test_late_doi_on_an_old_paper_gets_a_soft_note_not_a_warning():
+    rec = ls._record(title="t", publication_date="1905-07-16")
+    info = {"registered": ls.date(2026, 6, 4), "dates": [("print", ls.date(1905, 7, 16))]}
+    assert ls.crossref_caution(rec, info, "2025-01-01") is None
+    assert "nothing else confirms" in ls.crossref_note(rec, info, "2025-01-01")
+    # Recorded live: 10.53383/100353, a 2022 paper listed 1998-06-30 online-only, DOI registered 2023.
+    online_only = {"registered": ls.date(2023, 1, 18), "dates": [("online", ls.date(1998, 6, 30))]}
+    old = ls._record(title="t", publication_date="1998-06-30")
+    assert ls.crossref_note(old, online_only, "2000-01-01") is None
+    assert "no print date" in ls.crossref_caution(old, online_only, "2000-01-01")
+    assert ls.crossref_note(rec, {"registered": ls.date(2004, 1, 1), "dates": []}, "2025-01-01") is None
+
+
+def test_search_applies_the_doi_year_check_and_the_soft_note(monkeypatch):
+    # Crossref shape as recorded live for 10.2307/jj.43178328.9 (a 2022 chapter listed as 1905).
+    crossref = json.dumps({"status": "ok", "message": {"items": [{
+        "DOI": "10.2307/jj.43178328.9",
+        "created": {"date-time": "2026-06-04T10:00:00Z"},
+        "issued": {"date-parts": [[1905, 7, 16]]}, "published-print": {"date-parts": [[1905, 7, 16]]},
+    }]}})
+    out = _search_with(monkeypatch, [
+        _openalex_work("Eating the cost: food prices and the pandemic", "10.21916/mlr.2026.20", "1915-07-01"),
+        _openalex_work("El advenimiento Covid-19 (2022)", "10.2307/jj.43178328.9", "1905-07-16"),
+    ], crossref, "2025-01-01")
+    by_doi = {r["doi"]: r for r in out["results"]}
+    assert "contains the year 2026" in by_doi["10.21916/mlr.2026.20"]["date_check"]
+    jstor = by_doi["10.2307/jj.43178328.9"]
+    assert "contains the year 2026" in by_doi["10.21916/mlr.2026.20"]["date_check"]
+    # 2022 is before a 2025 cutoff, so the title year changes nothing here.
+    assert "date_check" not in jstor and "nothing else confirms" in jstor["date_note"]
+    # Before 2000 it matters: the title's "(2022)" escalates the unconfirmed 1905 date.
+    out = _search_with(monkeypatch, [_openalex_work("El advenimiento Covid-19 (2022)", "10.2307/jj.43178328.9",
+                                                    "1905-07-16")], crossref, "2000-01-01")
+    jstor = out["results"][0]
+    assert "mentions 2022" in jstor["date_check"] and "date_note" not in jstor
+
+
+def test_unconfirmed_old_print_date_gets_a_plain_note(monkeypatch):
+    # Shape recorded live for 10.59015/wlr/nevu3395 (a 2023 article printed as 1920).
+    crossref = json.dumps({"status": "ok", "message": {"items": [{
+        "DOI": "10.59015/wlr/nevu3395", "created": {"date-time": "2023-11-03T00:00:00Z"},
+        "issued": {"date-parts": [[1920]]}, "published-print": {"date-parts": [[1920]]},
+        "published-online": {"date-parts": [[2005]]},
+    }]}})
+    out = _search_with(monkeypatch, [_openalex_work("States of Emergency: Separation of Powers",
+                                                    "10.59015/wlr/nevu3395", "1920-01-01")],
+                       crossref, "2000-01-01")
+    hit = out["results"][0]
+    assert "nothing else confirms" in hit["date_note"]
+    assert "only an unconfirmed print date" in out["note"] and "normal" not in out["note"]

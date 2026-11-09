@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   whether it was searched, so a busy source never reads as "no prior art".
   Optional free keys `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY`. The
   gap was pointed out by @JuampiHernandez in #104.
+- Paper dates are cross-checked with Crossref (free, no key) whenever a
+  priority-date cutoff is set. Indexes sometimes list the wrong year (seen
+  live: a 2026 paper listed as 2016); a result whose DOI was registered after
+  the cutoff and long after its listed date, or whose publisher gives a later
+  date, now carries a `date_check` telling the user to confirm it. Papers from
+  before 2000 are not flagged for late DOIs (DOIs did not exist yet), and the
+  earliest publisher date counts, since online-first is public. Every result
+  says where its date came from (`date_source`), and the note counts dates
+  that could not be cross-checked. Also flagged: 1970-01-01 (a missing date
+  in disguise, caught on 2020-2021 papers), publisher dates years apart
+  including the journal issue's, a year inside the DOI later than the listed
+  date, and sources that disagree on a merged paper's date. Older papers whose
+  DOI came after the cutoff, and whose age rests only on the publisher's print
+  date, get a `date_note` saying so.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator
