@@ -23,7 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   before 2000 are not flagged for late DOIs (DOIs did not exist yet), and the
   earliest publisher date counts, since online-first is public. Every result
   says where its date came from (`date_source`), and the note counts dates
-  that could not be cross-checked.
+  that could not be cross-checked. Also flagged: 1970-01-01 (a missing date
+  in disguise, caught on 2020-2021 papers), publisher dates years apart
+  including the journal issue's, a year inside the DOI later than the listed
+  date, and sources that disagree on a merged paper's date. Older papers whose
+  DOI came after the cutoff get a milder `date_note`.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator

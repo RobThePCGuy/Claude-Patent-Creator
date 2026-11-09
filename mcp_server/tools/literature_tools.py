@@ -58,7 +58,10 @@ def register_literature_tools(
         so each result's date is then cross-checked with the publisher's DOI
         record (Crossref, free). A result with "date_check" has a date that
         may be wrong or too close to call: tell the user to confirm it on the
-        publisher's page before treating it as prior art. Each result says
+        publisher's page before treating it as prior art. "date_note" is a
+        milder remark (an old paper whose DOI came late, usually fine), and
+        "date_source" says where each date came from; "index only, not
+        cross-checked" dates deserve a look before citing. Each result says
         which sources found it, with a DOI or arXiv id, a link, and the abstract.
 
         Reading the result:

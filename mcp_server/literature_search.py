@@ -329,6 +329,9 @@ def _strip_version(arxiv_id: str) -> str:
 
 
 DATE_MARGIN_DAYS = 7  # placeholder heuristic: arXiv posts within days of submission
+EPOCH = date(1970, 1, 1)  # Unix time zero: what a missing date becomes (seen live on 2020-2021 papers)
+# The same zero shifted by a time zone west of UTC (seen live: 1969-12-31 on a 2022 article).
+EPOCH_DATES = frozenset({EPOCH, date(1969, 12, 31)})
 
 
 def date_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
@@ -350,6 +353,9 @@ def date_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
         when = date.fromisoformat(str(raw)[:10])
     except ValueError:
         return f"Publication date {raw!r} is unclear; confirm it was public before {published_before}."
+    if when in EPOCH_DATES:
+        return (f"Dated {when.isoformat()}, the date software shows when the real date is missing; "
+                f"confirm the real date is before {published_before}.")
     if when.month == 1 and when.day == 1 and when.year == cutoff.year:
         return (f"Dated {when.isoformat()}, which is often a placeholder for 'sometime in {when.year}'; "
                 f"confirm it was public before {published_before}.")
@@ -399,6 +405,9 @@ def parse_crossref_dates(body: str) -> dict[str, dict[str, Any]]:
         except ValueError:
             registered = None
         dates = [(label, d) for label, key in _CROSSREF_DATES if (d := _date_parts(it.get(key)))]
+        issue = it.get("journal-issue") if isinstance(it.get("journal-issue"), dict) else {}
+        dates += [(f"journal issue {label}", d) for label, key in _CROSSREF_DATES[:2]
+                  if (d := _date_parts(issue.get(key)))]
         out[doi] = {"registered": registered, "dates": dates}
     return out
 
@@ -411,7 +420,12 @@ def crossref_caution(rec: dict[str, Any], info: dict[str, Any], published_before
       for a listed date in the DOI era (older papers get DOIs late normally);
     - the publisher's earliest date (print, online or issued) is on or after
       the cutoff. The earliest one counts: a paper online before the cutoff
-      is public even if its print issue came later."""
+      is public even if its print issue came later;
+    - publisher dates (including the journal issue's) more than a year apart
+      with the later one on or after the cutoff (seen live: an article dated
+      1970-01-01 in a 2021 journal issue), unless the earliest is a print date:
+      print first and online later is a digitized back issue.
+    1970-01-01 (or 1969-12-31) is never trusted as a publisher date."""
     cutoff = date.fromisoformat(published_before)
     try:
         listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
@@ -423,13 +437,76 @@ def crossref_caution(rec: dict[str, Any], info: dict[str, Any], published_before
         return (f"Listed as published {listed.isoformat()}, but its DOI was only registered on "
                 f"{registered.isoformat()}, after your cutoff. Listed dates are sometimes wrong; "
                 f"check the publisher's page before relying on it as prior art.")
-    dates = info.get("dates") or []
+    dates = [d for d in (info.get("dates") or []) if d[1] not in EPOCH_DATES]
     if dates:
-        label, when = min(dates, key=lambda d: d[1])
+        first_label, first = min(dates, key=lambda d: d[1])
+        last_label, last = max(dates, key=lambda d: d[1])
+        # Print first and online years later is a digitized back issue (seen
+        # live: ECS put 1990s journals online in 2019); the print date stands.
+        printed_first = first_label in ("print", "journal issue print")
+        if not printed_first and last >= cutoff and (last - first).days > DOI_LAG_DAYS:
+            return (f"The publisher's DOI record gives dates more than a year apart ({first_label} "
+                    f"{first.isoformat()}, {last_label} {last.isoformat()}), the later one on or after "
+                    "your cutoff; confirm when it first became public.")
+        label, when = first_label, first
         if when >= cutoff:
             return (f"The publisher's DOI record gives {when.isoformat()} ({label}) as its earliest "
                     f"date, on or after your cutoff; confirm when it first became public.")
     return None
+
+
+_DOI_YEAR_RE = re.compile(r"(?<![0-9])(19[0-9]{2}|20[0-9]{2})(?![0-9])")
+
+
+def doi_year_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
+    """Many DOIs carry their publication year (10.21916/mlr.2026.20). A year in
+    the DOI later than the listed date and not before the cutoff year means the
+    listed date is likely wrong (seen live: that DOI listed as 1915-07-01)."""
+    doi, raw = rec.get("doi") or "", str(rec.get("publication_date") or "")
+    suffix = doi.split("/", 1)[-1]
+    years = [int(y) for y in _DOI_YEAR_RE.findall(suffix)]
+    try:
+        listed = date.fromisoformat(raw[:10])
+    except ValueError:
+        return None
+    cutoff = date.fromisoformat(published_before)
+    if years and max(years) > listed.year + 1 and max(years) >= cutoff.year:
+        return (f"Its DOI contains the year {max(years)}, long after its listed date of "
+                f"{listed.isoformat()}; listed dates are sometimes wrong, confirm it was public "
+                f"before {published_before}.")
+    return None
+
+
+def crossref_note(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
+    """A softer remark for a paper listed before DOIs existed whose DOI was
+    registered after the cutoff: usually a digitized back issue, sometimes a
+    wrong date the publisher's own record repeats (seen live: a 2022 chapter
+    listed as 1905, DOI registered 2026)."""
+    cutoff = date.fromisoformat(published_before)
+    try:
+        listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
+    except ValueError:
+        return None
+    registered = info.get("registered")
+    if (registered and listed < DOI_ERA_START and registered >= cutoff
+            and (registered - listed).days > DOI_LAG_DAYS):
+        return (f"Its DOI was registered on {registered.isoformat()}, after your cutoff. Older papers "
+                "often get DOIs late, so this is usually fine; if this paper matters, confirm its date.")
+    return None
+
+
+def sources_disagree(rec: dict[str, Any]) -> Optional[str]:
+    """Say when the sources that found a paper give dates far apart."""
+    known = {}
+    for name, raw in (rec.get("dates_by_source") or {}).items():
+        try:
+            known[name] = date.fromisoformat(str(raw or "")[:10])
+        except ValueError:
+            continue
+    if len(known) < 2 or (max(known.values()) - min(known.values())).days <= DATE_MARGIN_DAYS:
+        return None
+    listed = ", ".join(f"{n} {d.isoformat()}" for n, d in sorted(known.items(), key=lambda kv: kv[1]))
+    return f"Sources give different dates ({listed}); the earliest public one counts, confirm it."
 
 
 def merge_results(
@@ -466,7 +543,7 @@ def merge_results(
                     existing = candidate
             keys = id_keys + ([f"title:{title_key}"] if len(title_key) >= MIN_TITLE_KEY else [])
             if existing is None:
-                existing = {**rec, "found_in": [name]}
+                existing = {**rec, "found_in": [name], "dates_by_source": {name: rec.get("publication_date")}}
                 merged.append(existing)
             else:
                 for field, value in rec.items():
@@ -474,6 +551,7 @@ def merge_results(
                         existing[field] = value
                 if name not in existing["found_in"]:
                     existing["found_in"].append(name)
+                existing["dates_by_source"].setdefault(name, rec.get("publication_date"))
             for k in keys:
                 index.setdefault(k, existing)
     return merged[:limit]
@@ -656,8 +734,10 @@ class LiteratureSearch:
         Returns:
             {"results": [...], "sources": {name: {"status", ...}}, "note": str}
             A source that failed has status other than "ok" and a "message".
-            With published_before, also "date_cross_check": {"status", ...},
-            the Crossref check of the results' dates.
+            With published_before, also "date_cross_check": {"status",
+            "checked", "unchecked", ...}, the Crossref check of the results'
+            dates; each result gets "date_source", and "date_check" (confirm
+            before citing) or "date_note" (usually fine) when its date is in doubt.
         """
         chosen = [s for s in (sources or SOURCES) if s in SOURCES]
         runners = {
@@ -692,14 +772,17 @@ class LiteratureSearch:
         if published_before and results:
             publisher, cross_check = self._crossref_dates(results)
             for r in results:
-                cautions = [date_caution(r, published_before)]
+                cautions = [date_caution(r, published_before), sources_disagree(r),
+                            doi_year_caution(r, published_before)]
                 info = publisher.get(r.get("doi") or "")
                 if info:
                     r["date_source"] = "checked against the publisher's DOI record (Crossref)"
                     cautions.append(crossref_caution(r, info, published_before))
-                elif (r.get("found_in") or [None])[0] == "arxiv" or _ARXIV_DOI_RE.match(r.get("doi") or ""):
-                    # The first source's date is kept on a merge, so only an
-                    # arXiv-won record or arXiv's own DOI carries arXiv's date.
+                    note_text = crossref_note(r, info, published_before)
+                    if note_text and not any(cautions):
+                        r["date_note"] = note_text
+                elif (r.get("dates_by_source") or {}).get("arxiv") and \
+                        str(r["dates_by_source"]["arxiv"])[:10] == str(r.get("publication_date") or "")[:10]:
                     r["date_source"] = "arXiv submission date"
                 else:
                     r["date_source"] = "index only, not cross-checked"
@@ -723,15 +806,22 @@ class LiteratureSearch:
             note = f"{len(results)} papers, best matches first. Searched: {', '.join(answered)}."
         if missing and answered:
             note += f" Not searched this time: {', '.join(missing)} (see sources)."
-        if cross_check and cross_check["status"] != "ok":
-            note += (" Publication dates could not be cross-checked with Crossref this time; "
-                     "confirm each date on the publisher's page before citing.")
-        elif cross_check:
+        if cross_check:
             unchecked = sum(r.get("date_source") == "index only, not cross-checked" for r in results)
             cross_check["unchecked"] = unchecked
-            if unchecked:
+            if cross_check["status"] != "ok":
+                note += (" Publication dates could not be cross-checked with Crossref this time; "
+                         "confirm each date on the publisher's page before citing.")
+            elif unchecked:
                 note += (f" {unchecked} of these dates come from the index alone and could not be "
                          "cross-checked (see date_source); confirm them before citing.")
+            flagged = sum("date_check" in r for r in results)
+            noted = sum("date_note" in r for r in results)
+            if flagged:
+                note += f" {flagged} carry a date_check: confirm those dates before citing them as prior art."
+            if noted:
+                note += (f" {noted} older papers got their DOIs after your cutoff (date_note), "
+                         "which is normal for digitized back issues.")
 
         out = {"results": results, "sources": report, "note": note}
         if cross_check:
@@ -745,8 +835,10 @@ class LiteratureSearch:
                        if r.get("doi") and "," not in r["doi"] and not _ARXIV_DOI_RE.match(r["doi"])})
         if not dois:
             return {}, {"status": "ok", "checked": 0}
-        params = {"filter": ",".join(f"doi:{d}" for d in dois), "rows": len(dois),
-                  "select": "DOI,created,issued,published-print,published-online"}
+        # No "select": Crossref will not select journal-issue, which carries
+        # the issue date that exposes 1970-01-01 article dates. Full records
+        # for 31 DOIs measured 115 KB, 0.7 s.
+        params = {"filter": ",".join(f"doi:{d}" for d in dois), "rows": len(dois)}
         try:
             body = self._get("crossref", f"{CROSSREF_URL}?{urllib.parse.urlencode(params)}")
             found = self._parse("Crossref", parse_crossref_dates, body)
