@@ -452,10 +452,18 @@ def crossref_caution(rec: dict[str, Any], info: dict[str, Any], published_before
         if when >= cutoff:
             return (f"The publisher's DOI record gives {when.isoformat()} ({label}) as its earliest "
                     f"date, on or after your cutoff; confirm when it first became public.")
+    late = _late_old_doi(rec, info, cutoff)
+    if late and not late[1]:
+        return (f"Listed as published {listed.isoformat() if listed else '?'}, but its DOI was only "
+                f"registered on {late[0].isoformat()}, after your cutoff, and the publisher records no "
+                "print date to back the old date; confirm when it first became public.")
     return None
 
 
-_DOI_YEAR_RE = re.compile(r"(?<![0-9])(19[0-9]{2}|20[0-9]{2})(?![0-9])")
+# A year standing alone between separators (mlr.2026.20, tim.2024-2-...).
+# Letters glued on mean an identifier, not a year: Elsevier's 1990s books
+# carry c2009-0-21189-5 (seen live; their print dates are 1992 and 1995).
+_DOI_YEAR_RE = re.compile(r"(?<![0-9A-Za-z])(19[0-9]{2}|20[0-9]{2})(?![0-9A-Za-z])")
 
 
 def doi_year_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
@@ -477,21 +485,32 @@ def doi_year_caution(rec: dict[str, Any], published_before: str) -> Optional[str
     return None
 
 
-def crossref_note(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
-    """A softer remark for a paper listed before DOIs existed whose DOI was
-    registered after the cutoff: usually a digitized back issue, sometimes a
-    wrong date the publisher's own record repeats (seen live: a 2022 chapter
-    listed as 1905, DOI registered 2026)."""
-    cutoff = date.fromisoformat(published_before)
+def _late_old_doi(rec: dict[str, Any], info: dict[str, Any], cutoff: date) -> Optional[tuple[date, bool]]:
+    """For a paper listed before DOIs existed whose DOI was registered after
+    the cutoff: (registered, whether the publisher shows an old print date)."""
     try:
         listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
     except ValueError:
         return None
     registered = info.get("registered")
-    if (registered and listed < DOI_ERA_START and registered >= cutoff
+    if not (registered and listed < DOI_ERA_START and registered >= cutoff
             and (registered - listed).days > DOI_LAG_DAYS):
-        return (f"Its DOI was registered on {registered.isoformat()}, after your cutoff. Older papers "
-                "often get DOIs late, so this is usually fine; if this paper matters, confirm its date.")
+        return None
+    printed = any(label in ("print", "journal issue print") and when < cutoff and when not in EPOCH_DATES
+                  for label, when in info.get("dates") or [])
+    return registered, printed
+
+
+def crossref_note(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
+    """A milder remark when an old paper's DOI came after the cutoff but the
+    publisher records an old print date: the digitized-back-issue pattern
+    (seen live: ECS 1990s journals put online with DOIs in 2019). A wrong date
+    the publisher repeats in print looks the same, so it is still mentioned."""
+    late = _late_old_doi(rec, info, date.fromisoformat(published_before))
+    if late and late[1]:
+        return (f"Its DOI was registered on {late[0].isoformat()}, after your cutoff. The publisher "
+                "records an old print date, the usual sign of a digitized back issue; confirm the "
+                "date if this paper matters.")
     return None
 
 

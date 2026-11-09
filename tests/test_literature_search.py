@@ -503,6 +503,7 @@ def test_digitized_back_issue_is_not_suspicious():
     ("10.1115/imece1998-0845", "1998-11-15", "2000-01-01", False),     # year matches
     ("10.1149/1.2069439", "1992-05-01", "2000-01-01", False),          # digits, not a year
     ("10.1016/0378-7753(94)87014-4", "1994-01-01", "2000-01-01", False),
+    ("10.1016/c2009-0-21189-5", "1995-01-01", "1996-01-01", False),    # recorded live: an ID, not a year
     ("10.21916/mlr.2026.20", "2025-07-01", "2027-01-01", False),       # listed year is close
 ])
 def test_year_inside_the_doi_exposes_a_wrong_listed_date(doi, listed, cutoff, flagged):
@@ -514,7 +515,12 @@ def test_late_doi_on_an_old_paper_gets_a_soft_note_not_a_warning():
     rec = ls._record(title="t", publication_date="1905-07-16")
     info = {"registered": ls.date(2026, 6, 4), "dates": [("print", ls.date(1905, 7, 16))]}
     assert ls.crossref_caution(rec, info, "2025-01-01") is None
-    assert "usually fine" in ls.crossref_note(rec, info, "2025-01-01")
+    assert "digitized back issue" in ls.crossref_note(rec, info, "2025-01-01")
+    # Recorded live: 10.53383/100353, a 2022 paper listed 1998-06-30 online-only, DOI registered 2023.
+    online_only = {"registered": ls.date(2023, 1, 18), "dates": [("online", ls.date(1998, 6, 30))]}
+    old = ls._record(title="t", publication_date="1998-06-30")
+    assert ls.crossref_note(old, online_only, "2000-01-01") is None
+    assert "no print date" in ls.crossref_caution(old, online_only, "2000-01-01")
     assert ls.crossref_note(rec, {"registered": ls.date(2004, 1, 1), "dates": []}, "2025-01-01") is None
 
 
@@ -532,4 +538,4 @@ def test_search_applies_the_doi_year_check_and_the_soft_note(monkeypatch):
     by_doi = {r["doi"]: r for r in out["results"]}
     assert "contains the year 2026" in by_doi["10.21916/mlr.2026.20"]["date_check"]
     jstor = by_doi["10.2307/jj.43178328.9"]
-    assert "date_check" not in jstor and "usually fine" in jstor["date_note"]
+    assert "date_check" not in jstor and "digitized back issue" in jstor["date_note"]
