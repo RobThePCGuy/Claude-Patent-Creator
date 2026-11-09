@@ -79,7 +79,7 @@ def main() -> int:
         print("ok   cutoff day excluded")
 
     check = found.get("date_cross_check") or {}
-    if check.get("status") != "ok":
+    if check.get("status") != "ok" or not check.get("checked"):
         print(f"FAIL dates not cross-checked with Crossref: {check}")
         failures += 1
     else:

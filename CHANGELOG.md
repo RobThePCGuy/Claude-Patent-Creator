@@ -19,7 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   priority-date cutoff is set. Indexes sometimes list the wrong year (seen
   live: a 2026 paper listed as 2016); a result whose DOI was registered after
   the cutoff and long after its listed date, or whose publisher gives a later
-  date, now carries a `date_check` telling the user to confirm it.
+  date, now carries a `date_check` telling the user to confirm it. Papers from
+  before 2000 are not flagged for late DOIs (DOIs did not exist yet), and the
+  earliest publisher date counts, since online-first is public. Every result
+  says where its date came from (`date_source`), and the note counts dates
+  that could not be cross-checked.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator

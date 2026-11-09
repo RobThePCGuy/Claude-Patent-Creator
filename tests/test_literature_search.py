@@ -397,7 +397,7 @@ def test_misdated_papers_are_flagged_and_true_dates_are_not(monkeypatch):
     assert "registered on 2026-04-23" in by_doi["10.66108/mna.v5i01.90"]["date_check"]
     assert "registered on 2022-07-04" in by_doi["10.1007/978-3-031-04122-8_16"]["date_check"]
     assert "date_check" not in by_doi["10.1038/nature14539"]
-    assert out["date_cross_check"] == {"status": "ok", "checked": 3}
+    assert out["date_cross_check"] == {"status": "ok", "checked": 3, "unchecked": 0}
 
 
 def test_crossref_down_still_returns_results_and_says_dates_are_unchecked(monkeypatch):
@@ -413,6 +413,32 @@ def test_crossref_down_still_returns_results_and_says_dates_are_unchecked(monkey
 def test_publisher_date_on_or_after_the_cutoff_is_flagged():
     rec = ls._record(title="t", publication_date="2019-11-20")
     late_print = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2020, 3, 1))]}
-    assert "print date of 2020-03-01" in ls.crossref_caution(rec, late_print, "2020-01-15")
+    assert "gives 2020-03-01 (print) as its earliest" in ls.crossref_caution(rec, late_print, "2020-01-15")
     early = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2019, 12, 1))]}
     assert ls.crossref_caution(rec, early, "2020-01-15") is None
+    # Online before the cutoff is public, even when the print issue came after.
+    online_first = {"registered": ls.date(2012, 9, 1),
+                    "dates": [("print", ls.date(2013, 1, 1)), ("online", ls.date(2012, 9, 4))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="2012-09-04"), online_first, "2013-01-01") is None
+
+
+def test_late_doi_for_a_paper_older_than_dois_is_not_suspicious():
+    # Recorded live: Elsevier 10.1016/s0378-7753(98)00161-x, published 1999-01-01, DOI registered 2002.
+    old = {"registered": ls.date(2002, 3, 1), "dates": [("print", ls.date(1999, 1, 1))]}
+    assert ls.crossref_caution(ls._record(title="t", publication_date="1999-01-01"), old, "2000-01-01") is None
+    # The same lag on a paper listed inside the DOI era is flagged.
+    new = {"registered": ls.date(2026, 4, 23), "dates": [("online", ls.date(2016, 3, 16))]}
+    assert "registered on 2026-04-23" in ls.crossref_caution(
+        ls._record(title="t", publication_date="2016-03-16"), new, "2017-06-12")
+
+
+def test_dates_crossref_does_not_know_are_labeled_unchecked(monkeypatch):
+    out = _search_with(monkeypatch, [
+        _openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27"),
+        _openalex_work("RAG accuracy", "10.5281/zenodo.8430247", "2023-10-11"),
+    ], _crossref(), "2024-01-01")
+    by_doi = {r["doi"]: r for r in out["results"]}
+    assert by_doi["10.1038/nature14539"]["date_source"].startswith("checked against")
+    assert by_doi["10.5281/zenodo.8430247"]["date_source"] == "index only, not cross-checked"
+    assert out["date_cross_check"]["unchecked"] == 1
+    assert "1 of these dates come from the index alone" in out["note"]

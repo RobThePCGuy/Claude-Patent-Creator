@@ -363,6 +363,9 @@ def date_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
 # registered within a day of publication; a DOI registered more than a year
 # after the listed date says the listed date needs checking.
 DOI_LAG_DAYS = 365
+# Crossref began registering DOIs in 2000, so a paper from before then could
+# only get its DOI later; for those a late registration is no evidence at all.
+DOI_ERA_START = date(2000, 1, 1)
 _CROSSREF_DATES = (("print", "published-print"), ("online", "published-online"), ("issued", "issued"))
 
 
@@ -401,21 +404,31 @@ def parse_crossref_dates(body: str) -> dict[str, dict[str, Any]]:
 
 
 def crossref_caution(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
-    """Say when the publisher's DOI record disagrees with a result's listed date."""
+    """Say when the publisher's DOI record disagrees with a result's listed date.
+
+    Two signals, both observed live on misdated papers:
+    - the DOI was registered after the cutoff and long after the listed date,
+      for a listed date in the DOI era (older papers get DOIs late normally);
+    - the publisher's earliest date (print, online or issued) is on or after
+      the cutoff. The earliest one counts: a paper online before the cutoff
+      is public even if its print issue came later."""
     cutoff = date.fromisoformat(published_before)
     try:
         listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
     except ValueError:
         listed = None
     registered = info.get("registered")
-    if listed and registered and registered >= cutoff and (registered - listed).days > DOI_LAG_DAYS:
+    if (listed and registered and listed >= DOI_ERA_START and registered >= cutoff
+            and (registered - listed).days > DOI_LAG_DAYS):
         return (f"Listed as published {listed.isoformat()}, but its DOI was only registered on "
                 f"{registered.isoformat()}, after your cutoff. Listed dates are sometimes wrong; "
                 f"check the publisher's page before relying on it as prior art.")
-    for label, when in info.get("dates") or []:
+    dates = info.get("dates") or []
+    if dates:
+        label, when = min(dates, key=lambda d: d[1])
         if when >= cutoff:
-            return (f"The publisher's DOI record also gives a {label} date of {when.isoformat()}, "
-                    f"on or after your cutoff; confirm when it first became public.")
+            return (f"The publisher's DOI record gives {when.isoformat()} ({label}) as its earliest "
+                    f"date, on or after your cutoff; confirm when it first became public.")
     return None
 
 
@@ -682,7 +695,14 @@ class LiteratureSearch:
                 cautions = [date_caution(r, published_before)]
                 info = publisher.get(r.get("doi") or "")
                 if info:
+                    r["date_source"] = "checked against the publisher's DOI record (Crossref)"
                     cautions.append(crossref_caution(r, info, published_before))
+                elif (r.get("found_in") or [None])[0] == "arxiv" or _ARXIV_DOI_RE.match(r.get("doi") or ""):
+                    # The first source's date is kept on a merge, so only an
+                    # arXiv-won record or arXiv's own DOI carries arXiv's date.
+                    r["date_source"] = "arXiv submission date"
+                else:
+                    r["date_source"] = "index only, not cross-checked"
                 cautions = [c for c in cautions if c]
                 if cautions:
                     r["date_check"] = " ".join(cautions)
@@ -706,6 +726,12 @@ class LiteratureSearch:
         if cross_check and cross_check["status"] != "ok":
             note += (" Publication dates could not be cross-checked with Crossref this time; "
                      "confirm each date on the publisher's page before citing.")
+        elif cross_check:
+            unchecked = sum(r.get("date_source") == "index only, not cross-checked" for r in results)
+            cross_check["unchecked"] = unchecked
+            if unchecked:
+                note += (f" {unchecked} of these dates come from the index alone and could not be "
+                         "cross-checked (see date_source); confirm them before citing.")
 
         out = {"results": results, "sources": report, "note": note}
         if cross_check:
