@@ -54,8 +54,12 @@ def register_literature_tools(
             - Run several searches with synonyms.
 
         Set published_before to the invention's priority date to see only
-        papers that could count as prior art. Each result says which sources
-        found it, with a DOI or arXiv id, a link, and the abstract.
+        papers the indexes date before it. Index dates are sometimes wrong,
+        so each result's date is then cross-checked with the publisher's DOI
+        record (Crossref, free). A result with "date_check" has a date that
+        may be wrong or too close to call: tell the user to confirm it on the
+        publisher's page before treating it as prior art. Each result says
+        which sources found it, with a DOI or arXiv id, a link, and the abstract.
 
         Reading the result:
             - "sources" says, per source, whether it answered. A source that

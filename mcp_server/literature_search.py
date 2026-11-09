@@ -25,6 +25,13 @@ Sources and their limits, observed live (2026-11-09):
 
 A source that fails is reported in the result as failed, with the reason. An
 empty result list is only "no matches" when every source answered.
+
+Dates come from the indexes and are sometimes wrong (seen live: a paper
+published in 2026 listed as 2016). When a cutoff is set, every result with a
+DOI is cross-checked in one request against Crossref (api.crossref.org, free,
+no key), which records the day the DOI was registered. A DOI registered after
+the cutoff and long after the listed date, or a publisher date on or after the
+cutoff, puts a date_check on the result.
 """
 
 import json
@@ -43,6 +50,7 @@ USER_AGENT = "Claude-Patent-Creator (+https://github.com/RobThePCGuy/Claude-Pate
 OPENALEX_URL = "https://api.openalex.org/works"
 ARXIV_URL = "https://export.arxiv.org/api/query"
 S2_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
+CROSSREF_URL = "https://api.crossref.org/works"
 OPENALEX_KEY_URL = "https://openalex.org/settings/api-key"
 S2_KEY_URL = "https://www.semanticscholar.org/product/api#api-key-form"
 S2_FIELDS = "title,abstract,year,publicationDate,externalIds,url,venue,authors,openAccessPdf,publicationTypes"
@@ -351,6 +359,66 @@ def date_caution(rec: dict[str, Any], published_before: str) -> Optional[str]:
     return None
 
 
+# placeholder heuristic: the DOIs checked live (Nature, ACM, Springer) were
+# registered within a day of publication; a DOI registered more than a year
+# after the listed date says the listed date needs checking.
+DOI_LAG_DAYS = 365
+_CROSSREF_DATES = (("print", "published-print"), ("online", "published-online"), ("issued", "issued"))
+
+
+def _date_parts(field: Any) -> Optional[date]:
+    """Crossref date-parts ([[y]], [[y, m]] or [[y, m, d]]) as the earliest day they allow."""
+    try:
+        parts = (field or {}).get("date-parts") or []
+        nums = [int(x) for x in parts[0] if x is not None][:3]
+        if not nums:
+            return None
+        return date(nums[0], *(nums[1:] + [1, 1])[:2])
+    except (TypeError, ValueError, IndexError, AttributeError):
+        return None
+
+
+def parse_crossref_dates(body: str) -> dict[str, dict[str, Any]]:
+    """Crossref /works?filter=doi:... -> {doi: {"registered": date, "dates": [(label, date)]}}."""
+    data = json.loads(body)
+    message = data.get("message") if isinstance(data, dict) else None
+    items = message.get("items") if isinstance(message, dict) else None
+    if not isinstance(items, list):
+        raise SourceError("failed", "Crossref returned an unexpected response")
+    out: dict[str, dict[str, Any]] = {}
+    for it in items:
+        doi = _bare_doi(it.get("DOI"))
+        if not doi:
+            continue
+        created = (it.get("created") or {}).get("date-time") or ""
+        try:
+            registered = date.fromisoformat(created[:10]) if created else None
+        except ValueError:
+            registered = None
+        dates = [(label, d) for label, key in _CROSSREF_DATES if (d := _date_parts(it.get(key)))]
+        out[doi] = {"registered": registered, "dates": dates}
+    return out
+
+
+def crossref_caution(rec: dict[str, Any], info: dict[str, Any], published_before: str) -> Optional[str]:
+    """Say when the publisher's DOI record disagrees with a result's listed date."""
+    cutoff = date.fromisoformat(published_before)
+    try:
+        listed = date.fromisoformat(str(rec.get("publication_date") or "")[:10])
+    except ValueError:
+        listed = None
+    registered = info.get("registered")
+    if listed and registered and registered >= cutoff and (registered - listed).days > DOI_LAG_DAYS:
+        return (f"Listed as published {listed.isoformat()}, but its DOI was only registered on "
+                f"{registered.isoformat()}, after your cutoff. Listed dates are sometimes wrong; "
+                f"check the publisher's page before relying on it as prior art.")
+    for label, when in info.get("dates") or []:
+        if when >= cutoff:
+            return (f"The publisher's DOI record also gives a {label} date of {when.isoformat()}, "
+                    f"on or after your cutoff; confirm when it first became public.")
+    return None
+
+
 def merge_results(
     per_source: dict[str, list[dict[str, Any]]], limit: int
 ) -> list[dict[str, Any]]:
@@ -575,6 +643,8 @@ class LiteratureSearch:
         Returns:
             {"results": [...], "sources": {name: {"status", ...}}, "note": str}
             A source that failed has status other than "ok" and a "message".
+            With published_before, also "date_cross_check": {"status", ...},
+            the Crossref check of the results' dates.
         """
         chosen = [s for s in (sources or SOURCES) if s in SOURCES]
         runners = {
@@ -605,11 +675,17 @@ class LiteratureSearch:
                     }
 
         results = merge_results(per_source, limit)
-        if published_before:
+        cross_check: Optional[dict[str, Any]] = None
+        if published_before and results:
+            publisher, cross_check = self._crossref_dates(results)
             for r in results:
-                caution = date_caution(r, published_before)
-                if caution:
-                    r["date_check"] = caution
+                cautions = [date_caution(r, published_before)]
+                info = publisher.get(r.get("doi") or "")
+                if info:
+                    cautions.append(crossref_caution(r, info, published_before))
+                cautions = [c for c in cautions if c]
+                if cautions:
+                    r["date_check"] = " ".join(cautions)
         answered = [n for n in chosen if report[n]["status"] == "ok"]
         missing = [n for n in chosen if report[n]["status"] != "ok"]
 
@@ -627,5 +703,29 @@ class LiteratureSearch:
             note = f"{len(results)} papers, best matches first. Searched: {', '.join(answered)}."
         if missing and answered:
             note += f" Not searched this time: {', '.join(missing)} (see sources)."
+        if cross_check and cross_check["status"] != "ok":
+            note += (" Publication dates could not be cross-checked with Crossref this time; "
+                     "confirm each date on the publisher's page before citing.")
 
-        return {"results": results, "sources": report, "note": note}
+        out = {"results": results, "sources": report, "note": note}
+        if cross_check:
+            out["date_cross_check"] = cross_check
+        return out
+
+    def _crossref_dates(self, results: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+        """One Crossref request for every result's DOI. Never fails the search:
+        a failure is reported and the note tells the user to check dates by hand."""
+        dois = sorted({r["doi"] for r in results
+                       if r.get("doi") and "," not in r["doi"] and not _ARXIV_DOI_RE.match(r["doi"])})
+        if not dois:
+            return {}, {"status": "ok", "checked": 0}
+        params = {"filter": ",".join(f"doi:{d}" for d in dois), "rows": len(dois),
+                  "select": "DOI,created,issued,published-print,published-online"}
+        try:
+            body = self._get("crossref", f"{CROSSREF_URL}?{urllib.parse.urlencode(params)}")
+            found = self._parse("Crossref", parse_crossref_dates, body)
+        except SourceError as e:
+            return {}, {"status": e.status, "message": self._redact(str(e))[:MESSAGE_CHARS]}
+        except Exception as e:  # the cross-check never sinks the search
+            return {}, {"status": "failed", "message": self._redact(f"Crossref failed: {type(e).__name__}")}
+        return found, {"status": "ok", "checked": len(found)}

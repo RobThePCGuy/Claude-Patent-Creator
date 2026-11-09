@@ -353,3 +353,66 @@ def test_whitespace_inside_a_phrase_cannot_split_it(monkeypatch):
     monkeypatch.setattr(ls.LiteratureSearch, "_get", capture)
     ls.LiteratureSearch().search('"neural\tOR\tnetwork"', sources=["arxiv"])
     assert "all%3A%22neural+OR+network%22" in seen["arxiv"]
+
+
+# --- Crossref cross-check of listed dates -------------------------------------
+# crossref_dates.json was recorded live on 2026-11-09. Two of its DOIs carry
+# dates OpenAlex got wrong: a 2026 paper listed as 2016-03-16 (DOI registered
+# 2026-04-23) and a 2022 Springer chapter listed as 2012-02-24 (print date 2022).
+
+
+def _openalex_work(title, doi, published):
+    return {"id": f"https://openalex.org/W{abs(hash(doi))}", "doi": f"https://doi.org/{doi}",
+            "title": title, "publication_date": published, "publication_year": int(published[:4])}
+
+
+def _crossref():
+    return (FIX / "crossref_dates.json").read_text(encoding="utf-8")
+
+
+def test_crossref_parse_reads_registration_and_publisher_dates():
+    found = ls.parse_crossref_dates(_crossref())
+    assert found["10.66108/mna.v5i01.90"]["registered"].isoformat() == "2026-04-23"
+    assert ("print", ls.date(2022, 1, 1)) in found["10.1007/978-3-031-04122-8_16"]["dates"]
+    with pytest.raises(ls.SourceError):
+        ls.parse_crossref_dates(json.dumps({"status": "error", "message": "bad filter"}))
+
+
+def _search_with(monkeypatch, works, crossref, cutoff):
+    monkeypatch.setattr(ls.LiteratureSearch, "_get", _fake_get({
+        "openalex": json.dumps({"meta": {"count": len(works)}, "results": works}),
+        "crossref": crossref,
+    }))
+    return ls.LiteratureSearch().search("q", sources=["openalex"], published_before=cutoff)
+
+
+def test_misdated_papers_are_flagged_and_true_dates_are_not(monkeypatch):
+    out = _search_with(monkeypatch, [
+        _openalex_work("Sign language recognition with MediaPipe", "10.66108/mna.v5i01.90", "2016-03-16"),
+        _openalex_work("Synthesizing dynamic time-series data under shock", "10.1007/978-3-031-04122-8_16",
+                       "2012-02-24"),
+        _openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27"),
+    ], _crossref(), "2017-06-12")
+    by_doi = {r["doi"]: r for r in out["results"]}
+    assert "registered on 2026-04-23" in by_doi["10.66108/mna.v5i01.90"]["date_check"]
+    assert "registered on 2022-07-04" in by_doi["10.1007/978-3-031-04122-8_16"]["date_check"]
+    assert "date_check" not in by_doi["10.1038/nature14539"]
+    assert out["date_cross_check"] == {"status": "ok", "checked": 3}
+
+
+def test_crossref_down_still_returns_results_and_says_dates_are_unchecked(monkeypatch):
+    out = _search_with(monkeypatch, [_openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27")],
+                       ls.SourceError("failed", "crossref search failed: HTTP 503"), "2017-06-12")
+    assert out["results"] and out["date_cross_check"]["status"] == "failed"
+    assert "could not be cross-checked" in out["note"]
+    out = _search_with(monkeypatch, [_openalex_work("Deep learning", "10.1038/nature14539", "2015-05-27")],
+                       KeyError("unexpected"), "2017-06-12")
+    assert out["results"] and out["date_cross_check"]["status"] == "failed"
+
+
+def test_publisher_date_on_or_after_the_cutoff_is_flagged():
+    rec = ls._record(title="t", publication_date="2019-11-20")
+    late_print = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2020, 3, 1))]}
+    assert "print date of 2020-03-01" in ls.crossref_caution(rec, late_print, "2020-01-15")
+    early = {"registered": ls.date(2019, 11, 19), "dates": [("print", ls.date(2019, 12, 1))]}
+    assert ls.crossref_caution(rec, early, "2020-01-15") is None

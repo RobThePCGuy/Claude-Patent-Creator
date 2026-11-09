@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   whether it was searched, so a busy source never reads as "no prior art".
   Optional free keys `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY`. The
   gap was pointed out by @JuampiHernandez in #104.
+- Paper dates are cross-checked with Crossref (free, no key) whenever a
+  priority-date cutoff is set. Indexes sometimes list the wrong year (seen
+  live: a 2026 paper listed as 2016); a result whose DOI was registered after
+  the cutoff and long after its listed date, or whose publisher gives a later
+  date, now carries a `date_check` telling the user to confirm it.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator
