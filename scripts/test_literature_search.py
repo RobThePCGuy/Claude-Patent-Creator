@@ -29,6 +29,13 @@ try:
 except ImportError:
     pass
 
+# Keys saved through the settings window or CLI live in the config file, not
+# .env. The server loads them at startup; this probe must too, or a saved
+# OPENALEX_API_KEY is ignored here and OpenAlex looks rate limited.
+from config import apply_config_to_env  # noqa: E402
+
+apply_config_to_env()
+
 from literature_search import SOURCES, LiteratureSearch  # noqa: E402
 
 QUERY = '"attention is all you need" transformer'
