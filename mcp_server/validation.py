@@ -7,6 +7,7 @@ Provides type-safe validation with clear error messages.
 # pyright: reportCallInDefaultInitializer=false
 
 import re
+from datetime import date
 from typing import Literal, Optional
 
 try:
@@ -158,6 +159,50 @@ class SearchGooglePatentsInput(BaseModel):  # type: ignore[misc]
         if not _COUNTRY_CODE_RE.match(v):
             raise ValueError("country must be two letters (ISO 3166 alpha-2)")
         return v.upper()
+
+
+class SearchLiteratureInput(BaseModel):  # type: ignore[misc]
+    """Input validation for non-patent literature search."""
+
+    query: constr(min_length=1, max_length=500) = Field(  # type: ignore[valid-type]
+        ..., description="Search keywords. Quote phrases."
+    )
+    limit: conint(ge=1, le=50) = Field(  # type: ignore[valid-type]
+        default=20, description="Maximum number of papers after merging (1-50)"
+    )
+    # published_after comes first: the order check on published_before reads it
+    # from info.data, which only holds fields declared earlier.
+    published_after: Optional[date] = Field(
+        default=None, description="Only papers published on or after this date (YYYY-MM-DD)"
+    )
+    published_before: Optional[date] = Field(
+        default=None, description="Only papers published before this date (YYYY-MM-DD)"
+    )
+    sources: Optional[list[Literal["openalex", "arxiv", "semantic_scholar"]]] = Field(
+        default=None, description="Sources to search; default all three"
+    )
+
+    @field_validator("query")
+    @classmethod
+    def validate_query_has_words(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("query must contain at least one word")
+        return v.strip()
+
+    @field_validator("published_before")
+    @classmethod
+    def validate_date_order(cls, v: Optional[date], info) -> Optional[date]:
+        after = info.data.get("published_after")
+        if v is not None and after is not None and v <= after:
+            raise ValueError("published_before must be later than published_after")
+        return v
+
+    @field_validator("sources")
+    @classmethod
+    def validate_sources_not_empty(cls, v):
+        if v is not None and not v:
+            raise ValueError("sources must name at least one source, or be omitted")
+        return v
 
 
 class GetPatentInput(BaseModel):  # type: ignore[misc]

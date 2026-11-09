@@ -130,7 +130,9 @@ lives in products, open source, standards, and papers. Sweep ALL of:
    for deep reads (free). Fallback without a SerpApi key:
    `search_patents_bigquery` and `search_patents_by_cpc_bigquery`, but a
    keyword search there scans ~341 GiB (about $2, a third of a free month).
-2. **Non-patent literature**: fan out adversarial web-research agents per
+2. **Non-patent literature**: start with `search_non_patent_literature`
+   (papers and preprints from OpenAlex, arXiv and Semantic Scholar, free;
+   set `published_before` to the priority date). Then fan out adversarial web-research agents per
    claim cluster, each instructed to KILL the claim: products (what do the
    incumbent writing/coding assistants actually do?), open source (read
    the code), standards bodies, arXiv, engineering blogs.

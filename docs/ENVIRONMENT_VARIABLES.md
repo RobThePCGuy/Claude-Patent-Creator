@@ -84,6 +84,8 @@ $env:VARIABLE_NAME
 - `USPTO_API_KEY` - USPTO Open Data Portal API key (optional)
 - `EPO_OPS_KEY` / `EPO_OPS_SECRET` - EPO OPS API credentials (optional)
 - `SERPAPI_API_KEY` - SerpApi key for `search_patents_google`, worldwide full-text Google Patents search with claims (optional, recommended; free plan 250 searches/month)
+- `OPENALEX_API_KEY` - Optional free key for `search_non_patent_literature`; paper search works without it (about 100 searches a day), the key raises that. Free at https://openalex.org/settings/api-key
+- `SEMANTIC_SCHOLAR_API_KEY` - Optional free key for `search_non_patent_literature`; without it Semantic Scholar's shared pool is often busy and is skipped (OpenAlex and arXiv still run). Free at https://www.semanticscholar.org/product/api#api-key-form
 - `HYDE_BACKEND` - Set to `api` to use Anthropic/OpenAI for HyDE query expansion
 - `PATENT_BIGQUERY_MAX_BYTES_BILLED` - Override the per-query BigQuery cost ceiling, in bytes
   (default: 350 GiB, which covers a normal keyword prior-art search — those scan ~325 GiB of

@@ -48,6 +48,7 @@ class SystemHealthChecker:
             "timestamp": datetime.now().isoformat(),
             "mpep_index": self._check_mpep_index(),
             "google_patents": self._check_google_patents(),
+            "literature": self._check_literature(),
             "bigquery": self._check_bigquery(),
             "uspto_api": self._check_uspto_api(),
             "graphviz": self._check_graphviz(),
@@ -181,6 +182,33 @@ class SystemHealthChecker:
             "fix": GooglePatentsSearch.setup_message(),
             "details": "Keyword search falls back to BigQuery (~$2 a search).",
             "provides": ["search_patents_google (RECOMMENDED for prior art)"],
+        }
+
+    def _check_literature(self) -> dict[str, Any]:
+        """Paper search needs no key; report which optional keys are set.
+
+        Offline check: never sends a search."""
+        try:
+            from literature_search import LiteratureSearch
+        except ImportError:
+            from mcp_server.literature_search import LiteratureSearch
+
+        searcher = LiteratureSearch()
+        notes = []
+        if not searcher.openalex_key:
+            notes.append("OpenAlex runs keyless (~100 searches/day); OPENALEX_API_KEY raises that")
+        if not searcher.s2_key:
+            notes.append(
+                "Semantic Scholar is often busy without SEMANTIC_SCHOLAR_API_KEY (free); "
+                "OpenAlex and arXiv still run"
+            )
+        return {
+            "status": "ready",
+            "ready": True,
+            "coverage": "Papers and preprints: OpenAlex, arXiv, Semantic Scholar",
+            "cost": "Free",
+            "details": "; ".join(notes) or "Paper search ready with both optional keys set",
+            "provides": ["search_non_patent_literature"],
         }
 
     def _check_bigquery(self) -> dict[str, Any]:

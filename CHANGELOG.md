@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- `search_non_patent_literature`: papers and preprints as prior art, from
+  OpenAlex, arXiv and Semantic Scholar at once, free with no key. Filters by
+  publication date (set `published_before` to the priority date), folds the
+  same paper found by several sources into one result, and reports per source
+  whether it was searched, so a busy source never reads as "no prior art".
+  Optional free keys `OPENALEX_API_KEY` and `SEMANTIC_SCHOLAR_API_KEY`. The
+  gap was pointed out by @JuampiHernandez in #104.
 - Optional stdio handshake workaround and troubleshooting guidance for the
   Claude Code `-32022` negotiation error (#102, reported by @DanielTillett).
 - Consolidated utility-patent-reviewer into Claude-Patent-Creator

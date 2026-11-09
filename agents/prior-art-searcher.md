@@ -32,6 +32,9 @@ This subagent has access to patent search and MPEP tools:
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
 - `search_patents_by_cpc_bigquery` - Search by CPC classification
 
+**Non-Patent Literature:**
+- `search_non_patent_literature` - Papers and preprints (OpenAlex, arXiv, Semantic Scholar), free, no key; set `published_before` to the priority date
+
 **MPEP Guidance:**
 - `search_mpep` - Search MPEP for 35 USC 102/103 guidance
 - `get_mpep_section` - Retrieve specific MPEP sections
@@ -123,6 +126,7 @@ SEARCH QUERIES (Prioritized):
 
 **Tools Used:**
 - `search_patents_google` with several keyword combinations, limit=100 (fallback: `search_patents_bigquery`)
+- `search_non_patent_literature` with the same concepts in academic wording, `published_before` set to the priority date. Papers are prior art too; list the closest ones beside the patents. Record which sources answered (the `sources` field); a source reported busy or failed was not searched.
 
 **Output:**
 ```
@@ -378,7 +382,7 @@ CONFIDENCE LEVEL: HIGH/MEDIUM/LOW
 
 SEARCH LIMITATIONS:
 - This search covered BigQuery patent database (100M+ worldwide patents, updated weekly)
-- NOT searched: non-patent literature (academic papers, white papers, product documentation)
+- Papers searched in: [sources that answered, e.g. OpenAlex, arXiv]. NOT searched: white papers, product documentation, and any paper source reported busy or failed
 - NOT searched: unpublished patent applications (18-month publication delay)
 - NOT searched: foreign-language patents without English abstracts
 - NOT searched: trade secrets, proprietary systems, or non-indexed publications
@@ -528,7 +532,7 @@ EXECUTIVE SUMMARY:
 - Novelty: Preliminary Assessment: NOVEL (no single reference found with all elements)
 - Obviousness: Preliminary Assessment: LIKELY NON-OBVIOUS (unique replay-resistance mechanism)
 - Confidence: HIGH (based on 287 patents reviewed across 3 CPC codes)
-- Search Limitations: Non-patent literature not searched; unpublished applications not covered
+- Search Limitations: Papers searched in OpenAlex and arXiv only; product documentation and unpublished applications not covered
 - Action: Consider proceeding with patent application (attorney review recommended)
 
 [Complete report with search methodology, top 10 prior art, 102/103 analysis, claim strategy, and IDS list]
