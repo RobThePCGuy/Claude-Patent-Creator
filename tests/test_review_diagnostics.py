@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
     for command in ['setup_command', 'download_all_command', 'download_mpep_command']
     for failure in ['extract_mpep_pdfs', 'download_35_usc', 'download_37_cfr', 'download_subsequent_publications']
     if command != 'download_mpep_command' or failure == 'extract_mpep_pdfs'
+    if (command, failure) != ('setup_command', 'download_subsequent_publications')
 ])
 def test_download_failure_returns_failure(command, failure, monkeypatch, tmp_path, capsys):
     for name in ['download_mpep_pdfs', 'extract_mpep_pdfs', 'download_35_usc',
@@ -36,6 +37,33 @@ def test_download_failure_returns_failure(command, failure, monkeypatch, tmp_pat
     args = SimpleNamespace(no_hyde=True, rebuild=False, non_interactive=True)
     assert getattr(cli, command)(args) == 1
     assert 'All downloads complete' not in capsys.readouterr().err
+
+
+class _ReachedIndexBuildError(Exception):
+    pass
+
+
+def test_setup_continues_without_optional_subsequent_publications(monkeypatch, tmp_path, capsys):
+    for name in ['download_mpep_pdfs', 'extract_mpep_pdfs', 'download_35_usc', 'download_37_cfr']:
+        monkeypatch.setattr(cli, name, lambda *a, **kw: True)
+    monkeypatch.setattr(cli, 'download_subsequent_publications', lambda *a, **kw: False)
+    monkeypatch.setattr(cli, 'install_pytorch', lambda: False)
+    monkeypatch.setattr(cli, 'check_all_sources', lambda: dict.fromkeys(
+        ['mpep', '35_usc', '37_cfr', 'subsequent_pubs'], False))
+    monkeypatch.setattr(cli, 'check_mpep_pdfs', lambda: 0)
+    monkeypatch.setattr(cli, 'INDEX_DIR', tmp_path)
+    monkeypatch.setattr(cli, '_setup_epo_pct_sources', lambda *a: False)
+
+    def reached(**kw):
+        raise _ReachedIndexBuildError
+
+    monkeypatch.setattr(cli, 'MPEPIndex', reached)
+    args = SimpleNamespace(no_hyde=True, rebuild=False, non_interactive=True)
+    with pytest.raises(_ReachedIndexBuildError):
+        cli.setup_command(args)
+    err = capsys.readouterr().err
+    assert 'Subsequent Publications missing' in err
+    assert 'All downloads complete' not in err
 
 
 def test_empty_batch_size_restores_default(monkeypatch, tmp_path):

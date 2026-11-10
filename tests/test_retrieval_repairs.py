@@ -142,7 +142,7 @@ class Response:
 
 def test_guidelines_uses_published_pdf_and_falls_back(tmp_path, monkeypatch):
     urls = []
-    monkeypatch.setattr(ed, '_download_file', lambda url, *a: urls.append(url) or False)
+    monkeypatch.setattr(ed, '_download_file', lambda url, *a, **kw: urls.append(url) or False)
     monkeypatch.setattr(ed, '_scrape_epo_guidelines_html',
                         lambda path, year: path.write_text('HTML body') or True)
     assert ed.scrape_epo_guidelines(tmp_path, year=2026)
@@ -245,7 +245,7 @@ def test_chapter_lookup_is_exact_and_source_scoped():
 
 def test_pdf_error_cache_retry_extracts_published_pdf(tmp_path, monkeypatch):
     fitz = pytest.importorskip('pymupdf')
-    def download(url, path, description):
+    def download(url, path, description, **kw):
         if '?v=2026' not in url:
             return False
         with fitz.open() as doc:

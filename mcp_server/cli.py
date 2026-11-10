@@ -854,12 +854,27 @@ def setup_command(args):
             "37 CFR": download_37_cfr,
             "Subsequent Publications": download_subsequent_publications,
         }
+        missing_optional = []
         for label in downloads_needed:
-            if not operations[label]():
-                print(f"\n[X] {label} download or extraction failed. Setup stopped.", file=sys.stderr)
-                return 1
+            if operations[label]():
+                continue
+            if label == "Subsequent Publications":
+                # A supplement to the MPEP: search still works without it, and
+                # the coverage report names it as missing.
+                print(
+                    f"\n[!] {label} download failed. Continuing without it; "
+                    "searches won't include those updates.",
+                    file=sys.stderr,
+                )
+                missing_optional.append(label)
+                continue
+            print(f"\n[X] {label} download or extraction failed. Setup stopped.", file=sys.stderr)
+            return 1
 
-        print("\n[OK] All downloads complete", file=sys.stderr)
+        if missing_optional:
+            print(f"\n[OK] Required downloads complete ({', '.join(missing_optional)} missing)", file=sys.stderr)
+        else:
+            print("\n[OK] All downloads complete", file=sys.stderr)
     elif not pdfs_cleaned_up:
         print("\n[OK] All sources already present", file=sys.stderr)
 
