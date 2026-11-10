@@ -742,8 +742,6 @@ def main():
   PATENT_LOG_FILE=logs/app.log   # Optional file output
 
 {Colors.BOLD}Performance Tuning{Colors.ENDC}
-  PATENT_ENABLE_METRICS=true     # Enable performance tracking
-  PATENT_OPERATION_TIMEOUT=300   # Timeout in seconds (default: 5 min)
   PATENT_ENABLE_CACHE=true       # Enable result caching
 
 {Colors.BOLD}API Configuration{Colors.ENDC}

@@ -21,36 +21,34 @@ The `patent-creator setup` CLI handles everything automatically:
 
 ## Requirements
 
-- **Python 3.9-3.12** (3.11 recommended). Python 3.13+ may lack wheels for PyTorch/FAISS.
-- **8GB+ RAM** (16GB for index building)
-- **5GB free disk space**
+- **Python 3.10-3.13.** CI tests 3.11 and the full install has been walked end to end on 3.13. 3.14 is untested. Python 3.9 is too old (`pyproject.toml` requires 3.10+).
+- **8GB+ RAM** (16GB is more comfortable for index building)
+- **About 4GB free disk space**
 - **Internet connection** (for downloads)
-- **Optional**: NVIDIA GPU (10x faster index building)
+- **Optional**: NVIDIA GPU (several times faster index building). Apple Silicon builds on the CPU.
 
 ## Process
 
 ### Step 1: Find Compatible Python
 
-**Python 3.13+ will NOT work** — PyTorch and FAISS may not have wheels. Find 3.9-3.12:
-
 ```bash
 # Check default
-python --version 2>&1
+python3 --version 2>&1 || python --version 2>&1
 
-# If 3.13+, look for compatible versions:
 # Windows (py launcher):
+py -3.13 --version 2>&1
 py -3.12 --version 2>&1
 py -3.11 --version 2>&1
-py -3.10 --version 2>&1
 
 # Linux/macOS:
+python3.13 --version 2>&1
 python3.12 --version 2>&1
 python3.11 --version 2>&1
 ```
 
-Use the first compatible version found (3.9-3.12). Remember this as `PYTHON_CMD` for all remaining steps.
+Use the first version found in 3.10-3.13. Remember this as `PYTHON_CMD` for all remaining steps. On a Mac, `/usr/bin/python3` is often Apple's 3.9, which is too old.
 
-If no compatible Python is found, tell the user to install Python 3.12 from python.org.
+If no compatible Python is found, tell the user to install Python 3.13 from python.org and open a new terminal.
 
 ### Step 2: Create venv and Install Package
 
@@ -85,7 +83,9 @@ ${VENV_PYTHON} -m mcp_server.cli setup --non-interactive
 4. Downloads 35 USC, 37 CFR, Federal Register updates
 5. Builds FAISS + BM25 hybrid search index (5-65 min)
 6. Verifies BigQuery configuration (reports if project ID is missing)
-7. Registers MCP server with Claude Code
+7. Registers MCP server with Claude Code, then starts it the way Claude Code will and checks it answers. If that check fails, setup exits non-zero and prints why: read it, fix it, and rerun setup (downloads and index are kept).
+
+Non-interactive setup never installs Graphviz (it changes the computer outside this tool). If the output says Graphviz is missing, ask the user whether to install it and, on a yes, run the printed command (`brew install graphviz`, `winget install graphviz`, or `sudo apt-get install graphviz`).
 
 **This command is long-running** (30-90 minutes). Use a timeout of at least 600000ms (10 minutes) for the Bash call and check output periodically.
 

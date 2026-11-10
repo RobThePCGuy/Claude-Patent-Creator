@@ -450,9 +450,7 @@ SEMANTIC_SCHOLAR_API_KEY=your_s2_key    # Free; keyless pool is often busy
 # Optional (with defaults)
 PATENT_LOG_LEVEL=INFO              # Logging level
 PATENT_LOG_FORMAT=human            # Log format
-PATENT_ENABLE_METRICS=true         # Performance tracking
 PATENT_MPEP_USE_HYDE=false         # HyDE for MPEP
-PATENT_OPERATION_TIMEOUT=300       # Operation timeout (seconds)
 
 # Windows only
 CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe

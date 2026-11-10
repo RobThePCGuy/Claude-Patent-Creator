@@ -33,14 +33,14 @@ python install.py
 ### Phase 1: Pre-Installation Checks
 
 **Requirements:**
-- Python 3.9-3.12 (3.11 recommended)
+- Python 3.10-3.13 (CI tests 3.11; 3.13 walked end to end)
 - 8GB+ RAM (16GB recommended)
 - 5GB free disk
 - Optional: NVIDIA GPU with CUDA 12.x
 
 **Verify:**
 ```bash
-python --version  # Should show 3.9-3.12
+python3 --version  # Should show 3.10-3.13
 nvidia-smi        # Optional: Check GPU
 ```
 
@@ -128,7 +128,6 @@ ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
 # Optional
 PATENT_LOG_LEVEL=INFO
 PATENT_LOG_FORMAT=human
-PATENT_ENABLE_METRICS=true
 
 # Windows only
 CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe
