@@ -118,7 +118,7 @@ You should get rule excerpts, each labeled with the MPEP chapter, the PDF file a
 
 ### Step 3: Turn on patent search (free key)
 
-Rule search, claim checks, drawings and research-paper search work now with no keys. Searching existing **patents** needs one free key:
+Rule search, claim checks and research-paper search work now with no keys, and so do drawings if you said yes to Graphviz. Searching existing **patents** needs one free key:
 
 1. Sign up at [serpapi.com](https://serpapi.com/users/sign_up) (250 free searches a month).
 2. Copy your key from [serpapi.com/manage-api-key](https://serpapi.com/manage-api-key).
@@ -198,15 +198,18 @@ The system has two modes that can work independently or together:
 
 **Claude Code Plugin** adds the interactive layer. Skills activate automatically based on what you're doing. Agents handle long-running tasks in the background. Slash commands give you quick access to common workflows.
 
-Under the hood, patent regulation search uses a hybrid approach: FAISS vector search finds semantically similar content, BM25 lexical search catches exact terminology matches, and a cross-encoder reranker sorts the combined results by relevance. Patent search goes through Google BigQuery's public patent dataset.
+Under the hood, patent regulation search uses a hybrid approach: FAISS vector search finds semantically similar content, BM25 lexical search catches exact terminology matches, and a cross-encoder reranker sorts the combined results by relevance. Patent keyword search goes through Google Patents via SerpApi (free key, recommended) or, optionally, Google BigQuery's public patent dataset.
 
 ```
 You (Claude Code) ──> MCP Server ──> Search / Analysis / Diagrams
                            │
             ┌──────────────┼──────────────┐
             v              v              v
-     MPEP/USC/CFR     BigQuery        Graphviz
-     (hybrid RAG)    (100M+ patents)   (diagrams)
+     MPEP/USC/CFR   Google Patents     Graphviz
+     EPC/PCT        (SerpApi) or        (diagrams)
+     (hybrid RAG)   BigQuery
+                    + papers (OpenAlex,
+                      arXiv, Semantic Scholar)
 ```
 
 ---
@@ -390,7 +393,7 @@ patent-creator config list
 | `EPO_OPS_KEY`, `EPO_OPS_SECRET` | European patent full text | Free registration: [developers.epo.org](https://developers.epo.org) |
 | `USPTO_API_KEY` | USPTO Open Data Portal search | [data.uspto.gov](https://data.uspto.gov/myodp) |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api`. HyDE is off by default and has local backends that need no key | Your API account |
-| `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO` and `json` by default; the `patent-creator` command always prints readable lines |
+| `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO`; format `json` for the server and readable lines for the `patent-creator` command unless you set it |
 | `PATENT_MPEP_DEVICE` | Force `cpu` or `gpu` for the index build | Detected automatically |
 | `PATENT_DATA_DIR` | Move the downloaded data and index | Default shown in [What Setup Does](#what-setup-does) |
 
@@ -598,7 +601,7 @@ This project builds on excellent open source work: [MCP Python SDK](https://gith
 
 ### Data Sources
 
-MPEP, 35 USC, and 37 CFR are published by the USPTO. Patent data comes from Google BigQuery's `patents-public-data` dataset (100M+ patents). Embedding models are [BGE-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5) (BAAI) and [MS-MARCO MiniLM-L-6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (Microsoft).
+MPEP, 35 USC, and 37 CFR are published by the USPTO. Patent data comes from Google Patents (through [SerpApi](https://serpapi.com)) and Google BigQuery's `patents-public-data` dataset (100M+ patents). Paper search uses [OpenAlex](https://openalex.org), [arXiv](https://arxiv.org) and [Semantic Scholar](https://www.semanticscholar.org), with dates checked against [Crossref](https://www.crossref.org). Embedding models are [BGE-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5) (BAAI) and [MS-MARCO MiniLM-L-6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (Microsoft).
 
 ### Trademark Notice
 

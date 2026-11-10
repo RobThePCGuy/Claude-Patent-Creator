@@ -41,40 +41,31 @@ python3 --version  # Should show 3.10-3.13
 nvidia-smi        # Optional: Check GPU
 ```
 
-### Phase 2: Virtual Environment
+### Phase 2: Virtual Environment and Install
+
+Use the README's folder, `~/patent-creator-venv`, so every README instruction works as written. Nothing needs activating; call the venv's commands by path.
 
 ```bash
-# Create venv
-python -m venv venv
-
-# Activate
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/macOS
-
-# Verify
-which python  # Should show venv path
+# Mac/Linux
+cd ~
+python3 -m venv patent-creator-venv
+patent-creator-venv/bin/pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
+# Windows (PowerShell, from cd ~)
+py -m venv patent-creator-venv
+.\patent-creator-venv\Scripts\pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
 ```
 
-**Important:** Always activate venv before running scripts!
+From a source checkout instead: `pip install -e .` inside a venv made in the checkout.
 
-### Phase 3: Dependency Installation
+### Phase 3: Setup
 
-**Automated (Recommended):**
 ```bash
-python install.py
-# Handles: PyTorch order, GPU detection, MCP registration
+~/patent-creator-venv/bin/patent-creator setup     # Windows: .\patent-creator-venv\Scripts\patent-creator setup
 ```
 
-**Manual (Advanced):**
-```bash
-# Install PyTorch FIRST (critical!)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+Handles GPU detection (installs the CUDA PyTorch build on NVIDIA and restarts itself), downloads, the index build (25-40 min without an NVIDIA GPU, with progress lines), Graphviz (asks first), BigQuery detection, and registration with a live connection test.
 
-# Then install package (includes all dependencies)
-pip install -e .
-```
-
-**Why PyTorch order matters:** If installed after sentence-transformers, you get CPU-only version.
+**NVIDIA by hand only:** install the CUDA PyTorch build before `sentence-transformers`, or you get the CPU-only build: `pip install torch --index-url https://download.pytorch.org/whl/cu128`.
 
 ### Phase 4: BigQuery Authentication (Optional)
 
@@ -92,10 +83,7 @@ The setup auto-detects existing gcloud credentials. If already authenticated, Bi
 
 ### Phase 5: MCP Server Registration
 
-**Automated:**
-```bash
-python install.py  # Handles registration automatically
-```
+Setup registers the server and tests the connection itself. To recheck: `~/patent-creator-venv/bin/patent-creator verify-config`.
 
 **Manual:**
 ```bash
@@ -140,10 +128,10 @@ Present a clean summary table showing what's ready. Do NOT dump manual setup ins
 - Claims analysis (US + EPO)
 - Specification analysis (US + EPO)
 - Formalities checking (US + EPO + PCT)
-- Patent diagram generation
+- Patent diagram generation (once Graphviz is installed)
 - Patent application drafting
 
-If BigQuery is also configured, mention patent search as available. If not, do NOT present it as a failure — just omit it from the "ready" list.
+Patent search needs a free SerpApi key (recommended) or BigQuery. If one is configured, list patent search as available. If not, say it is one free key away (README Quick Start, Step 3) rather than presenting it as a failure.
 
 **Test with:**
 ```
@@ -192,14 +180,13 @@ python scripts/test_install.py
 
 ### Rebuilding Index
 ```bash
-patent-creator rebuild-index
-# Wait 5-15 minutes
+~/patent-creator-venv/bin/patent-creator setup --rebuild
+# About 5 minutes with an NVIDIA GPU, 25-40 minutes otherwise
 ```
 
 ### Re-registering MCP
 ```bash
-claude mcp remove claude-patent-creator
-python install.py
+~/patent-creator-venv/bin/patent-creator setup   # re-registers and retests; downloads and index are kept
 # Restart Claude Code
 ```
 
@@ -208,8 +195,8 @@ python install.py
 ### Essential Commands
 ```bash
 # Setup
-python install.py
-patent-creator health
+~/patent-creator-venv/bin/patent-creator setup
+~/patent-creator-venv/bin/patent-creator health
 claude mcp list
 
 # Testing

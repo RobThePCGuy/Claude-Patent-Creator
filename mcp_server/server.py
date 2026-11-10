@@ -37,6 +37,18 @@ try:
 except ImportError:
     pass  # dotenv not required
 
+# Saved settings (patent-creator config set ...) must be in the environment
+# before anything below reads it: the logger picks its format at import, and
+# data paths (PATENT_DATA_DIR) are computed at import. Applying them later in
+# main() left both on their defaults. Real env vars and .env still win.
+try:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from config import apply_config_to_env as _apply_saved_settings
+
+    _apply_saved_settings()
+except Exception as _e:  # never block startup on a bad config file
+    print(f"[WARN] saved settings not applied: {_e}", file=sys.stderr)
+
 # CRITICAL: Disable user site-packages BEFORE importing third-party packages
 site.ENABLE_USER_SITE = False
 user_site = site.getusersitepackages()

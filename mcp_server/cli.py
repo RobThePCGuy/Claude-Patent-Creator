@@ -17,14 +17,36 @@ from pathlib import Path
 # entry point (mcp_server.cli:main).  Python only auto-adds the script's
 # directory to sys.path for direct execution, not for package entry points.
 # See: https://github.com/RobThePCGuy/Claude-Patent-Creator/issues/2
-# People read this command's output; the MCP server (spawned separately by
-# Claude Code) keeps its JSON default. An explicit PATENT_LOG_FORMAT wins.
-_LOG_FORMAT_DEFAULTED = "PATENT_LOG_FORMAT" not in os.environ
-os.environ.setdefault("PATENT_LOG_FORMAT", "human")
-
 _pkg_dir = str(Path(__file__).parent)
 if _pkg_dir not in sys.path:
     sys.path.insert(0, _pkg_dir)
+
+# Saved settings must reach the environment before anything reads it: data
+# paths (PATENT_DATA_DIR) are computed at import and commands like
+# check-bigquery read GOOGLE_CLOUD_PROJECT from the environment. Precedence
+# matches the server: real env var > project .env > saved settings.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+except ImportError:
+    pass
+try:
+    from config import apply_config_to_env as _apply_saved_settings
+
+    _apply_saved_settings()
+except Exception as _e:  # a broken config file must not block 'config' itself
+    print(f"[WARN] saved settings not applied: {_e}", file=sys.stderr)
+
+# People read this command's output, so prefer readable log lines here. This
+# changes only the default; it never touches PATENT_LOG_FORMAT, so the saved
+# server setting is reported and inherited unchanged.
+try:
+    from logging_config import prefer_format as _prefer_log_format
+
+    _prefer_log_format("human")
+except ImportError:
+    pass
 
 # Import hardware detection for PyTorch installation
 import contextlib
@@ -793,7 +815,7 @@ def setup_command(args):
     if pdfs_cleaned_up:
         print(
             "\n[OK] Search index already built; its source PDFs were removed, which is fine."
-            "\n     Run 'patent-creator setup --rebuild' only if you want to rebuild it.",
+            f"\n     Run '{_cli()} setup --rebuild' only if you want to rebuild it.",
             file=sys.stderr,
         )
     else:
@@ -1023,8 +1045,6 @@ def run_server(args):
     apply_config_to_env()
 
     env = os.environ.copy()
-    if _LOG_FORMAT_DEFAULTED:
-        env.pop("PATENT_LOG_FORMAT", None)  # server keeps its own JSON default
     if args.no_hyde:
         env["PATENT_MPEP_USE_HYDE"] = "false"
 
@@ -1325,8 +1345,8 @@ def download_all_command(args):
     print("\nEPO/PCT law sources:", file=sys.stderr)
     if _setup_epo_pct_sources(MPEP_DIR):
         print(
-            "  New EPO/PCT sources downloaded — run `patent-creator setup --rebuild` "
-            "(or build-index) to make them searchable.",
+            f"  New EPO/PCT sources downloaded. Run '{_cli()} setup --rebuild' "
+            "to make them searchable.",
             file=sys.stderr,
         )
 
