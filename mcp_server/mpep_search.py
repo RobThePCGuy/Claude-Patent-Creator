@@ -17,6 +17,7 @@ except ImportError:
         def _render_cmd(message: str) -> str:
             return message
 
+import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -921,6 +922,16 @@ class MPEPIndex:
             )
             print(f"To manually delete PDFs later: rm {MPEP_DIR}/*.pdf", file=sys.stderr)
 
+    def _embed_batch_size(self) -> int:
+        batch_size = 256 if self.device == "cuda" else 32
+        override = os.environ.get("PATENT_EMBED_BATCH_SIZE", "").strip()
+        if override:
+            try:
+                batch_size = max(1, int(override))
+            except ValueError:
+                _log_warning(f"Ignoring PATENT_EMBED_BATCH_SIZE={override!r}: not a whole number")
+        return batch_size
+
     def _encode_with_progress(self, texts, batch_size, slices: int = 40):
         """Embed in slices, logging a plain progress line with time left.
 
@@ -1107,13 +1118,10 @@ class MPEPIndex:
         )
         texts = [chunk["text"] for chunk in all_chunks]
 
-        # Optimize batch size for GPU/CPU
-        if self.device == "cuda":
-            batch_size = 256  # Large batch for GPU
-            _log_info(f"Using GPU batch size: {batch_size}", batch_size=batch_size)
-        else:
-            batch_size = 32  # Smaller batch for CPU
-            _log_info(f"Using CPU batch size: {batch_size}", batch_size=batch_size)
+        # Batch size: 256 on CUDA, 32 otherwise (placeholder heuristics). A
+        # GPU that runs out of memory can lower it with PATENT_EMBED_BATCH_SIZE.
+        batch_size = self._embed_batch_size()
+        _log_info(f"Using batch size {batch_size} on {self.device}", batch_size=batch_size)
 
         embeddings = self._encode_with_progress(texts, batch_size)
         _log_info(f"Generated {len(embeddings):,} embeddings", embedding_count=len(embeddings))

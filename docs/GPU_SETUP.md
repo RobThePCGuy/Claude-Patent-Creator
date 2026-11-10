@@ -53,11 +53,11 @@ For servers with multiple users sharing a GPU:
 **PowerShell:**
 ```powershell
 # User 1: Use GPU (default)
-~/patent-creator-venv/bin/patent-creator serve
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" serve
 
 # User 2: Force CPU (don't compete for GPU)
 $env:FORCE_CPU=1
-~/patent-creator-venv/bin/patent-creator serve
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" serve
 ```
 
 **Linux/macOS:**
@@ -66,7 +66,7 @@ $env:FORCE_CPU=1
 ~/patent-creator-venv/bin/patent-creator serve
 
 # User 2: Force CPU
-FORCE_CPU=1 patent-creator serve
+FORCE_CPU=1 ~/patent-creator-venv/bin/patent-creator serve
 ```
 
 ### Select Specific GPUs
@@ -75,27 +75,27 @@ FORCE_CPU=1 patent-creator serve
 ```powershell
 # Use only GPU 0
 $env:CUDA_VISIBLE_DEVICES="0"
-~/patent-creator-venv/bin/patent-creator serve
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" serve
 
 # Use GPUs 0 and 1
 $env:CUDA_VISIBLE_DEVICES="0,1"
-~/patent-creator-venv/bin/patent-creator serve
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" serve
 
 # Hide all GPUs (CPU mode)
 $env:CUDA_VISIBLE_DEVICES=""
-~/patent-creator-venv/bin/patent-creator serve
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" serve
 ```
 
 **Linux/macOS:**
 ```bash
 # Use only GPU 0
-CUDA_VISIBLE_DEVICES=0 patent-creator serve
+CUDA_VISIBLE_DEVICES=0 ~/patent-creator-venv/bin/patent-creator serve
 
 # Use GPUs 0 and 1
-CUDA_VISIBLE_DEVICES=0,1 patent-creator serve
+CUDA_VISIBLE_DEVICES=0,1 ~/patent-creator-venv/bin/patent-creator serve
 
 # Hide all GPUs
-CUDA_VISIBLE_DEVICES= patent-creator serve
+CUDA_VISIBLE_DEVICES= ~/patent-creator-venv/bin/patent-creator serve
 ```
 
 ### Permanent Configuration
@@ -136,7 +136,7 @@ You should see:
 
 Or use the status command:
 ```powershell
-~/patent-creator-venv/bin/patent-creator status
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" status
 ```
 
 ## If You Need to Reinstall GPU Support
@@ -286,10 +286,10 @@ Your GPU is ready! You can now:
 # venv\Scripts\activate  (Windows) or source venv/bin/activate (Linux/macOS)
 
 # Build the MPEP index with GPU acceleration
-~/patent-creator-venv/bin/patent-creator setup
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup
 
 # Or rebuild if you already have one
-~/patent-creator-venv/bin/patent-creator setup --rebuild
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup --rebuild
 
 ```
 
@@ -318,15 +318,15 @@ If you hit OOM errors during index building with large MPEP datasets:
 
 **Option 1: Force CPU for indexing**
 ```bash
-CUDA_VISIBLE_DEVICES="" patent-creator rebuild-index
+CUDA_VISIBLE_DEVICES="" ~/patent-creator-venv/bin/patent-creator rebuild-index
 ```
 This runs index building on CPU (slower but no VRAM limit). GPU is still used for searches afterward.
 
 **Option 2: Reduce batch size**
 ```bash
-EMBED_BATCH_SIZE=16 patent-creator rebuild-index
+PATENT_EMBED_BATCH_SIZE=16 ~/patent-creator-venv/bin/patent-creator setup --rebuild
 ```
-Default batch size may be too large for GPUs with less VRAM. Try 16 or 8.
+The default (256 on an NVIDIA GPU, 32 on the CPU) may be too large for a GPU with little VRAM. Try 16 or 8. To keep it, save it: `~/patent-creator-venv/bin/patent-creator config set PATENT_EMBED_BATCH_SIZE 16`.
 
 ## macOS / Apple Silicon
 
@@ -337,14 +337,14 @@ faster choice here. The setup auto-detects this and stays on CPU.
 
 If you have a specific reason to use MPS anyway, opt in explicitly:
 ```bash
-PATENT_MPEP_DEVICE=mps patent-creator setup --rebuild --non-interactive
+PATENT_MPEP_DEVICE=mps ~/patent-creator-venv/bin/patent-creator setup --rebuild --non-interactive
 ```
 
 To force CPU explicitly (either of these works):
 ```bash
-FORCE_CPU=1 patent-creator setup --rebuild --non-interactive
+FORCE_CPU=1 ~/patent-creator-venv/bin/patent-creator setup --rebuild --non-interactive
 # or, equivalently:
-PATENT_MPEP_DEVICE=cpu patent-creator setup --rebuild --non-interactive
+PATENT_MPEP_DEVICE=cpu ~/patent-creator-venv/bin/patent-creator setup --rebuild --non-interactive
 ```
 
 ### `SSL: CERTIFICATE_VERIFY_FAILED` when downloading MPEP

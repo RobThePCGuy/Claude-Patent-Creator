@@ -395,6 +395,7 @@ patent-creator config list
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api`. HyDE is off by default and has local backends that need no key | Your API account |
 | `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO`; format `json` for the server and readable lines for the `patent-creator` command unless you set it |
 | `PATENT_MPEP_DEVICE` | Force `cpu` or `gpu` for the index build | Detected automatically |
+| `PATENT_EMBED_BATCH_SIZE` | Lower it (16 or 8) if the GPU runs out of memory while building the index | 256 on an NVIDIA GPU, 32 otherwise |
 | `PATENT_DATA_DIR` | Move the downloaded data and index | Default shown in [What Setup Does](#what-setup-does) |
 
 `patent-creator config list` shows every setting. If you work from a copy of the code, a `.env` file in that folder works too (see `.env.example`); saved settings fill in anything `.env` and your environment leave unset.

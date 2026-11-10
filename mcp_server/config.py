@@ -158,6 +158,12 @@ OPTIONS: tuple[Option, ...] = (
         choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
     ),
     Option(
+        "PATENT_EMBED_BATCH_SIZE", "Performance", "Index build batch size",
+        "Chunks embedded per batch while building the index. Empty = 256 on an "
+        "NVIDIA GPU, 32 otherwise. Lower it (16 or 8) if the GPU runs out of memory.",
+        "int", minimum=1, maximum=4096,
+    ),
+    Option(
         "PATENT_LOG_FORMAT", "Performance", "Log format",
         "Format of log lines: 'json' (the server's default) or 'human'. "
         "Unset, the patent-creator command prints human-readable lines.",

@@ -121,7 +121,14 @@ else:
     print("\n[CPU] Running on CPU - still works, just slower than GPU mode")
 
 print("\nNext steps:")
-print("  1. Download USPTO rules: patent-creator setup")
-print("  2. (Optional) Check BigQuery patent search: patent-creator check-bigquery")
+_cli = "patent-creator"
+try:
+    from mcp_server.cli_command import installed_cli
+
+    _cli = installed_cli()
+except ImportError:
+    pass
+print(f"  1. Download USPTO rules: {_cli} setup")
+print(f"  2. (Optional) Check BigQuery patent search: {_cli} check-bigquery")
 print("  3. Start using in Claude Code!")
 print("\n" + "=" * 60)

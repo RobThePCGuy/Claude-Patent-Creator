@@ -59,16 +59,7 @@ source ~/.bashrc
 
 ### 5. Verify Connection
 
-Check the system status to confirm API connection:
-
-```bash
-~/patent-creator-venv/bin/patent-creator status
-```
-
-You should see:
-```
-USPTO API............. ✓ Connected (Key: ***...abc123)
-```
+Restart Claude Code, then ask it: "Check the USPTO API status". That runs the `check_uspto_api_status` tool, which reports whether the key is set and whether the USPTO answered. (`patent-creator status` checks the local install only, not the USPTO.)
 
 ## Usage
 

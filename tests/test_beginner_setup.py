@@ -444,3 +444,17 @@ def test_paths_with_spaces_paste_into_each_shell(monkeypatch):
     monkeypatch.setattr(cli_command.os, "name", "posix")
     assert cli_command._quote("/Users/Rob Smith/v/bin/python") == '"/Users/Rob Smith/v/bin/python"'
     assert cli_command._quote("/Users/rob/v/bin/python") == "/Users/rob/v/bin/python"
+
+
+def test_embed_batch_size_setting_is_honoured(monkeypatch):
+    import importlib
+
+    mpep_search = importlib.import_module("mpep_search")
+    idx = mpep_search.MPEPIndex.__new__(mpep_search.MPEPIndex)
+    idx.device = "cuda"
+    monkeypatch.delenv("PATENT_EMBED_BATCH_SIZE", raising=False)
+    assert idx._embed_batch_size() == 256
+    monkeypatch.setenv("PATENT_EMBED_BATCH_SIZE", "16")
+    assert idx._embed_batch_size() == 16
+    monkeypatch.setenv("PATENT_EMBED_BATCH_SIZE", "lots")
+    assert idx._embed_batch_size() == 256
