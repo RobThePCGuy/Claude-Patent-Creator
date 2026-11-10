@@ -51,7 +51,7 @@ Performs comprehensive automated analysis:
 ## Required Data
 
 This skill uses the automated claims analyzer from:
-**Location**: `${CLAUDE_PLUGIN_ROOT}/python\claims_analyzer.py`
+**Location**: `${CLAUDE_PLUGIN_ROOT}/mcp_server/claims_analyzer.py` (plugin source; the pip-installed module is `mcp_server.claims_analyzer`)
 
 ## How to Use
 

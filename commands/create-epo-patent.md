@@ -35,7 +35,7 @@ I'll interview you about your invention:
 ### Step 2: Prior Art Search
 
 I'll search for relevant prior art using:
-- **BigQuery** (100M+ worldwide patents, filter country="EP" for EP patents)
+- **Google Patents via SerpApi** (default, use `country="EP"`); BigQuery is optional
 - **EPO OPS API** (bibliographic data and available full-text documents; no register status retrieval)
 - **CPC classification** search focused on EPO-heavy technology areas
 
@@ -168,11 +168,10 @@ Before running this command:
 1. **MPEP/EPC Index Built**:
    - Run `/setup-patent-system` first (one-time)
 
-2. **BigQuery Configured** (for patent search):
-   - Google Cloud project created
-   - BigQuery API enabled
-   - Authenticated: `gcloud auth application-default login`
-   - Environment variable: `GOOGLE_CLOUD_PROJECT=your-project-id`
+2. **Patent Search Configured**:
+   - SerpApi is the default. Save `SERPAPI_API_KEY` with the installed CLI's `config set` command as shown in `/setup-patent-system`.
+   - BigQuery is an optional alternative, configured through `/configure-bigquery`.
+   - Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
 
 3. **Graphviz Installed** (for diagrams):
    - Windows: `choco install graphviz`

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify installation - Run this after install.py completes"""
+"""Verify installation - Run this after patent-creator setup completes"""
 import sys
 from importlib.metadata import version as distribution_version
 

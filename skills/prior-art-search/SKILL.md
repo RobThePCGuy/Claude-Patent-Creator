@@ -328,13 +328,13 @@ Patents to be disclosed to USPTO:
 ## Integration Points
 
 This skill integrates with:
-- **BigQuery Patent Search** skill (Step 3, 5, 6)
+- **Patent Search** skill (Steps 3, 5, 6); **BigQuery Patent Search** only when configured
 - **MPEP Search** skill (For legal guidance)
 - **Patent Claims Analyzer** (For claim drafting)
 
 ## Required Data Access
 
-- Google Cloud BigQuery (100M+ patents)
+- Google Patents through SerpApi (default), or Google Cloud BigQuery (optional)
 - USPTO API (optional, for additional coverage)
 - Internet access for patent retrieval
 

@@ -1,187 +1,99 @@
 ---
 name: testing-assistant
-description: Manages testing lifecycle including unit tests, integration tests, validation, and quality assurance.
+description: Run regression tests, local diagnostics and configured service checks.
 ---
 
-# Testing Assistant Skill
+# Testing Assistant
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+## Source regression suite
 
-Expert system for testing and validating the Claude Patent Creator.
+Run from a source checkout. Install its development dependencies into the README venv first. This is an editable development install; beginner installs should keep the normal GitHub pip route.
 
-**FOR CLAUDE:** Test scripts in scripts/ directory.
-- Go directly to running appropriate test
-- Run from project root
-- Tests require active venv
-- Only run diagnostics if tests fail
-
-## When to Use
-
-Running test suites, validating new features, testing after changes, debugging failures, creating tests, setting up CI/CD, performance testing, E2E validation, regression testing.
-
-## Testing Pyramid
-
-```
-         /\
-        /  \       E2E (Manual + Automated)
-       /----\
-      / API  \     Integration Tests
-     /--------\
-    /  Unit   \    Unit Tests
-   /----------\
-```
-
-**Strategy:** More unit tests (fast, isolated), fewer integration (moderate), minimal E2E (slow).
-
-## Test Suite Overview
-
+macOS/Linux:
 ```bash
-scripts/
-+-- test_install.py          # Complete installation validation
-+-- test_gpu.py              # GPU detection and CUDA
-+-- test_bigquery.py         # BigQuery connection
-+-- test_analyzers.py        # Claims, spec, formalities
-+-- test_embedding_speed.py  # Performance benchmarks
-+-- test_checkpoint.py       # Index checkpoint system
+"$HOME/patent-creator-venv/bin/python" -m pip install -e ".[dev]"
 ```
 
-**Quick Test:**
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m pip install -e ".[dev]"
+```
+
+Use the checkout's modules even if the interpreter has another editable install:
+
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+PYTHONPATH=.:mcp_server "$HOME/patent-creator-venv/bin/python" -m pytest -q
+"$HOME/patent-creator-venv/bin/python" -m ruff check .
 ```
 
-
-## Manual Testing via Claude
-
-Test MCP tools through Claude Code interface.
-
-### Quick Test Examples
-
-```
-1. MPEP Search: "Search MPEP for claim definiteness requirements"
-2. Patent Search: "Search for patents about neural networks filed in 2024"
-3. Claims Review: "Review these claims: [paste test claims]"
-4. Full Review: "/full-review" (with test application)
-5. Diagrams: "Create a flowchart for this process: [describe]"
+Windows PowerShell:
+```powershell
+$env:PYTHONPATH = ".;mcp_server"
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m pytest -q
+if ($LASTEXITCODE -ne 0) { throw "Regression tests failed" }
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m ruff check .
+if ($LASTEXITCODE -ne 0) { throw "Lint failed" }
 ```
 
-### Validation Checklist
+Review every failure. Do not replace regression tests with an installation diagnostic or claim success based on printed progress alone.
 
+## Installed-package diagnostics
+
+The diagnostic scripts live in the plugin source, not in the pip package. Resolve `${CLAUDE_PLUGIN_ROOT}` to the actual plugin folder first. For a source checkout, use its absolute path. Set `PLUGIN_ROOT` below to that location; the example deliberately includes a space. Keep paths quoted.
+
+macOS/Linux:
 ```bash
-[OK] MPEP search returns relevant results
-[OK] BigQuery search finds patents
-[OK] Claims analyzer identifies issues
-[OK] Specification analyzer checks support
-[OK] Formalities checker validates format
-[OK] Diagrams generate successfully
-[OK] Full review workflow completes
-[OK] All MCP tools accessible
-[OK] Error messages clear and helpful
-[OK] Performance acceptable (<2s most ops)
+PLUGIN_ROOT="/absolute/path/Patent Plugin"
+```
+
+Windows PowerShell:
+```powershell
+$PLUGIN_ROOT = "C:\absolute\path\Patent Plugin"
 ```
 
 
-## Creating New Tests
-
-### Quick Start
-
-```python
-# Unit test template
-def test_basic_functionality():
-    from mcp_server.your_module import YourClass
-    instance = YourClass()
-    result = instance.method("test input")
-    assert result is not None
-    print("[OK] test_basic_functionality passed")
-```
-
-**Test Categories:**
-1. Basic functionality
-2. Edge cases
-3. Performance
-4. Error handling
-
-
-## Performance Testing
-
-### Quick Benchmark
-
-```python
-from mcp_server.mpep_search import MPEPIndex
-import time
-
-index = MPEPIndex()
-index.build_index()
-index.search("test", top_k=5)  # Warm up
-
-start = time.time()
-result = index.search("claim definiteness", top_k=5)
-duration = time.time() - start
-print(f"Search took: {duration:.3f}s")
-```
-
-### Performance Thresholds
-
-| Operation | Threshold | Notes |
-|-----------|-----------|-------|
-| MPEP search (first) | <3s | Model loading |
-| MPEP search (subsequent) | <500ms | Cached models |
-| BigQuery search | <2s | Network dependent |
-| Claims analysis | <3s | 20 claims |
-| Spec analysis | <10s | 10 pages |
-| Diagram generation | <1s | SVG output |
-
-
-## Troubleshooting Test Failures
-
-| Problem | Solution |
-|---------|----------|
-| Import errors | Reinstall into the venv: `~/patent-creator-venv/bin/python -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git` |
-| GPU tests fail | Check `nvidia-smi`, reinstall PyTorch, or skip |
-| BigQuery fails | Re-auth: `gcloud auth application-default login` |
-| Index not found | Rebuild: `~/patent-creator-venv/bin/patent-creator rebuild-index` |
-| Too slow | Check GPU usage, first run slower, check system load |
-
-
-## Best Practices
-
-1. Test after every change
-2. Automated testing
-3. Test pyramid (more unit, fewer E2E)
-4. Fast tests (<5 min suite)
-5. Isolated tests (no dependencies)
-6. Clear assertions
-7. Document tests
-8. Version control tests
-9. Regular execution (weekly)
-10. Monitor performance
-
-## Quick Reference
-
-### Run All Tests
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_install.py"
 ```
 
-### Regression Test
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_install.py"
+```
+
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py || exit 1
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py || exit 1
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py || exit 1
-echo "[OK] All regression tests passed!"
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_analyzers.py"
 ```
 
-### Manual Checklist
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_analyzers.py"
 ```
-□ Ask Claude to search MPEP
-□ Ask Claude to search patents
-□ Ask Claude to review claims
-□ Run /full-review command
-□ Generate a diagram
-□ Verify all tools work
-□ Check performance (<2s)
-```
+
+Check the exit status after each command. On PowerShell, use `$LASTEXITCODE`; on macOS/Linux, use `$?` immediately after the command. No venv activation is required.
+
+Additional scripts that exist in `scripts/`:
+
+| Script | When to run |
+|---|---|
+| `test_gpu.py` | CUDA is intended; CPU-only systems can skip |
+| `test_embedding_speed.py` | Benchmark model embedding; may download model data |
+| `test_google_patents.py` | SerpApi is configured; consumes search quota |
+| `test_bigquery.py` | BigQuery is configured; can consume query quota |
+| `test_literature_search.py` | Check live research-paper services |
+| `test_epo_analyzers.py` | Exercise EPO analyzers |
+
+Run these with the same quoted script-path pattern. BigQuery is optional and must not gate a SerpApi-only installation. Report unavailable services as skipped. Index regression tests are in `tests/` and run with pytest.
+
+For credentials saved only with `config set`, prefer the corresponding MCP status/search tools after restarting Claude Code. These standalone diagnostics do not all load saved settings; an unset-key result from a script does not prove that the saved configuration is broken.
+
+## Manual verification
+
+In Claude Code, search MPEP and inspect citations, search patents with the configured provider, review synthetic claims and generate a diagram if Graphviz is available. Record what was actually tested and what failed or was skipped. Never prefill a checklist as passed.
+
+## Adding tests
+
+Put regression tests in `tests/`. Assert observable results for valid input, invalid input and relevant failure paths. For a bug fix, run the test with the fix removed to establish that it catches the original defect, then restore the fix and rerun.

@@ -1,166 +1,92 @@
 ---
-description: One-time setup for the patent creator system - downloads MPEP, builds search index, configures BigQuery
+description: Install the package, download legal sources and register the MCP server
 allowed-tools: Bash, Read, Write
 ---
 
-# Setup Patent Creator System
+# Setup Patent Creator
 
-Complete one-time setup for all patent creator capabilities.
+Use Python 3.10-3.13, an internet connection and about 4 GB of free disk space. Use the home-folder venv from the README. If it already contains a working install, continue with setup.
 
-## What This Does
+## Install
 
-The `patent-creator setup` CLI handles everything automatically:
-
-1. **Detect GPU** and install PyTorch with correct CUDA version
-2. **Download MPEP PDFs** (500MB) - USPTO examination manual
-3. **Download Legal Sources** - 35 USC, 37 CFR, Federal Register updates
-4. **Build Search Index** - FAISS + BM25 hybrid search (5-65 min depending on GPU)
-5. **Configure MCP server** registration with Claude Code
-
-**Total Time**: 30-90 minutes (most time is MPEP download and index building)
-
-## Requirements
-
-- **Python 3.10-3.13.** CI tests 3.11 and the full install has been walked end to end on 3.13. 3.14 is untested. Python 3.9 is too old (`pyproject.toml` requires 3.10+).
-- **8GB+ RAM** (16GB is more comfortable for index building)
-- **About 4GB free disk space**
-- **Internet connection** (for downloads)
-- **Optional**: NVIDIA GPU (several times faster index building). Apple Silicon builds on the CPU.
-
-## Process
-
-### Step 1: Find Compatible Python
-
+macOS/Linux (use an installed supported Python, for example `python3.13`):
 ```bash
-# Check default
-python3 --version 2>&1 || python --version 2>&1
-
-# Windows (py launcher):
-py -3.13 --version 2>&1
-py -3.12 --version 2>&1
-py -3.11 --version 2>&1
-
-# Linux/macOS:
-python3.13 --version 2>&1
-python3.12 --version 2>&1
-python3.11 --version 2>&1
+python3.13 -m venv "$HOME/patent-creator-venv"
+"$HOME/patent-creator-venv/bin/python" -m pip install --upgrade pip
+"$HOME/patent-creator-venv/bin/python" -m pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
 ```
 
-Use the first version found in 3.10-3.13. Remember this as `PYTHON_CMD` for all remaining steps. On a Mac, `/usr/bin/python3` is often Apple's 3.9, which is too old.
-
-If no compatible Python is found, tell the user to install Python 3.13 from python.org and open a new terminal.
-
-### Step 2: Create venv and Install Package
-
-Use the same folder the README's Quick Start uses, `patent-creator-venv` in the user's home folder, so every later README instruction (saving keys, `health`) works as written. If that folder already exists with a working install, skip to Step 3.
-
-```bash
-# Linux/macOS
-${PYTHON_CMD} -m venv ~/patent-creator-venv
-# Windows (PowerShell)
-${PYTHON_CMD} -m venv $HOME\patent-creator-venv
+Windows PowerShell:
+```powershell
+py -3.13 -m venv "$HOME\patent-creator-venv"
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m pip install --upgrade pip
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
 ```
 
-Use the venv's commands for all remaining steps:
-- **Linux/macOS**: `VENV_PYTHON=~/patent-creator-venv/bin/python`, `CLI=~/patent-creator-venv/bin/patent-creator`
-- **Windows**: `VENV_PYTHON=$HOME\patent-creator-venv\Scripts\python.exe`, `CLI=$HOME\patent-creator-venv\Scripts\patent-creator.exe`
+Check each command's exit status before continuing. PowerShell uses `$LASTEXITCODE` for native programs. Do not announce installation success after a failure. No activation or change of working directory is needed.
 
-Install the package (a normal install, not `-e`: the plugin folder moves when the plugin updates, and an editable install would break with it):
+## Setup
+
+macOS/Linux:
 ```bash
-${VENV_PYTHON} -m pip install --upgrade pip
-${VENV_PYTHON} -m pip install "${CLAUDE_PLUGIN_ROOT}"
+"$HOME/patent-creator-venv/bin/patent-creator" setup --non-interactive
 ```
 
-### Step 3: Run Automated Setup
-
-```bash
-${CLI} setup --non-interactive
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup --non-interactive
 ```
 
-This is long-running (25-40 minutes on a computer without an NVIDIA GPU). Use a long Bash timeout and check output periodically; a progress line appears every few percent during the index build.
+Setup checks GPU hardware, downloads missing legal sources, builds the index and registers the MCP server with a connection test. This can take tens of minutes. Monitor progress until it exits; read and resolve failures before claiming setup is complete.
 
-**What this does automatically:**
-1. Detects GPU hardware (NVIDIA CUDA; Apple Silicon and others build on the CPU)
-2. Installs correct PyTorch version (uninstalls CPU version if GPU detected, restarts itself)
-3. Downloads MPEP PDFs if missing (~500MB)
-4. Downloads 35 USC, 37 CFR, Federal Register updates
-5. Builds FAISS + BM25 hybrid search index (5-65 min)
-6. Verifies BigQuery configuration (reports if project ID is missing)
-7. Registers MCP server with Claude Code, then starts it the way Claude Code will and checks it answers. If that check fails, setup exits non-zero and prints why: read it, fix it, and rerun setup (downloads and index are kept).
+Non-interactive setup does not install system Graphviz. If it is missing and diagrams are needed, explain the system package change and run the platform command printed by setup when authorized.
 
-Non-interactive setup never installs Graphviz (it changes the computer outside this tool). If the output says Graphviz is missing, ask the user whether to install it and, on a yes, run the printed command (`brew install graphviz`, `winget install graphviz`, or `sudo apt-get install graphviz`).
+## Verify
 
-**This command is long-running** (30-90 minutes). Use a timeout of at least 600000ms (10 minutes) for the Bash call and check output periodically.
-
-### Step 4: Verify Installation
-
-After setup completes, verify:
-
+macOS/Linux:
 ```bash
-${VENV_PYTHON} -c "import torch; print(f'PyTorch {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+"$HOME/patent-creator-venv/bin/patent-creator" health
 ```
 
-```bash
-cd ${CLAUDE_PLUGIN_ROOT}
-${CLI} health
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health
 ```
 
-### Step 5: Turn On Patent Search
+Restart Claude Code, then ask it to search MPEP for claim definiteness. Confirm results contain source references.
 
-Rule search, claim and formality checks, diagrams (once Graphviz is installed) and research-paper search work with no keys. Searching existing **patents** needs one of these; tell the user plainly, and recommend the first:
+## Enable patent search
 
-1. **Free SerpApi key (recommended, 250 searches a month).** The user signs up at https://serpapi.com/users/sign_up and copies the key from https://serpapi.com/manage-api-key. Ask them to paste it, then save it:
-   ```bash
-   ${CLI} config set SERPAPI_API_KEY "THE_KEY"
-   ```
-   Never echo the key back in chat. They restart Claude Code afterward.
-2. **BigQuery (optional).** Needs a Google Cloud project (the BigQuery sandbox works without a billing account). If setup output showed `BigQuery: [OK]`, it already works. Otherwise ask the user to type `! gcloud auth application-default login` in the Claude Code prompt (it opens their browser), then `${CLI} config set GOOGLE_CLOUD_PROJECT their-project-id`, then `${CLI} check-bigquery`.
+SerpApi is the default. Obtain a key at https://serpapi.com/manage-api-key and save it without echoing it into chat:
 
-Do not present a missing key as a failed setup; the rest of the system is ready.
-
-## Troubleshooting
-
-### PyTorch CPU-Only Despite GPU
-
-The most common issue. `patent-creator setup` handles this automatically by detecting GPU and reinstalling PyTorch. If it still fails:
-
+macOS/Linux:
 ```bash
-${VENV_PYTHON} -m pip uninstall -y torch torchvision torchaudio
-# For RTX 5090/5080 (compute capability >= 10.0):
-${VENV_PYTHON} -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-# For older NVIDIA GPUs:
-${VENV_PYTHON} -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+"$HOME/patent-creator-venv/bin/patent-creator" config set SERPAPI_API_KEY "your-key"
 ```
 
-### MPEP Download Fails
-
-Retry:
-```bash
-${CLI} setup --non-interactive
-```
-Won't re-download files that already exist. Only downloads missing sources.
-
-### Index Building Out of Memory
-
-Use CPU mode (slower but less memory):
-```bash
-PATENT_MPEP_DEVICE=cpu ${CLI} setup --rebuild --non-interactive
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set SERPAPI_API_KEY "your-key"
 ```
 
-### BigQuery Not Working
+Restart Claude Code and call `check_google_patents_status`, then try a patent search. The accepted config key is `SERPAPI_API_KEY`.
 
+BigQuery is optional. Use `/configure-bigquery` only when wanted. Missing patent-search credentials do not prevent legal-reference searches or analyzer use; describe patent search as unconfigured.
+
+## Recovery
+
+- Failed download: rerun setup. Existing sources are kept; this does not update their editions.
+- GPU trouble: follow `docs/GPU_SETUP.md` in the plugin root. Setup selects wheels for the detected GPU; do not install a generic CUDA wheel blindly.
+- Out of memory: save a smaller batch and rerun setup:
+
+macOS/Linux:
 ```bash
-gcloud auth application-default login
+"$HOME/patent-creator-venv/bin/patent-creator" config set PATENT_EMBED_BATCH_SIZE 16
 ```
 
-## After Setup
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set PATENT_EMBED_BATCH_SIZE 16
+```
 
-The system is ready. Available capabilities:
-
-- `/create-patent` - Create complete patent application
-- `/search-prior-art` - Search 100M+ patents
-- `/review-claims` - Analyze claims for 112(b) compliance
-- `/review-specification` - Check specification for 112(a) support
-- `/review-formalities` - Verify MPEP 608 formalities
-
-Tell the user to try: "Search MPEP for claim definiteness requirements"
+If needed, save `PATENT_MPEP_DEVICE` as `cpu` using the same `config set` command. Remove either saved override with `config unset KEY` when it is no longer needed. Rebuild with `/rebuild-index`.

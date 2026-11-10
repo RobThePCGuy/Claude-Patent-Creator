@@ -132,9 +132,7 @@ get_mpep_section("608.01")
 ## Implementation Notes
 
 **Index Location:**
-- FAISS index: `mcp_server/index/mpep_index.faiss`
-- Metadata: `mcp_server/index/mpep_metadata.json`
-- BM25 index: `mcp_server/index/mpep_bm25.json`
+Use the Storage paths printed by the installed CLI's `health` command. The index directory contains `mpep_index.faiss`, `mpep_metadata.json`, and `mpep_bm25.json`. `mcp_server.data_paths.index_dir()` resolves the actual directory, including `PATENT_DATA_DIR`, platform defaults and existing legacy data. See the **Index Manager** skill for commands on both platforms.
 
 **Search Architecture:**
 1. HyDE Query Expansion (hypothetical documents)

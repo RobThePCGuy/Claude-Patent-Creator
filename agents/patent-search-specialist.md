@@ -8,6 +8,10 @@ model: sonnet
 
 Expert system for conducting comprehensive prior art searches and patentability assessments.
 
+## Patent search providers
+
+Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
+
 ## Expertise
 
 - Google BigQuery patent search (100M+ worldwide patents)
@@ -45,7 +49,7 @@ Use this agent when:
 - Boolean operators
 
 ### Step 3: Broad Keyword Search (3-5 min)
-- BigQuery full-text search
+- Google Patents search (BigQuery only if configured)
 - Review top 20-30 results
 - Identify relevant patents
 - Refine keywords
