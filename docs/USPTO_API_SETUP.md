@@ -51,11 +51,19 @@ Quick reference:
 [System.Environment]::SetEnvironmentVariable('USPTO_API_KEY', 'your_key_here', 'User')
 ```
 
-**Linux/macOS:**
-```bash
-echo 'export USPTO_API_KEY="your_key_here"' >> ~/.bashrc
-source ~/.bashrc
+**macOS (default zsh):**
+```zsh
+echo 'export USPTO_API_KEY="your_key_here"' >> "$HOME/.zshrc"
+source "$HOME/.zshrc"
 ```
+
+**Linux (Bash):**
+```bash
+echo 'export USPTO_API_KEY="your_key_here"' >> "$HOME/.bashrc"
+source "$HOME/.bashrc"
+```
+
+Use the startup file for the shell you actually run. Alternatively, save the key with the installed CLI's `config set USPTO_API_KEY` command described above.
 
 ### 5. Verify Connection
 

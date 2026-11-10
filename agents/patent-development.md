@@ -1,82 +1,44 @@
 ---
 name: patent-development
-description: Specialized agent for developing and extending the Claude Patent Creator codebase - adding MCP tools, analyzers, and features
+description: Develop and extend the patent creator MCP server, analyzers and plugin workflows
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---
 
 # Patent Development Agent
 
-Expert system for developing and extending the Claude Patent Creator MCP server.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/development-assistant/SKILL.md` for executable API examples and `${CLAUDE_PLUGIN_ROOT}/skills/testing-assistant/SKILL.md` for test commands. Make changes in a source checkout, not the installed site-packages directory.
 
-## Expertise
+## Development patterns
 
-- MCP Python SDK 2.x (MCPServer) and MCP tool development
-- Patent analyzer implementation (Claims, Specification, Formalities)
-- RAG search architecture (FAISS + BM25 + HyDE + reranking)
-- BigQuery integration for patent search
-- Pydantic validation models
-- Performance monitoring and structured logging
-- PyTorch/GPU optimization
+1. Add tools to the appropriate module under `mcp_server/tools/`; register the group in `mcp_server/server.py`.
+2. Define Pydantic inputs in `mcp_server/validation.py`. Call `validate_input(Model, field=value)` inside the function. It is not a decorator.
+3. Register with `@mcp.tool()` and monitor with a named factory call such as `@track_performance("tool_name")`.
+4. Analyzer subclasses implement both `analyze` and `_issue_to_dict`, reset collected issues between calls and describe only checks actually performed.
+5. Add configuration through `Option` entries in `mcp_server/config.py`. Read effective values with `get_effective`.
+6. Add distributed plugin commands to root `commands/`.
+7. Add regression tests under `tests/`, run them against the checkout, and prove bug tests fail without the fix.
+8. Use `mcp_server/cli_command.py` for Python-generated user commands.
 
-## When to Use This Agent
+## Repository map
 
-Use this agent when:
-- Adding new MCP tools to the server
-- Creating new patent analyzers
-- Modifying search or indexing logic
-- Optimizing performance
-- Fixing bugs in existing code
-- Extending BigQuery integration
-- Adding new analysis capabilities
-
-## Development Patterns
-
-### Adding New MCP Tool
-
-1. Create tool in appropriate category (tools/*)
-2. Add Pydantic validation model (validation.py)
-3. Add @mcp.tool() decorator
-4. Add @validate_input decorator
-5. Add @track_performance decorator
-6. Register in server.py
-7. Add tests
-8. Update documentation
-
-### Adding New Analyzer
-
-1. Inherit from BaseAnalyzer
-2. Implement analyze() method
-3. Use structured issue reporting (critical/important/minor)
-4. Add MPEP citations
-5. Include remediation suggestions
-6. Create validator tool wrapper
-7. Add comprehensive tests
-
-### Performance Optimization
-
-- Use GPU when available (check device.py)
-- Batch operations for efficiency
-- Cache expensive computations
-- Use OperationTimer for profiling
-- Monitor with track_performance decorator
-
-## Code Structure
-
-```
+```text
 mcp_server/
-├── server.py (main MCPServer entry point)
-├── tools/ (MCP tool modules)
-├── analysis/ (patent analyzers)
-├── core_search/ (RAG search)
-├── infrastructure/ (logging, monitoring, validation)
-└── utilities/ (helpers)
+  server.py                 MCPServer entry point and tool registration
+  tools/                    MCP tool groups
+  analyzer_base.py          Shared analyzer contract
+  claims_analyzer.py        US claims checks
+  specification_analyzer.py US specification checks
+  formalities_checker.py    US formalities checks
+  epo_claims_analyzer.py     EPO claims checks
+  mpep_search.py            Legal-reference indexing and retrieval
+  bigquery_search.py        Optional BigQuery patent searches
+  config.py                 Saved settings and environment precedence
+  data_paths.py             Platform storage locations
+  hardware_detect.py        GPU detection and wheel selection
+  monitoring.py             Timers and performance decorators
+  logging_config.py         Structured logging
+  validation.py             Input models and validation function
 ```
 
-## Key Files
-
-- `server.py` - Main MCP server entry point
-- `validation.py` - Pydantic models for all tools
-- `monitoring.py` - Performance tracking
-- `logging_config.py` - Structured logging setup
-- `analyzer_base.py` - Base class for analyzers
+Use the **Testing Assistant** skill for local tests and optional service checks. SerpApi is the default patent-search provider; a missing BigQuery configuration must not block unrelated development or base-install tests. Record skipped checks and avoid claiming that a unit-test pass proves a live installation works.

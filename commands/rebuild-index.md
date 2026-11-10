@@ -1,49 +1,36 @@
 ---
-description: Rebuild MPEP search index (needed after MPEP updates or corruption)
+description: Rebuild the legal-reference index from downloaded sources
 allowed-tools: Bash
 ---
 
-# Rebuild MPEP Index
+# Rebuild the Index
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+Check source and index locations under Storage:
 
-Rebuild the hybrid search index (FAISS + BM25) from MPEP PDFs.
-
-## Instructions
-
-1. Verify MPEP PDFs are present (${CLAUDE_PLUGIN_ROOT}/pdfs)
-2. Run rebuild command
-3. Wait for completion (about 5 minutes with an NVIDIA GPU, 25-40 minutes otherwise; a progress line appears every few percent)
-4. Verify index health
-
-## Command
-
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/patent-creator setup --rebuild
-# Windows: $HOME\patent-creator-venv\Scripts\patent-creator.exe setup --rebuild
+"$HOME/patent-creator-venv/bin/patent-creator" health
 ```
 
-## What This Does
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health
+```
 
-- Deletes existing index files
-- Re-extracts text from all MPEP PDFs
-- Generates embeddings (BGE-base-en-v1.5)
-- Builds FAISS vector index
-- Builds BM25 keyword index
-- Creates metadata mappings
-- Verifies index integrity
+Use those locations, including any `PATENT_DATA_DIR` override. PDFs are not normally in the plugin folder. Setup downloads missing sources and rebuilds the index:
 
-## When to Rebuild
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/patent-creator" setup --rebuild
+```
 
-- MPEP PDFs updated
-- Index corruption detected
-- Slow or irrelevant search results
-- After changing embedding model
-- GPU newly available (for faster building)
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup --rebuild
+```
 
-## Time Estimates
+Wait for the command to finish and inspect its exit status and errors, then run `health` again and try an MPEP search through Claude Code.
 
-- RTX 3060 GPU: 5-10 minutes
-- RTX 4090 GPU: 3-5 minutes
-- CPU only: 35-65 minutes
-- Apple Silicon (M1/M2): 15-25 minutes
+A rebuild reprocesses existing source files. It does not replace them with newer legal editions. For an edition update, obtain the intended official source, check its edition, replace the relevant file in the reported PDF directory, then rebuild. Keep a backup before replacing sources or rebuilding.
+
+Use this after replacing source PDFs, changing the embedding model, or diagnosing index corruption. Build time depends on hardware and corpus size. See the **Index Manager** skill for memory settings and diagnostics.

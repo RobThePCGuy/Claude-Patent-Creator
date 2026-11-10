@@ -1,11 +1,15 @@
 ---
 name: patent-search
-description: Search 100M+ patents via the MCP server's BigQuery tools. No standalone scripts; everything goes through the MCP tools registered by the patent-creator server.
+description: Search patents with Google Patents via SerpApi or optional BigQuery tools. No standalone scripts; everything goes through the MCP tools registered by the patent-creator server.
 ---
 
 # Patent Search Skill
 
-This skill points Claude at the BigQuery patent-search tools registered by the patent-creator MCP server. Call the tools directly; do not shell out to Python.
+This skill points Claude at the patent-search tools registered by the patent-creator MCP server. Call the tools directly; do not shell out to Python.
+
+## Patent search providers
+
+Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
 
 ## When to use
 
@@ -66,11 +70,11 @@ So: batch with `get_patents_bigquery`, pass `include_claims=False` when you only
 
 **Prior art sweep:**
 1. `search_patents_google(query=…, limit=100)` — broad full-text scan, worldwide (fallback: `search_patents_bigquery(query=…, country="US")`).
-2. Pick the top hits' CPC codes with one `get_patents_bigquery(patent_numbers=[…], include_claims=False)`.
+2. Read the returned patent links for CPC codes. If BigQuery is configured, optionally batch details with `get_patents_bigquery(patent_numbers=[…], include_claims=False)`.
 3. `search_non_patent_literature(query=…, published_before="<priority date>")` — papers and preprints on the same concepts, free.
 4. `search_patents_google(query="<terms> CPC=<group>/00", limit=100)` — pull adjacent technology (fallback: `search_patents_by_cpc_bigquery`, ~234 GiB a search).
 
 **Cross-jurisdiction lookup:**
 1. `search_patents_google(query=…, country="EP")` (fallback: `search_patents_bigquery(query=…, country="EP")`).
-2. For the EP hits, one `get_patents_bigquery(patent_numbers=[…], include_claims=False)` to get their `family_id`s.
-3. `search_patent_family_bigquery(family_id=…)` to find the US member with full claims.
+2. Read the returned EP patent links for family members and follow the US publication links for claims. Report inaccessible records.
+3. If BigQuery is configured, optionally use `get_patents_bigquery(patent_numbers=[…], include_claims=False)` and `search_patent_family_bigquery(family_id=…)`.

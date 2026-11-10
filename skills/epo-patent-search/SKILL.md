@@ -7,7 +7,7 @@ model: sonnet
 
 # EPO Patent Search Skill
 
-Search European patents using the EPO Open Patent Services (OPS) API and Google BigQuery with EP country filtering.
+Search European patents with Google Patents through SerpApi by default. EPO OPS and BigQuery are optional providers for additional coverage.
 
 ## When to Use
 
@@ -40,7 +40,7 @@ Provides access to European patent data through two methods:
 
 ## Required Setup
 
-### BigQuery (Primary)
+### BigQuery (Optional)
 
 **Prerequisites**:
 1. Google Cloud Project (free to create)
@@ -50,7 +50,7 @@ Provides access to European patent data through two methods:
 **Setup**:
 ```bash
 gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=your-project-id
+"$HOME/patent-creator-venv/bin/patent-creator" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
 ### EPO OPS API (Optional, for full-text/legal status)
@@ -58,12 +58,20 @@ export GOOGLE_CLOUD_PROJECT=your-project-id
 **Prerequisites**:
 1. Register at https://developers.epo.org/
 2. Create an application to get Consumer Key and Secret
-3. Save them (Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe` in place of the Mac/Linux path)
+3. Save them with the installed CLI:
 
 **Setup**:
 ```bash
-~/patent-creator-venv/bin/patent-creator config set EPO_OPS_KEY "your-consumer-key"
-~/patent-creator-venv/bin/patent-creator config set EPO_OPS_SECRET "your-consumer-secret"
+"$HOME/patent-creator-venv/bin/patent-creator" config set EPO_OPS_KEY "your-consumer-key"
+"$HOME/patent-creator-venv/bin/patent-creator" config set EPO_OPS_SECRET "your-consumer-secret"
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set EPO_OPS_KEY "your-consumer-key"
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set EPO_OPS_SECRET "your-consumer-secret"
+# Only if using BigQuery:
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
 Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
@@ -73,16 +81,16 @@ Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
 When this skill is invoked:
 
 1. **Determine search type**:
-   - Keyword search: use BigQuery with country="EP" for speed
+   - Keyword search: check `check_google_patents_status`, then use Google Patents with `country="EP"`; use BigQuery only after `check_bigquery_status` succeeds
    - Full-text retrieval: use EPO OPS for complete claims/description
    - Legal status: use EPO OPS for procedural data
    - Family search: use EPO OPS INPADOC family service
-   - CPC search: use BigQuery for broad classification browsing
+   - CPC search: use a full CPC group in a Google Patents query, or BigQuery when configured; report any missing coverage
 
 2. **Execute search**:
 
    **Full-text keyword search (EP patents)**, falling back to
-   `search_patents_bigquery` with the same arguments if not configured:
+   `search_patents_bigquery` with the same arguments only if BigQuery is configured:
    ```python
    results = search_patents_google(
        query="blockchain authentication",
@@ -92,7 +100,7 @@ When this skill is invoked:
    )
    ```
 
-   **BigQuery CPC search (EP patents)**:
+   **Optional BigQuery CPC search (EP patents, only after its status check succeeds)**:
    ```python
    results = search_patents_by_cpc_bigquery(
        cpc_code="H04L9/32",

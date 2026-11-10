@@ -7,7 +7,7 @@ model: sonnet
 
 # BigQuery Patent Search Skill
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+> **Windows PowerShell:** replace a macOS/Linux Python invocation with `& "$HOME\patent-creator-venv\Scripts\python.exe"` and a CLI invocation with `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`. Keep script paths quoted. Python code blocks are Python source, not shell commands.
 
 Fast, cloud-based patent searching across 100 million+ worldwide patents using Google BigQuery.
 
@@ -60,11 +60,15 @@ This skill requires Google Cloud authentication:
 gcloud auth application-default login
 
 # Set project (get ID from console.cloud.google.com)
-export GOOGLE_CLOUD_PROJECT=your-project-id
+"$HOME/patent-creator-venv/bin/patent-creator" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
-**Environment Variable**:
-Set in `.env` file: `GOOGLE_CLOUD_PROJECT=your-project-id`
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set GOOGLE_CLOUD_PROJECT your-project-id
+```
+
+Restart Claude Code after saving the project. BigQuery is optional; the **Patent Search** skill uses SerpApi by default.
 
 ## How to Use
 
@@ -201,7 +205,7 @@ If BigQuery is not configured:
 1. Check if `google-cloud-bigquery` is installed
 2. Verify authentication: `gcloud auth application-default login`
 3. Confirm project ID in environment: `GOOGLE_CLOUD_PROJECT`
-4. Test with: `~/patent-creator-venv/bin/patent-creator check-bigquery`
+4. Test with: `"$HOME/patent-creator-venv/bin/patent-creator" check-bigquery`
 
 ## Cost Considerations
 

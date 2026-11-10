@@ -65,7 +65,7 @@ From a source checkout instead: `pip install -e .` inside a venv made in the che
 
 Handles GPU detection (installs the CUDA PyTorch build on NVIDIA and restarts itself), downloads, the index build (25-40 min without an NVIDIA GPU, with progress lines), Graphviz (asks first), BigQuery detection, and registration with a live connection test.
 
-**NVIDIA by hand only:** install the CUDA PyTorch build before `sentence-transformers`, or you get the CPU-only build: `~/patent-creator-venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cu128`.
+**GPU repairs:** let setup select the wheel for the detected GPU. Older NVIDIA cards need different wheels from recent cards. Follow `${CLAUDE_PLUGIN_ROOT}/docs/GPU_SETUP.md` and test an actual CUDA operation before claiming GPU acceleration works.
 
 ### Phase 4: BigQuery Authentication (Optional)
 

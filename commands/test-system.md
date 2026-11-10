@@ -1,57 +1,70 @@
 ---
-description: Run comprehensive system tests for patent creator (analyzers, BigQuery, GPU, embeddings)
+description: Run local diagnostics and selected optional service tests
 allowed-tools: Bash
 argument-hint: [test-type]
 ---
 
-# Test Patent Creator System
+# Test Patent Creator
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+The diagnostic scripts live in the plugin source, not in the pip package. Resolve `${CLAUDE_PLUGIN_ROOT}` to the actual plugin folder first. For a source checkout, use its absolute path. Set `PLUGIN_ROOT` below to that location; the example deliberately includes a space. Keep paths quoted.
 
-Run test suites to verify all components are working correctly.
-
-## Instructions
-
-1. Choose test type based on what needs verification
-2. Run the appropriate test script
-3. Review results and fix any failures
-
-## Test Types
-
-### Analyzers Test
-Tests claims, specification, and formalities analyzers:
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
+PLUGIN_ROOT="/absolute/path/Patent Plugin"
 ```
 
-### GPU Test
-Verify GPU detection and CUDA support:
-```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+Windows PowerShell:
+```powershell
+$PLUGIN_ROOT = "C:\absolute\path\Patent Plugin"
 ```
 
-### BigQuery Test
-Test patent search via BigQuery:
+
+## Local checks
+
+Run installation diagnostics, then analyzers. Inspect failures and exit status before continuing:
+
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_install.py"
 ```
 
-### Embedding Speed Test
-Benchmark embedding generation:
-```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_install.py"
 ```
 
-### Complete Installation Test
-Full system validation:
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_analyzers.py"
 ```
 
-## Arguments
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_analyzers.py"
+```
 
-- `analyzers` - Test patent analyzers
-- `gpu` - Test GPU functionality
-- `bigquery` - Test BigQuery integration
-- `embeddings` - Test embedding performance
-- `all` - Run all tests
+## Optional checks
+
+Choose only the component being tested. A missing optional service is a skip, not a failed base installation.
+
+- `gpu`: `scripts/test_gpu.py`, for an intended NVIDIA/CUDA installation.
+- `embeddings`: `scripts/test_embedding_speed.py`, for a local model benchmark; it can download model data.
+- `bigquery`: `scripts/test_bigquery.py`, only with configured BigQuery credentials. This can consume query quota.
+- `analyzers`: `scripts/test_analyzers.py`.
+- `all`: local checks plus configured optional components; report skipped components explicitly.
+
+For example, an optional GPU check:
+
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_gpu.py"
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_gpu.py"
+```
+
+For credentials saved only with `config set`, prefer the corresponding MCP status/search tools after restarting Claude Code. These standalone diagnostics do not all load saved settings; an unset-key result from a script does not prove that the saved configuration is broken.
+
+Replace only the script filename to run another listed diagnostic. Confirm actual search and review behavior in Claude Code as well; diagnostics alone do not verify the complete workflow.

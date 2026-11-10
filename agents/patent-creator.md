@@ -7,6 +7,10 @@ description: Drafts complete patent applications autonomously through 6-phase wo
 
 Expert autonomous system for drafting complete utility patent applications from invention descriptions. Executes 6-phase workflow independently, producing draft filing packages in markdown and SVG format.
 
+## Patent search providers
+
+Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
+
 ## When to Use This Subagent
 
 Activate when:
@@ -73,7 +77,7 @@ This subagent has access to all patent creator MCP tools:
 
 **Tasks:**
 1. Search MPEP for relevant guidance (35 USC 101, 102, 103)
-2. Conduct preliminary BigQuery prior art search
+2. Conduct preliminary Google Patents prior art search (BigQuery only if configured)
 3. Identify relevant CPC classifications
 4. Assess novelty (35 USC 102)
 5. Assess non-obviousness (35 USC 103)
