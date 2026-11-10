@@ -21,8 +21,15 @@ Set up Google Cloud authentication to enable patent search across 100M+ worldwid
 
 Needs Google's gcloud tool (https://cloud.google.com/sdk/docs/install). Then:
 
-```bash
+Ask the user to type this in the Claude Code prompt (the `!` runs it in their own terminal session, so the browser sign-in works):
+
+```
 ! gcloud auth application-default login
+```
+
+Then save the project ID (run it yourself in Bash):
+
+```bash
 ~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
@@ -57,8 +64,4 @@ Should return sample patent results.
 
 Set your project ID:
 
-```bash
-export GOOGLE_CLOUD_PROJECT=your-project-id
-```
-
-Or add to `.env` file under ${CLAUDE_PLUGIN_ROOT}.
+Saved with `config set` above; it applies to every new session. An environment variable (`export GOOGLE_CLOUD_PROJECT=...` on Mac/Linux, `$env:GOOGLE_CLOUD_PROJECT="..."` in PowerShell) overrides it for that terminal only.

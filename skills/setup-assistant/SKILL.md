@@ -76,7 +76,7 @@ The setup auto-detects existing gcloud credentials. If already authenticated, Bi
 **If the user wants to enable BigQuery later:**
 ```bash
 # One command — opens browser for Google sign-in (free, no credit card)
-! gcloud auth application-default login
+! gcloud auth application-default login   # typed in the Claude Code prompt; in a plain terminal drop the "!"
 ```
 
 **Do NOT present BigQuery as a failure or required step.** It is a bonus feature.

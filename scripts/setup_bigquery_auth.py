@@ -19,11 +19,21 @@ INSTALL_URL = "https://cloud.google.com/sdk/docs/install"
 
 
 def _cli() -> str:
-    folder = Path(sys.executable).absolute().parent
-    for name in ("patent-creator", "patent-creator.exe"):
-        if (folder / name).exists():
-            return str(folder / name)
-    return "patent-creator"
+    """The installed patent-creator command, quoted for this shell."""
+    try:
+        from mcp_server.cli_command import installed_cli
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        try:
+            from mcp_server.cli_command import installed_cli
+        except ImportError:
+            return "patent-creator"
+    return installed_cli()
+
+
+def _exe(cli: str) -> str:
+    """The bare path from a possibly quoted command, for subprocess."""
+    return cli.removeprefix("& ").strip('"')
 
 
 def main() -> int:
@@ -44,7 +54,7 @@ def main() -> int:
 
     cli = _cli()
     if project:
-        subprocess.call([cli, "config", "set", "GOOGLE_CLOUD_PROJECT", project])
+        subprocess.call([_exe(cli), "config", "set", "GOOGLE_CLOUD_PROJECT", project])
     else:
         print(f'\nNow save your project ID: {cli} config set GOOGLE_CLOUD_PROJECT your-project-id')
     print(f"Then test it: {cli} check-bigquery")

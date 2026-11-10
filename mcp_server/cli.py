@@ -279,7 +279,8 @@ def _auto_detect_bigquery():
         # Try to run auth non-interactively (will fail, but the error is clear)
         print("\n[INFO] gcloud CLI detected but no application-default credentials", file=sys.stderr)
         print("  To enable BigQuery patent search (100M+ patents, free):", file=sys.stderr)
-        print("  Run: ! gcloud auth application-default login", file=sys.stderr)
+        print("  In a terminal, run: gcloud auth application-default login", file=sys.stderr)
+        print("  (inside Claude Code you can type: ! gcloud auth application-default login)", file=sys.stderr)
     else:
         # No gcloud at all — this is fine, BigQuery is optional
         print("\n[INFO] BigQuery patent search not configured (optional)", file=sys.stderr)

@@ -1,5 +1,7 @@
 # USPTO Open Data Portal API Setup
 
+> **Commands on this page** assume `patent-creator` is on your PATH. With the README's install, type `~/patent-creator-venv/bin/patent-creator` instead (Windows PowerShell: `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`). Keys and settings are easiest to save with `patent-creator config set KEY VALUE`; an environment variable overrides a saved value.
+
 Complete guide for setting up the USPTO Open Data Portal API to access 11M+ patents in real-time.
 
 ## Overview
@@ -60,7 +62,7 @@ source ~/.bashrc
 Check the system status to confirm API connection:
 
 ```bash
-patent-creator status
+~/patent-creator-venv/bin/patent-creator status
 ```
 
 You should see:

@@ -114,7 +114,7 @@ Rule search, claim and formality checks, diagrams (once Graphviz is installed) a
    ${CLI} config set SERPAPI_API_KEY "THE_KEY"
    ```
    Never echo the key back in chat. They restart Claude Code afterward.
-2. **BigQuery (optional).** Needs a Google Cloud project (the BigQuery sandbox works without a billing account). If setup output showed `BigQuery: [OK]`, it already works. Otherwise: `! gcloud auth application-default login`, then `${CLI} config set GOOGLE_CLOUD_PROJECT their-project-id`, then `${CLI} check-bigquery`.
+2. **BigQuery (optional).** Needs a Google Cloud project (the BigQuery sandbox works without a billing account). If setup output showed `BigQuery: [OK]`, it already works. Otherwise ask the user to type `! gcloud auth application-default login` in the Claude Code prompt (it opens their browser), then `${CLI} config set GOOGLE_CLOUD_PROJECT their-project-id`, then `${CLI} check-bigquery`.
 
 Do not present a missing key as a failed setup; the rest of the system is ready.
 

@@ -1,5 +1,7 @@
 # GPU Setup Guide
 
+> **Commands on this page** assume `patent-creator` is on your PATH. With the README's install, type `~/patent-creator-venv/bin/patent-creator` instead (Windows PowerShell: `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`). Keys and settings are easiest to save with `patent-creator config set KEY VALUE`; an environment variable overrides a saved value.
+
 ## Your Current Status
 
 ✅ **GPU is NOW ENABLED!**
@@ -51,17 +53,17 @@ For servers with multiple users sharing a GPU:
 **PowerShell:**
 ```powershell
 # User 1: Use GPU (default)
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 
 # User 2: Force CPU (don't compete for GPU)
 $env:FORCE_CPU=1
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 ```
 
 **Linux/macOS:**
 ```bash
 # User 1: Use GPU (default)
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 
 # User 2: Force CPU
 FORCE_CPU=1 patent-creator serve
@@ -73,15 +75,15 @@ FORCE_CPU=1 patent-creator serve
 ```powershell
 # Use only GPU 0
 $env:CUDA_VISIBLE_DEVICES="0"
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 
 # Use GPUs 0 and 1
 $env:CUDA_VISIBLE_DEVICES="0,1"
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 
 # Hide all GPUs (CPU mode)
 $env:CUDA_VISIBLE_DEVICES=""
-patent-creator serve
+~/patent-creator-venv/bin/patent-creator serve
 ```
 
 **Linux/macOS:**
@@ -134,7 +136,7 @@ You should see:
 
 Or use the status command:
 ```powershell
-patent-creator status
+~/patent-creator-venv/bin/patent-creator status
 ```
 
 ## If You Need to Reinstall GPU Support
@@ -284,10 +286,10 @@ Your GPU is ready! You can now:
 # venv\Scripts\activate  (Windows) or source venv/bin/activate (Linux/macOS)
 
 # Build the MPEP index with GPU acceleration
-patent-creator setup
+~/patent-creator-venv/bin/patent-creator setup
 
 # Or rebuild if you already have one
-patent-creator setup --rebuild
+~/patent-creator-venv/bin/patent-creator setup --rebuild
 
 ```
 

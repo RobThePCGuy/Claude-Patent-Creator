@@ -30,20 +30,20 @@ PDFs Not Present -> Download (2-5 min, 500MB)
   -> Maintenance (Verify -> Optimize -> Update)
 ```
 
-Paths below assume the README install (`~/patent-creator-venv`) and default data folder. `~/patent-creator-venv/bin/patent-creator health` prints the actual locations under "Storage" (Windows: `%APPDATA%\claude-patent-creator\data`; `PATENT_DATA_DIR` moves it). Below, `PC=~/patent-creator-venv/bin/patent-creator`, `PY=~/patent-creator-venv/bin/python`, `DATA=~/.local/share/claude-patent-creator/data`.
+Paths below assume the README install (`~/patent-creator-venv`) and default data folder. `~/patent-creator-venv/bin/patent-creator health` prints the actual locations under "Storage" (Windows: `%APPDATA%\claude-patent-creator\data`; `PATENT_DATA_DIR` moves it). In PowerShell, run each command as `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health` and so on.
 
 ## Phase 1: Source PDFs
 
-**Check status:** `$PC health` (lists each source; `[--] removed after indexing` is fine: the PDFs are only needed to rebuild).
+**Check status:** `~/patent-creator-venv/bin/patent-creator health` (lists each source; `[--] removed after indexing` is fine: the PDFs are only needed to rebuild).
 
 ```bash
-ls "$DATA/pdfs"   # mpep-*.pdf, consolidated_laws.pdf, consolidated_rules.pdf, EPO/PCT files
-$PC download-all  # fetch any missing US sources
+ls "$HOME/.local/share/claude-patent-creator/data/pdfs"   # mpep-*.pdf, consolidated_laws.pdf, consolidated_rules.pdf, EPO/PCT files
+~/patent-creator-venv/bin/patent-creator download-all  # fetch any missing US sources
 ```
 
 **Verify integrity:**
 ```bash
-$PY -c "
+~/patent-creator-venv/bin/python -c "
 import fitz, os
 from pathlib import Path
 for pdf in Path(os.path.expanduser('~/.local/share/claude-patent-creator/data/pdfs')).glob('*.pdf'):
@@ -57,7 +57,7 @@ for pdf in Path(os.path.expanduser('~/.local/share/claude-patent-creator/data/pd
 ## Phase 2: Index Building
 
 ```bash
-$PC setup --rebuild   # downloads anything missing, then rebuilds
+~/patent-creator-venv/bin/patent-creator setup --rebuild   # downloads anything missing, then rebuilds
 ```
 
 Takes about 5 minutes with an NVIDIA GPU and 25-40 minutes otherwise (Apple Silicon builds on the CPU). A progress line with time left appears every few percent. `PATENT_MPEP_DEVICE=cpu` forces the CPU if the GPU runs out of memory. Chunking and batch size are fixed in code; `build_index()` takes only `force_rebuild`.
@@ -65,8 +65,8 @@ Takes about 5 minutes with an NVIDIA GPU and 25-40 minutes otherwise (Apple Sili
 ## Phase 3: Verification
 
 ```bash
-ls -lh "$DATA/index"   # mpep_index.faiss, mpep_metadata.json, mpep_bm25.json
-$PC health             # Index: Built [OK], chunk count, and any "needs a rebuild" warning
+ls -lh "$HOME/.local/share/claude-patent-creator/data/index"   # mpep_index.faiss, mpep_metadata.json, mpep_bm25.json
+~/patent-creator-venv/bin/patent-creator health             # Index: Built [OK], chunk count, and any "needs a rebuild" warning
 ```
 
 Then ask Claude: "Search MPEP for claim definiteness". Results show the chapter, PDF file and page.
@@ -76,14 +76,14 @@ Then ask Claude: "Search MPEP for claim definiteness". Results show the chapter,
 Rebuild after an MPEP revision, if health reports a problem, or when health says the index needs a rebuild (setup also does this automatically when it detects a known defect).
 
 ```bash
-cp -r "$DATA/index" "$DATA/index_backup_$(date +%Y%m%d)"   # optional backup
-$PC setup --rebuild
-$PC health
+cp -r "$HOME/.local/share/claude-patent-creator/data/index" "$HOME/.local/share/claude-patent-creator/data/index_backup_$(date +%Y%m%d)"   # optional backup
+~/patent-creator-venv/bin/patent-creator setup --rebuild
+~/patent-creator-venv/bin/patent-creator health
 ```
 
 ## Phase 5: Content Updates
 
-Re-running `$PC setup` downloads any source that is missing; `$PC setup --rebuild` re-indexes everything. Incremental updates are not supported.
+Re-running `~/patent-creator-venv/bin/patent-creator setup` downloads any source that is missing; `~/patent-creator-venv/bin/patent-creator setup --rebuild` re-indexes everything. Incremental updates are not supported.
 
 ## Troubleshooting
 
