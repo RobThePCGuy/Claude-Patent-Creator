@@ -1,6 +1,6 @@
 ---
 name: prior-art-search
-description: Systematic 7-step methodology for comprehensive patent prior art searches and patentability assessments using BigQuery and CPC classification
+description: Systematic 7-step methodology for comprehensive patent prior art searches and patentability assessments using Google Patents (SerpApi) or BigQuery, CPC classification and research-paper search
 tools: Bash, Read, Write
 model: sonnet
 ---
@@ -22,7 +22,8 @@ Invoke this skill when users ask to:
 ## What This Skill Does
 
 Implements a professional 7-step prior art search methodology combining:
-- Keyword searches across 100M+ patents (BigQuery)
+- Keyword searches across 100M+ patents (Google Patents via SerpApi, or BigQuery)
+- Research papers before the priority date (`search_non_patent_literature`)
 - CPC classification searches
 - USPTO API searches
 - Timeline analysis
@@ -94,24 +95,23 @@ Searches (run each separately, then merge/dedupe):
 
 **Goal**: Cast wide net to find relevant patents
 
+
+**Which patent search to use:** call `check_google_patents_status` first. If it is ready (the free SerpApi key from the README's Quick Start, Step 3), run every keyword search with `search_patents_google`. If not, use `search_patents_bigquery` only when `check_bigquery_status` says BigQuery is configured. If neither is set up, stop and tell the user patent search needs one free key (README Quick Start, Step 3) rather than reporting "no prior art". CPC searches (`search_patents_by_cpc_bigquery`) need BigQuery; without it, say in the report that the CPC step was done as keyword searches only.
+
 **Process**:
-1. Run keyword searches on BigQuery
+1. Run keyword searches (`search_patents_google`, or `search_patents_bigquery` as above)
 2. Review top 20-30 results per query
 3. Identify most relevant patents
 4. Refine keyword strategy based on results
 5. Document relevant patents found
 
-**Code**:
-```python
-from mcp_server.bigquery_search import BigQueryPatentSearch
-searcher = BigQueryPatentSearch()
-
-results = searcher.search_by_keywords(
-    query="blockchain authentication",  # terms AND-matched, ranked by relevance
-    limit=30,
-    country="US",
-    start_year=2015,  # filing year; look back 5-10 years
-)
+**Tool calls** (MCP tools, not Python imports):
+```
+search_patents_google(query="blockchain authentication", limit=30, start_year=2015)
+# fallback when SerpApi isn't set up but BigQuery is:
+search_patents_bigquery(query="blockchain authentication", limit=30, country="US", start_year=2015)
+# papers count as prior art too; set published_before to the priority date:
+search_non_patent_literature(query="blockchain authentication", published_before="2024-01-15")
 ```
 
 **Output**: List of 10-20 potentially relevant patents
@@ -212,7 +212,7 @@ older = searcher.search_by_keywords(query, start_year=2015, end_year=2021)
 - Invention: [Brief description]
 - Search Date: [Date]
 - Searcher: Claude Patent Creator
-- Databases: BigQuery (100M+ patents), USPTO API
+- Databases: whichever answered: Google Patents (SerpApi) or BigQuery, plus the paper sources `search_non_patent_literature` reports as searched
 - Time Period: [Year range]
 
 ## Patentability Assessment

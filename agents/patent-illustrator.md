@@ -163,10 +163,13 @@ reference_map = {
     "Communication Interface": 50
 }
 
+from pathlib import Path
+
 annotated_path = generator.add_reference_numbers(
-    svg_path="system_diagram.svg",
+    svg_path=Path("system_diagram.svg"),  # a Path, e.g. the one render returned
     reference_map=reference_map
 )
+# Or the MCP tool: add_diagram_references(svg_path="system_diagram.svg", reference_map=reference_map)
 ```
 
 **Output**: Annotated SVG with reference numbers
@@ -182,7 +185,7 @@ annotated_path = generator.add_reference_numbers(
 Pre-built templates for common patent diagrams:
 
 ```python
-templates = generator.get_diagram_templates()
+templates = generator.get_templates()  # MCP tool: get_diagram_templates()
 
 # Available templates:
 # - simple_flowchart: Basic process flow with start/end

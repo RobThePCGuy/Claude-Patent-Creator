@@ -113,7 +113,7 @@ SEARCH QUERIES (Prioritized):
 **Objective:** Cast wide net to identify relevant prior art
 
 **Tasks:**
-1. Execute primary keyword searches (BigQuery)
+1. Execute primary keyword searches (`search_patents_google`; `search_patents_bigquery` only if Google Patents is not set up and BigQuery is; if neither, stop and say patent search needs a free key)
 2. Execute secondary keyword searches
 3. Scan results for relevance
 4. Note patent numbers of closest matches
@@ -205,7 +205,7 @@ Related CPC Codes (for consideration):
 - Comprehensive: Include all matching patents
 
 **Tools Used:**
-- `search_patents_by_cpc_bigquery` for each CPC code
+- `search_patents_by_cpc_bigquery` for each CPC code (needs BigQuery; without it, run keyword searches built from the CPC titles and state that in SEARCH LIMITATIONS)
 
 **Output:**
 ```
@@ -381,7 +381,7 @@ CONFIDENCE LEVEL: HIGH/MEDIUM/LOW
 [Reasoning for confidence level]
 
 SEARCH LIMITATIONS:
-- This search covered BigQuery patent database (100M+ worldwide patents, updated weekly)
+- Patent sources searched: [Google Patents via SerpApi and/or BigQuery, whichever answered]. CPC step: [BigQuery CPC search, or keyword-only because BigQuery is not configured]
 - Papers searched in: [sources that answered, e.g. OpenAlex, arXiv]. NOT searched: white papers, product documentation, and any paper source reported busy or failed
 - NOT searched: unpublished patent applications (18-month publication delay)
 - NOT searched: foreign-language patents without English abstracts

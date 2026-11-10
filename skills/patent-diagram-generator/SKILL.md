@@ -169,7 +169,7 @@ When this skill is invoked:
 
 Get common templates:
 ```python
-templates = generator.get_diagram_templates()
+templates = generator.get_templates()  # MCP tool: get_diagram_templates()
 
 # Available templates:
 # - simple_flowchart: Basic process flow
