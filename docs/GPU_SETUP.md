@@ -40,9 +40,8 @@ With PyTorch on GPU (even with FAISS on CPU):
 |-----------|-------------|-----------|---------|
 | Embedding generation | 5-10 sec | 0.5-1 sec | **10x** |
 | Index building (MPEP) | 15-20 min | 3-4 min | **5x** |
-| Index building (Patents, all 9.2M) | ~270 hours | ~27 hours | **10x** |
 
-**Note:** Full patent corpus indexing (17.6M chunks) takes ~27 hours on RTX 5090 GPU at 1.4s/batch. This is a one-time operation.
+**Note:** The local index contains legal references. This package does not implement offline patent-corpus indexing or search.
 
 ## Multi-User GPU Configuration
 

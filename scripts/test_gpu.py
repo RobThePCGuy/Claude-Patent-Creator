@@ -31,6 +31,7 @@ except Exception as e:
 
 # Test 2: Check if sentence-transformers works
 try:
+    import sentence_transformers  # noqa: F401
 
     print("\n[OK] sentence-transformers imported successfully")
 except Exception as e:

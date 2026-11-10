@@ -241,10 +241,13 @@ Top CPC Codes in Results:
 
 | Method | Patents | Coverage | Speed | Cost |
 |--------|---------|----------|-------|------|
-| BigQuery (EP) | ~5M EP | EP applications + grants | 3-4s | Free* |
+| BigQuery (EP) | ~5M EP | EP applications + grants | 3-4s | Scan quota* |
 | EPO OPS | Worldwide collection | Available full text + bibliographic data | 1-3s | Free** |
 
-*BigQuery free tier: 1TB queries/month (~20,000 searches)
+*BigQuery allowance: 1 TiB of scans per month. Searches can scan hundreds of GiB;
+roughly 325-341 GiB was observed for default US keyword searches (about three
+per allowance). EP queries select different fields. Use each query's dry-run
+estimate; do not budget thousands of searches.
 **EPO OPS: Fair use (2.5GB data traffic per week)
 
 ## Tools Available

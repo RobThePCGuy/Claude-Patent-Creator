@@ -272,7 +272,9 @@ class PatentDiagramGenerator:
 
         return self.render_dot_diagram(dot_code, filename, output_format)
 
-    def add_reference_numbers(self, svg_path: Path, reference_map: dict[str, int]) -> Path:
+    def add_reference_numbers(
+        self, svg_path: Path, reference_map: dict[str, int], *, return_report: bool = False
+    ) -> Any:
         """
         Add patent-style reference numbers to an SVG diagram
 
@@ -281,7 +283,7 @@ class PatentDiagramGenerator:
             reference_map: Dict mapping element text/id to reference number
 
         Returns:
-            Path to annotated SVG file
+            Path to annotated SVG file, or a change report when return_report=True
 
         Example:
             reference_map = {
@@ -307,29 +309,43 @@ class PatentDiagramGenerator:
         ns = {"svg": "http://www.w3.org/2000/svg"}
 
         if root is None:
-            return svg_path
+            raise ValueError("SVG has no root element")
 
-        # Find text elements and add reference numbers
-        for text_elem in root.findall(".//svg:text", ns):
-            text_content = "".join(text_elem.itertext()).strip()
-
-            # Check if this text matches a reference
+        # Graphviz emits multiline labels as sibling text elements in a node.
+        # Other renderers use tspans inside one text element.
+        groups = []
+        grouped = set()
+        for node in root.findall(".//svg:g", ns):
+            if "node" in node.get("class", "").split():
+                texts = node.findall(".//svg:text", ns)
+                if texts:
+                    groups.append(texts)
+                    grouped.update(texts)
+        groups.extend([text] for text in root.findall(".//svg:text", ns) if text not in grouped)
+        matched = set()
+        count = 0
+        for texts in groups:
+            label = " ".join(" ".join(t.itertext()) for t in texts)
+            label = " ".join(label.split()).casefold()
             for pattern, ref_num in reference_map.items():
-                if pattern.lower() in text_content.lower():
-                    # Add reference number in parentheses
-                    # Graphviz puts text in <tspan> children, so check those first
-                    tspans = text_elem.findall("svg:tspan", ns) if ns else text_elem.findall("tspan")
+                normalized = " ".join(pattern.split()).casefold()
+                if normalized and normalized in label:
+                    target = texts[-1]
+                    tspans = target.findall(".//svg:tspan", ns)
                     if tspans:
-                        last_tspan = tspans[-1]
-                        last_tspan.text = f"{last_tspan.text or ''} ({ref_num})"
-                    elif text_elem.text:
-                        text_elem.text = f"{text_elem.text} ({ref_num})"
+                        target = tspans[-1]
+                    target.text = f"{target.text or ''} ({ref_num})"
+                    matched.add(pattern)
+                    count += 1
                     break
 
         # Save annotated SVG
         output_path = svg_path.parent / f"{svg_path.stem}_annotated{svg_path.suffix}"
         tree.write(output_path, encoding="utf-8", xml_declaration=True)
 
+        if return_report:
+            return {"path": output_path, "num_references": count,
+                    "unmatched_labels": [label for label in reference_map if label not in matched]}
         return output_path
 
     def get_templates(self) -> dict[str, str]:

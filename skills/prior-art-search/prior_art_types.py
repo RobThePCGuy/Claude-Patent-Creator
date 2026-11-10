@@ -258,10 +258,6 @@ def search_prior_art(
     # Cap top_k
     top_k = min(max(1, top_k), 100)
 
-    # Default country to US if not specified
-    if country is None:
-        country = "US"
-
     # Default search fields
     if search_fields is None:
         search_fields = ["title", "abstract", "claims"]
@@ -270,25 +266,11 @@ def search_prior_art(
         # Get BigQuery searcher
         searcher = _get_bigquery_searcher()
 
-        # If CPC filter is provided, use CPC search, otherwise use keyword search
-        if cpc_filter and len(cpc_filter) > 0:
-            # Use CPC search for the first filter only
-            raw_results = searcher.search_by_cpc(
-                cpc_code=cpc_filter[0],
-                limit=top_k,
-                country=country,
-            )
-        else:
-            # Execute keyword search
-            raw_results = searcher.search_by_keywords(
-                query=query,
-                country=country,
-                limit=top_k,
-                offset=0,
-                start_year=start_year,
-                end_year=end_year,
-                search_fields=search_fields,
-            )
+        raw_results = searcher.search_by_keywords(
+            query=query, country=country, limit=top_k, offset=0,
+            start_year=start_year, end_year=end_year,
+            search_fields=search_fields, cpc_filter=cpc_filter,
+        )
 
         # Convert to PriorArtHit objects
         hits = []
@@ -324,6 +306,7 @@ def search_prior_art(
                 "country": country,
                 "date_range": f"{start_year}-{end_year}" if start_year or end_year else None,
                 "search_fields": search_fields,
+                "cpc_filter": cpc_filter,
             },
             "backend": "bigquery",
         }

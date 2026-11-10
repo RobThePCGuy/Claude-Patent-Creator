@@ -34,8 +34,7 @@ def _render(message: str) -> str:
 def _pip() -> str:
     """pip for the interpreter running this tool: a bare 'pip' in an
     unactivated venv would install into the wrong Python."""
-    exe = str(Path(sys.executable).absolute())
-    return (f'"{exe}"' if " " in exe else exe) + " -m pip"
+    return _render_cmd("pip install").removesuffix(" install")
 
 
 try:
@@ -399,9 +398,11 @@ class SystemHealthChecker:
         try:
             import subprocess
 
+            import graphviz  # noqa: F401
+
             # Check system Graphviz installation
             try:
-                result = subprocess.run(["dot", "-V"], capture_output=True, text=True, timeout=5)
+                result = subprocess.run(["dot", "-V"], capture_output=True, text=True, timeout=5, check=True)
                 version = result.stderr.strip() if result.stderr else result.stdout.strip()
 
                 if logger:
@@ -414,7 +415,7 @@ class SystemHealthChecker:
                     "system_command": True,
                     "version": version,
                 }
-            except (subprocess.TimeoutExpired, FileNotFoundError):
+            except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError):
                 if logger:
                     logger.warning(
                         "health_check_graphviz_partial",
@@ -437,7 +438,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "python_package": False,
                 "system_command": False,
-                "fix": _render_cmd("pip install graphviz && sudo apt install graphviz"),
+                "fix": _render_cmd("pip install graphviz"),
                 "required_for": ["diagram generation tools"],
             }
 
@@ -500,7 +501,7 @@ class SystemHealthChecker:
             elif free_gb < 20:
                 status = "warning"
                 ready = True
-                message = "Limited space. Cannot download patent corpus (requires 15GB)."
+                message = "Limited disk space for source downloads and rebuilding the legal-reference index."
             else:
                 status = "healthy"
                 ready = True
