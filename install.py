@@ -555,7 +555,7 @@ def register_with_claude():
 
     # Get absolute paths - use Path.resolve() to ensure clean absolute paths
     project_root = Path(__file__).parent.resolve()
-    python_path = Path(get_venv_python()).resolve()  # sys.executable is already absolute
+    python_path = Path(get_venv_python()).absolute()  # never resolve: keeps the venv symlink
     server_path = (project_root / "mcp_server" / "server.py").resolve()
 
     # Verify paths exist

@@ -448,6 +448,18 @@ def check_graphviz_installed() -> dict[str, Any]:
     status["ready"] = status["python_package"] and status["system_command"]
 
     if not status["ready"]:
-        status["message"] = "System Graphviz not installed. See installation instructions."
+        import platform as _platform
+
+        system = _platform.system()
+        if system == "Darwin":
+            cmd = "brew install graphviz"
+        elif system == "Windows":
+            cmd = "winget install graphviz"
+        else:
+            cmd = "sudo apt-get install graphviz"
+        status["message"] = (
+            f"The free Graphviz program is missing. Install it by running: {cmd} "
+            "(or see https://graphviz.org/download/), then restart Claude Code."
+        )
 
     return status

@@ -857,6 +857,10 @@ class MPEPIndex:
         print("\nThe index has been successfully built from these PDFs.", file=sys.stderr)
         print("You can now delete the PDF files to save disk space.", file=sys.stderr)
         print("The index will continue to work without them.", file=sys.stderr)
+        print(
+            "Rebuilding the index later downloads them again (about 500 MB).",
+            file=sys.stderr,
+        )
         print(f"{'='*60}", file=sys.stderr)
 
         try:

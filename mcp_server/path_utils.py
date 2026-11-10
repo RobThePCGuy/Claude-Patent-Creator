@@ -11,6 +11,19 @@ from pathlib import Path
 from typing import Union
 
 
+def interpreter_path(path: Union[str, Path, None] = None) -> str:
+    """Absolute path to a Python interpreter, keeping venv symlinks intact.
+
+    ``Path.resolve()`` follows a virtual environment's ``bin/python`` symlink
+    back to the base interpreter, which has none of the venv's packages.
+    Anything that records "the Python to run this tool with" must use this.
+    """
+    import sys
+
+    # .absolute(), never .resolve(): resolve() follows the venv symlink.
+    return str(Path(path if path is not None else sys.executable).absolute())
+
+
 class PathFormatter:
     """Cross-platform path formatting and quoting for various shells"""
 
@@ -161,8 +174,11 @@ class PathFormatter:
 
         Returns: (python_str, script_str) formatted appropriately
         """
-        # MCP registration uses POSIX-style paths even on Windows
-        python_str = PathFormatter.ensure_posix_str(python_path)
+        # MCP registration uses POSIX-style paths even on Windows.
+        # The interpreter path must NOT be resolved: a venv's python is a
+        # symlink to the base interpreter, and following it registers a
+        # Python that cannot import this package's dependencies.
+        python_str = interpreter_path(python_path).replace("\\", "/")
         script_str = PathFormatter.ensure_posix_str(script_path)
 
         return python_str, script_str

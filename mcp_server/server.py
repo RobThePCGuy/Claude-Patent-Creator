@@ -667,7 +667,7 @@ def _run_health_checks():
         for warning in warnings:
             print(f"  - {warning}", file=sys.stderr)
         print("\nServer will start with limited functionality.", file=sys.stderr)
-        print("Run 'patent-creator status --verbose' for details.\n", file=sys.stderr)
+        print("Run 'patent-creator health' for details.\n", file=sys.stderr)
     else:
         print("[OK] All systems operational\n", file=sys.stderr)
 
