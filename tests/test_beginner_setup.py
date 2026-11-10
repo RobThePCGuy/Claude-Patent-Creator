@@ -220,3 +220,101 @@ def test_short_abstract_is_advice_and_over_150_words_is_a_failure():
     assert short["results"]["abstract"]["compliant"] is True
     long = FormalitiesChecker().check_all_formalities(abstract=" ".join(["word"] * 151) + ".")
     assert long["results"]["abstract"]["compliant"] is False
+
+
+# --- Third fresh-user walk --------------------------------------------------
+
+
+def _run_isolated(tmp_path, code, extra_env=None):
+    import subprocess
+
+    home = tmp_path / "home"
+    (home / ".config" / "claude-patent-creator").mkdir(parents=True, exist_ok=True)
+    env = {"HOME": str(home), "PATH": os.environ.get("PATH", ""), "APPDATA": str(home)}
+    if os.name == "nt":
+        env["SYSTEMROOT"] = os.environ.get("SYSTEMROOT", "")
+    env.update(extra_env or {})
+    root = Path(__file__).resolve().parent.parent
+    return subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env, cwd=str(root), timeout=120
+    )
+
+
+def _save(tmp_path, values):
+    import json
+
+    if os.name == "nt":
+        folder = tmp_path / "home" / "claude-patent-creator"
+    else:
+        folder = tmp_path / "home" / ".config" / "claude-patent-creator"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "config.json").write_text(json.dumps(values), encoding="utf-8")
+
+
+def test_saved_settings_reach_the_cli_before_paths_are_computed(tmp_path):
+    moved = tmp_path / "moved-data"
+    _save(tmp_path, {"GOOGLE_CLOUD_PROJECT": "saved-proj", "PATENT_DATA_DIR": str(moved)})
+    code = (
+        "import sys, os; sys.path.insert(0, 'mcp_server'); import cli; "
+        "print(os.environ.get('GOOGLE_CLOUD_PROJECT')); print(cli.INDEX_DIR)"
+    )
+    out = _run_isolated(tmp_path, code)
+    assert out.returncode == 0, out.stderr
+    lines = out.stdout.strip().splitlines()
+    assert lines[-2] == "saved-proj"
+    assert lines[-1].startswith(str(moved))
+
+
+def test_a_real_env_var_still_beats_a_saved_setting(tmp_path):
+    _save(tmp_path, {"GOOGLE_CLOUD_PROJECT": "saved-proj"})
+    code = "import sys, os; sys.path.insert(0, 'mcp_server'); import cli; print(os.environ['GOOGLE_CLOUD_PROJECT'])"
+    out = _run_isolated(tmp_path, code, {"GOOGLE_CLOUD_PROJECT": "from-env"})
+    assert out.stdout.strip().splitlines()[-1] == "from-env"
+
+
+def test_saved_values_are_reported_as_saved_not_as_env(tmp_path):
+    _save(tmp_path, {"PATENT_LOG_FORMAT": "human"})
+    code = (
+        "import sys; sys.path.insert(0, 'mcp_server'); import cli, config; "
+        "print(config.get_effective('PATENT_LOG_FORMAT'))"
+    )
+    out = _run_isolated(tmp_path, code)
+    assert out.stdout.strip().splitlines()[-1] == "('human', 'file')"
+
+
+def test_cli_prefers_readable_logs_without_touching_the_setting(tmp_path):
+    code = (
+        "import sys, os, logging; sys.path.insert(0, 'mcp_server'); import cli; "
+        "h = logging.getLogger('claude-patent-creator').handlers[0]; "
+        "print(type(h.formatter).__name__); print(os.environ.get('PATENT_LOG_FORMAT'))"
+    )
+    out = _run_isolated(tmp_path, code)
+    lines = out.stdout.strip().splitlines()
+    assert lines[-2] == "HumanReadableFormatter"
+    assert lines[-1] == "None"
+
+
+def test_setup_rebuilds_an_index_with_a_known_defect(tmp_path, monkeypatch):
+    import json
+
+    (tmp_path / "mpep_index.faiss").write_bytes(b"x")
+    meta = {"chunks": ["a"], "metadata": [{"source": "EPC_RULES", "section": "EPC"}]}
+    (tmp_path / "mpep_metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    monkeypatch.setattr(cli, "INDEX_DIR", tmp_path)
+    defects = cli._index_defects()
+    assert defects and "setup --rebuild" in defects[0]
+
+    meta["metadata"].append({"source": "EPC", "section": "EPC"})
+    (tmp_path / "mpep_metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert cli._index_defects() == []
+
+
+def test_saved_settings_reach_the_server_claude_code_starts(tmp_path):
+    """Claude Code runs server.py directly, never through the CLI, so the
+    server must apply saved settings itself before computing its paths."""
+    moved = tmp_path / "moved-data"
+    _save(tmp_path, {"PATENT_DATA_DIR": str(moved)})
+    code = "import sys; sys.path.insert(0, 'mcp_server'); import server; print(server.INDEX_DIR)"
+    out = _run_isolated(tmp_path, code)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip().splitlines()[-1].startswith(str(moved))

@@ -806,6 +806,16 @@ def setup_command(args):
 
     # PDFs removed after indexing (setup offers this): the index still works,
     # so don't re-download ~500 MB and rebuild for half an hour unasked.
+    # An index built by an older version with a known defect gets rebuilt
+    # automatically; re-running setup is what a user does to update.
+    index_defects = _index_defects()
+    if index_defects and not args.rebuild:
+        print("\n[!] Your search index needs rebuilding:", file=sys.stderr)
+        for warning in index_defects:
+            print(f"    {warning}", file=sys.stderr)
+        print("    Rebuilding it now (sources are downloaded again if needed).", file=sys.stderr)
+        args.rebuild = True
+
     pdfs_cleaned_up = (
         not sources_status["mpep"] and _index_ready() and not getattr(args, "rebuild", False)
     )
@@ -1019,6 +1029,24 @@ def _source_line(label: str, present: bool) -> str:
     return f"  {label:<10} {mark}"
 
 
+def _index_defects() -> list[str]:
+    """Known defects in an already-built index that only a rebuild fixes
+    (e.g. indexes built before the EPC article/rule split was repaired)."""
+    if not _index_ready():
+        return []
+    try:
+        from mpep_search import get_index_warnings
+
+        with (INDEX_DIR / "mpep_metadata.json").open(encoding="utf-8") as f:
+            metadata = json.load(f).get("metadata", [])
+        return [
+            w.replace("patent-creator setup --rebuild", f"{_cli()} setup --rebuild")
+            for w in get_index_warnings(metadata)
+        ]
+    except Exception:
+        return []
+
+
 def run_server(args):
     """
     Run the MCP server
@@ -1106,16 +1134,22 @@ def status_command(args):
                     f"  Sections:  {len({m['section'] for m in data['metadata']}):,}",
                     file=sys.stderr,
                 )
+        for warning in _index_defects():
+            print(f"  [!] {warning}", file=sys.stderr)
 
     print("\nStorage:", file=sys.stderr)
     print(f"  Location:  {MPEP_DIR.absolute()}", file=sys.stderr)
     print(f"  Index dir: {INDEX_DIR.absolute()}", file=sys.stderr)
 
     ready = _index_ready()
-    print(f"\nStatus: {'Ready' if ready else 'Setup required'}", file=sys.stderr)
+    defects = _index_defects()
+    label = "Setup required" if not ready else ("Ready, but the index needs a rebuild" if defects else "Ready")
+    print(f"\nStatus: {label}", file=sys.stderr)
 
     if not ready:
         print(f"\nRun '{_cli()} setup' to complete installation.", file=sys.stderr)
+    elif defects:
+        print(f"\nRun '{_cli()} setup' to rebuild it (25-40 minutes without an NVIDIA GPU).", file=sys.stderr)
 
     return 0
 

@@ -70,6 +70,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - The plugin's setup command installs into the same `~/patent-creator-venv`
   folder as the README (a normal install, so plugin updates can't break it)
   and walks through turning on patent search.
+- European Patent Convention articles were indexed as Implementing
+  Regulations (0 article chunks, 4,927 rule chunks): an amendment table on
+  page 1 mentions "Implementing Regulations" and the extractor switched
+  there. The split now follows the PDF's own bookmarks (1,306 article and
+  1,794 rule chunks on the real PDF), so an EPC-only search finds Article 84.
+  Indexes built before this are detected; `health` says a rebuild is needed
+  and re-running `setup` rebuilds automatically.
+- `get_mpep_section` found nothing for a subsection like 608 because labels
+  are chapter-level. It now finds the section's heading inside its chapter,
+  returns the content in order, and says when boundaries are approximate.
+- The EPO Guidelines download uses the current published PDF with a verified
+  fallback, and `search_patent_law` says which sources it didn't search even
+  when others returned results.
+- Saved settings now apply at startup in both the CLI and the server, so a
+  saved `GOOGLE_CLOUD_PROJECT`, `PATENT_DATA_DIR` or `PATENT_LOG_FORMAT`
+  takes effect (real environment variables and `.env` still win), and
+  `config list` reports saved values as saved.
 - Stale command suggestions (`scripts/setup_bigquery_auth.py`, `install.py`,
   `status --verbose`) point at commands that exist.
 
