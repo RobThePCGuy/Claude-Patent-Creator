@@ -70,6 +70,19 @@ import io
 # stderr is captured during the attempt so a failed import's diagnostics don't
 # leak onto otherwise-clean lightweight commands; real warnings are re-emitted
 # on success.
+# PyTorch prints this on every Mac import. It is about a distributed-training
+# feature this tool never uses, and to a first-time user it reads like an error.
+_BENIGN_IMPORT_NOISE = ("Redirects are currently not supported in MacOs",)
+
+
+def _drop_benign_import_noise(text: str) -> str:
+    return "".join(
+        line
+        for line in text.splitlines(keepends=True)
+        if not any(noise in line for noise in _BENIGN_IMPORT_NOISE)
+    )
+
+
 _server_import_stderr = io.StringIO()
 try:
     with contextlib.redirect_stderr(_server_import_stderr):
@@ -93,7 +106,7 @@ try:
 
     _SERVER_IMPORT_ERROR = None
     _SERVER_IMPORT_STDERR = ""
-    sys.stderr.write(_server_import_stderr.getvalue())
+    sys.stderr.write(_drop_benign_import_noise(_server_import_stderr.getvalue()))
 except (ImportError, SystemExit) as exc:  # SystemExit: server.py exits if mcp is missing
     _SERVER_IMPORT_ERROR = exc
     # Keep the captured diagnostic (e.g. "mcp package not found") to show only if
