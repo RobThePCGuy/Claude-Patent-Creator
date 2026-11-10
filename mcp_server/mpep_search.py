@@ -18,6 +18,7 @@ except ImportError:
             return message
 
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -166,6 +167,105 @@ def _log_debug(message: str, **kwargs):
         logger.debug(message, extra=kwargs)
 
 
+_MPEP_NUMBER = r"\d{3,4}(?:\.\d+)?(?:\([a-z0-9]+\))*"
+
+# An MPEP body heading: section number, title (may wrap up to ten lines),
+# then the revision tag the USPTO prints after every heading, e.g.
+# "2173.02  Determining Whether Claim\nLanguage is Definite [R-01.2024]".
+# Contents pages list the same numbers without the tag, so the tag is what
+# separates a heading from a contents entry or an in-text cross-reference.
+# Every heading in the Rev. 01.2024 chapters puts two or more spaces after
+# its number (1,873 with two, 40 with three, none with one). A wrapped title
+# line may itself start with a number, but with one space ("102(b) Rejection",
+# "301 Written Statements", "2012 [R-...]"), so only a number followed by two
+# spaces, the start of the next heading, ends a title. (A heading itself
+# may start after one space; the title rule is what keeps a one-space
+# cross-reference line from absorbing the heading below it.)
+MPEP_HEADING_RE = re.compile(
+    rf"(?m)^[ \t]*({_MPEP_NUMBER})[ \t]+"
+    rf"(?=\S)(\[Reserved\]|[^\[\]\n]+(?:\n(?![ \t]*{_MPEP_NUMBER}(?:-\S+)?[ \t]{{2,}}(?!\[R-))"
+    r"[^\[\]\n]+){0,9}?)"
+    r"[ \t\n]*\[R-[^\]\n]+\]"
+)
+
+# "2176-2180  [Reserved]" with no revision tag: numbers with no text of
+# their own. The section before it ends here, so its label must not run on.
+_MPEP_RESERVED_RE = re.compile(
+    rf"(?m)^[ \t]*{_MPEP_NUMBER}(?:-{_MPEP_NUMBER})?[ \t]+\[Reserved\][ \t]*$"
+)
+
+# Every chapter page ends with the same block: (page number,) revision date,
+# (page number,) running head, "§ <section>". Joining pages without it lets
+# a heading that starts at the foot of one page and ends on the next be read.
+_MPEP_FOOTER_RE = re.compile(
+    r"(?m)^(?:\d{3,4}-\d+\n)?Rev\. \d{2}\.\d{4}, [A-Z][a-z]+ +\d{4}\n(?:.*\n?){0,4}\Z"
+)
+
+
+def find_mpep_headings(text: str, chapter: int) -> list[tuple[int, str, str]]:
+    """(offset, section number, title) for each body heading of one chapter.
+
+    Headings numbered outside the chapter (2173.02 can only head a 2100 page)
+    are cross-reference lines that happen to precede a tag, and are dropped.
+    """
+    found = []
+    for m in MPEP_HEADING_RE.finditer(text):
+        number = m.group(1)
+        if int(re.match(r"\d+", number).group()) // 100 != chapter // 100:
+            continue
+        found.append((m.start(), number, " ".join(m.group(2).split())))
+    return found
+
+
+def mpep_section_marks(pages: list[str], chapter: int) -> list[tuple[Any, list[tuple[int, Any]]]]:
+    """For each page: (section in force at its top, [(offset, section), ...]).
+
+    A section is (number, title), or None inside a reserved range or before
+    the chapter's first heading. Offsets are into that page's own text.
+    """
+    starts, body = [], ""
+    for text in pages:
+        starts.append(len(body))
+        m = _MPEP_FOOTER_RE.search(text)
+        part = text[: m.start()] if m else text
+        body += part if part.endswith("\n") or not part else part + "\n"
+    events = [(o, (n, t)) for o, n, t in find_mpep_headings(body, chapter)]
+    events += [(m.start(), None) for m in _MPEP_RESERVED_RE.finditer(body)]
+    events.sort(key=lambda e: e[0])
+
+    marks, state, k = [], None, 0
+    for i, start in enumerate(starts):
+        stop = starts[i + 1] if i + 1 < len(starts) else len(body) + 1
+        while k < len(events) and events[k][0] < start:
+            state = events[k][1]
+            k += 1
+        opening, here = state, []
+        while k < len(events) and events[k][0] < stop:
+            here.append((events[k][0] - start, events[k][1]))
+            state = events[k][1]
+            k += 1
+        marks.append((opening, here))
+    return marks
+
+
+def locate_mpep_section(opening: Any, marks: list[tuple[int, Any]], start: int, end: int) -> dict[str, str]:
+    """mpep_section/section_title for the text between start and end.
+
+    Every section whose text the span covers is named, in order; a reserved
+    gap names none. An empty dict means the span belongs to no section.
+    """
+    first = opening
+    for offset, section in marks:
+        if offset <= start:
+            first = section
+    spans = [first] + [s for o, s in marks if start < o < end]
+    spans = [s for s in spans if s]
+    if not spans:
+        return {}
+    numbers = list(dict.fromkeys(n for n, _ in spans))
+    return {"mpep_section": ", ".join(numbers), "section_title": spans[0][1]}
+
+
 def get_index_warnings(metadata: list[dict[str, Any]]) -> list[str]:
     """Read-only corpus checks for health callers and index loading.
 
@@ -240,14 +340,22 @@ class MPEPIndex:
         try:
             doc = fitz.open(pdf_path)  # type: ignore[union-attr]
             section = self._extract_section_from_filename(pdf_path.name)
+            chapter = self._chapter_number(pdf_path.name)
+            texts = [page.get_text() for page in doc]  # type: ignore[union-attr]
+            marks = mpep_section_marks(texts, chapter) if chapter else [(None, [])] * len(texts)
 
-            for page_num, page in enumerate(doc):  # type: ignore[arg-type]
-                text = page.get_text()
+            for page_num, text in enumerate(texts):
                 if text.strip():
+                    opening, here = marks[page_num]
+
+                    def locate(start: int, end: int, opening=opening, here=here):
+                        return locate_mpep_section(opening, here, start, end)
+
                     # Use common chunking helper
                     page_chunks = self._chunk_text_with_metadata(
                         text=text,
                         section_label=section,
+                        section_locator=locate,
                         base_metadata={
                             "source": "MPEP",
                             "file": pdf_path.name,
@@ -265,6 +373,14 @@ class MPEPIndex:
             if doc is not None:
                 doc.close()
         return chunks
+
+    @staticmethod
+    def _chapter_number(filename: str) -> Optional[int]:
+        """100..2900 for a chapter file (mpep-2100.pdf); None for front matter
+        and appendices, which have no revision-tagged section headings."""
+        m = re.fullmatch(r"mpep-(\d{4})\.pdf", filename)
+        n = int(m.group(1)) if m else 0
+        return n if 100 <= n <= 2900 and n % 100 == 0 else None
 
     def _extract_section_from_filename(self, filename: str) -> str:
         """Extract MPEP section number from filename"""
@@ -324,6 +440,9 @@ class MPEPIndex:
             "is_regulation": c.get("is_regulation", False),
             "is_update": c.get("is_update", False),
         }
+        for key in ("mpep_section", "section_title"):
+            if c.get(key):
+                meta[key] = c[key]
         # Source-specific fields
         if c.get("source") == "37_CFR":
             meta["part"] = c.get("part")
@@ -349,6 +468,7 @@ class MPEPIndex:
         chunk_size: int = 500,
         overlap: int = 100,
         min_chunk_length: int = 50,
+        section_locator: Optional[Any] = None,
     ) -> list[dict[str, Any]]:
         """
         Common helper to chunk text and attach metadata with cross-reference detection.
@@ -360,6 +480,8 @@ class MPEPIndex:
             chunk_size: Characters per chunk
             overlap: Overlapping characters between chunks
             min_chunk_length: Minimum chunk length to keep
+            section_locator: Optional callable(start, end) -> dict of fields
+                that depend on where in the text the chunk falls
 
         Returns:
             List of chunk dictionaries with text and metadata
@@ -396,6 +518,8 @@ class MPEPIndex:
                 "has_statute": has_usc_ref or has_epc_ref,
                 "has_rule_ref": has_cfr_ref or has_pct_ref,
             }
+            if section_locator is not None:
+                chunk_metadata.update(section_locator(i, i + len(chunk_text)))
 
             chunks.append(chunk_metadata)
 
