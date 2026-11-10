@@ -126,30 +126,34 @@ def _no_s2_waiting(monkeypatch):
     waits = []
     monkeypatch.setattr(ls, "_s2_sleep", waits.append)
     monkeypatch.setattr(ls, "_s2_last", [0.0])
+    monkeypatch.setattr(ls, "_s2_jitter", lambda: 0.0)
     return waits
 
 
-def test_s2_searches_are_spaced_and_a_refusal_is_retried_once(monkeypatch, _no_s2_waiting):
+def test_s2_refusals_back_off_exponentially_then_succeed(monkeypatch, _no_s2_waiting):
     now = [100.0]
     monkeypatch.setattr(ls, "_s2_clock", lambda: now[0])
     calls = []
 
     def _get(self, source, url, headers=None):
         calls.append(source)
-        if len(calls) == 1:
+        if len(calls) <= 2:
             raise ls.SourceError("rate_limited", "slow down")
         return json.dumps({"total": 0, "data": []})
 
     monkeypatch.setattr(ls.LiteratureSearch, "_get", _get)
     client = ls.LiteratureSearch(semantic_scholar_key="k")
     assert client._semantic_scholar("q", 5, None, None) == ([], 0)
-    assert calls == ["semantic_scholar", "semantic_scholar"]
-    # first request: no wait; the retry waits S2_RETRY_WAIT, then pacing
-    # waits out the rest of the 1.1 s window (clock frozen here).
-    assert _no_s2_waiting == pytest.approx([ls.S2_RETRY_WAIT, ls.S2_MIN_INTERVAL])
+    assert len(calls) == 3
+    # With the clock frozen, each retry waits its backoff step and then the
+    # pacing window; the backoff steps must double.
+    backoff = _no_s2_waiting[0::2]
+    assert backoff == pytest.approx([1.0, 2.0])
+    assert _no_s2_waiting[1::2] == pytest.approx([ls.S2_MIN_INTERVAL] * 2)
 
 
-def test_s2_gives_up_after_one_retry(monkeypatch):
+def test_s2_gives_up_after_the_last_backoff_step(monkeypatch, _no_s2_waiting):
+    monkeypatch.setattr(ls, "_s2_clock", lambda: 100.0)
     calls = []
 
     def _get(self, source, url, headers=None):
@@ -159,7 +163,21 @@ def test_s2_gives_up_after_one_retry(monkeypatch):
     monkeypatch.setattr(ls.LiteratureSearch, "_get", _get)
     with pytest.raises(ls.SourceError):
         ls.LiteratureSearch()._semantic_scholar("q", 5, None, None)
-    assert len(calls) == 2
+    assert len(calls) == len(ls.S2_BACKOFF) + 1
+    assert _no_s2_waiting[0::2] == pytest.approx(list(ls.S2_BACKOFF))
+
+
+def test_s2_other_failures_are_not_retried(monkeypatch):
+    calls = []
+
+    def _get(self, source, url, headers=None):
+        calls.append(source)
+        raise ls.SourceError("failed", "HTTP 500")
+
+    monkeypatch.setattr(ls.LiteratureSearch, "_get", _get)
+    with pytest.raises(ls.SourceError):
+        ls.LiteratureSearch()._semantic_scholar("q", 5, None, None)
+    assert len(calls) == 1
 
 
 # --- search(): one failing source never reads as "no prior art" -------------

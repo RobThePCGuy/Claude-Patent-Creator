@@ -36,6 +36,7 @@ cutoff, puts a date_check on the result.
 
 import json
 import os
+import random
 import re
 import threading
 import time
@@ -57,14 +58,18 @@ OPENALEX_KEY_URL = "https://openalex.org/settings/api-key"
 S2_KEY_URL = "https://www.semanticscholar.org/product/api#api-key-form"
 # Semantic Scholar allows one request per second per key, counted across all
 # endpoints (stated in its key-approval email). Searches are spaced a little
-# wider than that, process-wide, and a refused one is retried once after a
-# short wait. Both numbers are placeholder heuristics, not measured.
+# wider than that, process-wide. Its API release notes require exponential
+# backoff, so a refused request is retried after waits that double each time,
+# with a little random jitter so parallel clients do not retry in step. The
+# numbers are placeholder heuristics, not measured; worst case adds about 8 s.
 S2_MIN_INTERVAL = 1.1
-S2_RETRY_WAIT = 2.0
+S2_BACKOFF = (1.0, 2.0, 4.0)
+S2_JITTER = 0.5
 _s2_lock = threading.Lock()
 _s2_last = [0.0]
 _s2_sleep = time.sleep
 _s2_clock = time.monotonic
+_s2_jitter = lambda: random.uniform(0, S2_JITTER)  # noqa: E731
 
 
 def _s2_pace() -> None:
@@ -776,15 +781,15 @@ class LiteratureSearch:
             params["publicationDateOrYear"] = f"{lo}:{hi}"
         headers = {"x-api-key": self.s2_key} if self.s2_key else None
         url = f"{S2_URL}?{urllib.parse.urlencode(params)}"
-        for attempt in (1, 2):
+        for wait in (*S2_BACKOFF, None):
             _s2_pace()
             try:
                 body = self._get("semantic_scholar", url, headers)
                 break
             except SourceError as e:
-                if e.status != "rate_limited" or attempt == 2:
+                if e.status != "rate_limited" or wait is None:
                     raise
-            _s2_sleep(S2_RETRY_WAIT)
+            _s2_sleep(wait + _s2_jitter())
         return self._parse("Semantic Scholar", lambda b: parse_semantic_scholar(json.loads(b)), body)
 
     # -- public ---------------------------------------------------------
