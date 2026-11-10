@@ -6,6 +6,7 @@ Anything that tells a person which command to run renders it through here.
 The console script sits next to the interpreter that is running.
 """
 
+import os
 import re
 import shutil
 import sys
@@ -22,16 +23,25 @@ def installed_cli() -> str:
             text = str(candidate)
             if shutil.which("patent-creator") == text:
                 return "patent-creator"
-            return f'"{text}"' if " " in text else text
+            return _quote(text)
     return "patent-creator"
+
+
+def _quote(path: str) -> str:
+    """Quote a path with spaces so it pastes into the user's shell.
+
+    PowerShell treats a quoted string as text, not a command, unless it is
+    prefixed with the call operator '&'."""
+    if " " not in path:
+        return path
+    return f'& "{path}"' if os.name == "nt" else f'"{path}"'
 
 
 _BARE_PIP = re.compile(r"(?<![\w/\\.-])(?<!-m )pip(?= install)")
 
 
 def python_command() -> str:
-    exe = str(Path(sys.executable).absolute())
-    return f'"{exe}"' if " " in exe else exe
+    return _quote(str(Path(sys.executable).absolute()))
 
 
 def render(message: str) -> str:

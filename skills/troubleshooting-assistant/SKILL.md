@@ -5,6 +5,8 @@ description: Diagnoses and resolves MCP server registration failures, GPU detect
 
 # Troubleshooting Assistant Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Expert diagnostic system for identifying and resolving Claude Patent Creator issues.
 
 ## When to Use

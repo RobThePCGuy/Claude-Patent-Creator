@@ -6,6 +6,8 @@ argument-hint: [test-type]
 
 # Test Patent Creator System
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Run test suites to verify all components are working correctly.
 
 ## Instructions

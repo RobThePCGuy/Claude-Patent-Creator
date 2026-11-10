@@ -215,7 +215,7 @@ def install_pytorch():
             return True  # Reinstalled - need to restart Python
         except subprocess.CalledProcessError:
             print("  [ERROR] Could not install PyTorch. Please install manually:", file=sys.stderr)
-            print(_render_cmd("  pip install torch>=2.0.0"), file=sys.stderr)
+            print(_render_cmd('  pip install "torch>=2.0.0"'), file=sys.stderr)
             return False  # Failed, continue anyway
 
 

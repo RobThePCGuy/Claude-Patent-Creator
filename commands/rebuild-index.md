@@ -5,6 +5,8 @@ allowed-tools: Bash
 
 # Rebuild MPEP Index
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Rebuild the hybrid search index (FAISS + BM25) from MPEP PDFs.
 
 ## Instructions

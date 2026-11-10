@@ -434,3 +434,13 @@ def test_no_user_facing_bare_install_advice_left():
                 if not wrapped.search(ctx):
                     offenders.append(f"{path.name}:{n}")
     assert offenders == []
+
+
+def test_paths_with_spaces_paste_into_each_shell(monkeypatch):
+    import cli_command
+
+    monkeypatch.setattr(cli_command.os, "name", "nt")
+    assert cli_command._quote(r"C:\Users\Rob Smith\v\Scripts\python.exe") == r'& "C:\Users\Rob Smith\v\Scripts\python.exe"'
+    monkeypatch.setattr(cli_command.os, "name", "posix")
+    assert cli_command._quote("/Users/Rob Smith/v/bin/python") == '"/Users/Rob Smith/v/bin/python"'
+    assert cli_command._quote("/Users/rob/v/bin/python") == "/Users/rob/v/bin/python"

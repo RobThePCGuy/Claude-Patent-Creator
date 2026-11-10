@@ -7,6 +7,8 @@ model: sonnet
 
 # Patent Diagram Generator Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Create patent-style technical diagrams including flowcharts, block diagrams, and system architectures using Graphviz.
 
 ## When to Use

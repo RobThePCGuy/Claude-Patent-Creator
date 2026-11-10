@@ -5,6 +5,8 @@ allowed-tools: Bash
 
 # Configure BigQuery Authentication
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Set up Google Cloud authentication to enable patent search across 100M+ worldwide patents.
 
 ## Instructions
@@ -17,15 +19,14 @@ Set up Google Cloud authentication to enable patent search across 100M+ worldwid
 
 ## Command
 
-```bash
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/setup_bigquery_auth.py
-```
-
-Or using gcloud directly:
+Needs Google's gcloud tool (https://cloud.google.com/sdk/docs/install). Then:
 
 ```bash
-gcloud auth application-default login
+! gcloud auth application-default login
+~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
+
+Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe` in place of `~/patent-creator-venv/bin/patent-creator`. The BigQuery sandbox works without a billing account.
 
 ## What This Does
 

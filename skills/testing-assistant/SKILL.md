@@ -5,6 +5,8 @@ description: Manages testing lifecycle including unit tests, integration tests, 
 
 # Testing Assistant Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Expert system for testing and validating the Claude Patent Creator.
 
 **FOR CLAUDE:** Test scripts in scripts/ directory.

@@ -648,9 +648,10 @@ def _check_prerequisites(rebuild_index):
 
     if not index_exists and pdf_count == 0:
         print("\n[X] No MPEP PDFs and no existing index found.", file=sys.stderr)
-        print("\nTo get started:", file=sys.stderr)
-        print("  1. python mcp_server/server.py --download-mpep", file=sys.stderr)
-        print("  2. python mcp_server/server.py --rebuild-index", file=sys.stderr)
+        from cli_command import render
+
+        print("\nTo get started, run:", file=sys.stderr)
+        print(render("  patent-creator setup"), file=sys.stderr)
         sys.exit(1)
 
     if pdf_count == 0 and rebuild_index:

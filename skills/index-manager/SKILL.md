@@ -5,6 +5,8 @@ description: Manages MPEP index lifecycle including downloads, building, mainten
 
 # Index Manager Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Expert system for managing MPEP search index lifecycle: PDF downloads, index building, maintenance, updates, optimization.
 
 **FOR CLAUDE:** All dependencies installed, system operational.
@@ -24,7 +26,7 @@ PDFs Not Present -> Download (2-5 min, 500MB)
   -> Extract & Parse (500MB data)
   -> Generate Embeddings (5-10 min GPU, 35-65 min CPU)
   -> Build FAISS + BM25 Indexes
-  -> Index Ready (mcp_server/index/)
+  -> Index Ready (~/.local/share/claude-patent-creator/data/index/)
   -> Maintenance (Verify -> Optimize -> Update)
 ```
 
@@ -104,7 +106,7 @@ Re-running `$PC setup` downloads any source that is missing; `$PC setup --rebuil
 | `~/patent-creator-venv/bin/patent-creator download-mpep` | Download MPEP PDFs |
 | `~/patent-creator-venv/bin/patent-creator rebuild-index` | Build/rebuild search index |
 | `~/patent-creator-venv/bin/patent-creator health` | Check index health |
-| `ls -lh mcp_server/index/` | View index files |
+| `ls -lh ~/.local/share/claude-patent-creator/data/index/` | View index files (location shown by `health`) |
 
 **Best Practices:**
 1. Backup before rebuild
