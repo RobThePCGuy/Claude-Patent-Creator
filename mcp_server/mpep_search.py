@@ -154,6 +154,22 @@ def _log_debug(message: str, **kwargs):
         logger.debug(message, extra=kwargs)
 
 
+def get_index_warnings(metadata: list[dict[str, Any]]) -> list[str]:
+    """Read-only corpus checks for health callers and index loading.
+
+    This detects the known EPC classification defect; an empty list is not
+    certification that an index is complete or legally current.
+    """
+    sources = {m.get("source", "MPEP") for m in metadata}
+    if "EPC_RULES" in sources and "EPC" not in sources:
+        return [
+            "EPC_RULES is indexed but EPC articles are absent. This index may "
+            "have the EPC classification defect; article/rule labels are unreliable. "
+            "Rebuild required: patent-creator setup --rebuild."
+        ]
+    return []
+
+
 class MPEPIndex:
     """Manages indexing and retrieval of MPEP documents with advanced RAG techniques"""
 
@@ -549,94 +565,68 @@ class MPEPIndex:
     # ==========================================================================
 
     def extract_text_from_epc(self, pdf_path: Path) -> list[dict[str, Any]]:
-        """Extract text from European Patent Convention PDF.
+        """Extract bookmarked Convention articles and Implementing Regulations.
 
-        The EPC 17th edition PDF contains both the Convention articles and the
-        Implementing Regulations. This method splits them by detecting the
-        section boundary and produces chunks with source="EPC" for articles
-        and source="EPC_RULES" for rules.
+        The official multilingual edition includes amendment tables, contents,
+        protocols and other instruments. Those are not Convention articles or
+        Implementing Regulations. Use the publisher's outline, not occurrences
+        of their names in running text. Outline titles also separate article
+        numbers from superscript footnotes (text extraction yields "8479").
         """
         import re
 
-        epc_chunks = []
-        rules_chunks = []
-        doc = None
+        chunks = []
         try:
-            doc = fitz.open(pdf_path)  # type: ignore[union-attr]
-            current_article = "EPC"
-            in_rules_section = False
-
-            for page_num, page in enumerate(doc):  # type: ignore[arg-type]
-                text = page.get_text()
-                if not text.strip():
-                    continue
-
-                # Detect transition to Implementing Regulations
-                if re.search(r"IMPLEMENTING\s+REGULATIONS", text, re.IGNORECASE):
-                    in_rules_section = True
-
-                if in_rules_section:
-                    # Detect rule numbers: "Rule 1", "Rule 42", etc.
-                    rule_matches = list(re.finditer(r"Rule\s+(\d+)\s*\n\s*([^\n]{1,100})", text))
-                    current_label = current_article
-
-                    if rule_matches:
-                        for match in rule_matches:
-                            rule_num = match.group(1)
-                            rule_title = match.group(2).strip()
-                            current_label = f"Rule {rule_num} EPC - {rule_title}"
-
-                    page_chunks = self._chunk_text_with_metadata(
-                        text=text,
-                        section_label=current_label,
-                        base_metadata={
-                            "source": "EPC_RULES",
-                            "file": pdf_path.name,
-                            "section": current_label,
-                            "page": page_num + 1,
-                            "is_statute": False,
-                            "is_regulation": True,
-                            "is_update": False,
-                        },
-                    )
-                    rules_chunks.extend(page_chunks)
-                else:
-                    # Detect article numbers: "Article 52", "Article 84", etc.
-                    art_matches = list(re.finditer(r"Article\s+(\d+)\s*\n\s*([^\n]{1,100})", text))
-
-                    if art_matches:
-                        for match in art_matches:
-                            art_num = match.group(1)
-                            art_title = match.group(2).strip()
-                            current_article = f"Art. {art_num} EPC - {art_title}"
-
-                    page_chunks = self._chunk_text_with_metadata(
-                        text=text,
-                        section_label=current_article,
-                        base_metadata={
-                            "source": "EPC",
-                            "file": pdf_path.name,
-                            "section": current_article,
-                            "page": page_num + 1,
-                            "is_statute": True,
-                            "is_regulation": False,
-                            "is_update": False,
-                        },
-                    )
-                    epc_chunks.extend(page_chunks)
-
+            with fitz.open(pdf_path) as doc:
+                toc = doc.get_toc()
+                rules_index = next(
+                    i for i, (level, title, _) in enumerate(toc)
+                    if level == 1 and title.startswith("Implementing Regulations")
+                )
+                rules_end = next(
+                    (i for i in range(rules_index + 1, len(toc)) if toc[i][0] == 1),
+                    len(toc),
+                )
+                groups = [
+                    ("EPC", "Article", toc[:rules_index], toc[rules_index][2]),
+                    ("EPC_RULES", "Rule", toc[rules_index:rules_end],
+                     toc[rules_end][2] if rules_end < len(toc) else len(doc) + 1),
+                ]
+                for source, kind, entries, end_page in groups:
+                    headings = {}
+                    for _, title, page in entries:
+                        if re.match(rf"^{kind} \d+[a-z]?\s", title):
+                            headings.setdefault(page, []).append(title)
+                    if not headings:
+                        raise ValueError(f"No bookmarked {kind} body found")
+                    label = ""
+                    for page_num in range(min(headings), end_page):
+                        if page_num in headings:
+                            # A multilingual PDF page can contain several articles.
+                            # List all of them rather than assigning the last to all text.
+                            label = "EPC: " + "; ".join(headings[page_num])
+                        chunks.extend(self._chunk_text_with_metadata(
+                            text=doc[page_num - 1].get_text(),
+                            section_label=label,
+                            base_metadata={
+                                "source": source, "file": pdf_path.name,
+                                "section": label, "page": page_num,
+                                "is_statute": source == "EPC",
+                                "is_regulation": source == "EPC_RULES",
+                                "is_update": False,
+                            },
+                        ))
         except Exception as e:
-            _log_error(f"Error processing EPC {pdf_path}: {e}", exc_info=True, file_path=str(pdf_path))
-        finally:
-            if doc is not None:
-                doc.close()
-
+            _log_error(f"EPC body boundaries could not be verified; not indexed: {e}")
+            return []
+        counts = {source: sum(c["source"] == source for c in chunks)
+                  for source in ("EPC", "EPC_RULES")}
         _log_info(
-            f"Extracted {len(epc_chunks)} EPC article chunks and {len(rules_chunks)} EPC rules chunks",
-            epc_chunks=len(epc_chunks),
-            rules_chunks=len(rules_chunks),
+            f"Extracted {counts['EPC']} EPC article chunks and "
+            f"{counts['EPC_RULES']} EPC rules chunks. Coverage: bookmarked article "
+            "and rule bodies only; front matter, contents and other instruments excluded."
         )
-        return epc_chunks + rules_chunks
+        return chunks
 
     def extract_text_from_epo_guidelines(self, text_path: Path) -> list[dict[str, Any]]:
         """Extract text from EPO Guidelines for Examination (text file from HTML scrape).
@@ -934,6 +924,9 @@ class MPEPIndex:
                 f"Loaded existing index with {len(self.chunks)} chunks",
                 chunk_count=len(self.chunks),
             )
+
+            for warning in get_index_warnings(self.metadata):
+                _log_warning(warning)
 
             # Load BM25 tokenized corpus from JSON and rebuild index
             if BM25_AVAILABLE and BM25Okapi and self.bm25_file.exists():

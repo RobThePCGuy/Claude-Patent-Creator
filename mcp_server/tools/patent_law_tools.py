@@ -91,41 +91,29 @@ def register_patent_law_tools(
             # If jurisdiction specified, search each source and combine
             # If no jurisdiction, search without filter
             all_results = []
+            expected = source_filters or [s for sources in JURISDICTION_SOURCES.values() for s in sources]
+            metadata = getattr(mpep_index, "metadata", None)
+            present = ({m.get("source", "MPEP") for m in metadata}
+                       if metadata is not None else None)
+            missing = [s for s in expected if present is not None and s not in present]
+            failed = []
+            searched = []
 
             if source_filters:
                 for source in source_filters:
+                    if source in missing:
+                        continue
                     try:
                         results = mpep_index.search(
-                            query=query,
-                            top_k=top_k,
-                            source_filter=source,
+                            query=query, top_k=top_k, source_filter=source,
                         )
+                        searched.append(source)
                         for r in results:
                             r["jurisdiction"] = jurisdiction
                         all_results.extend(results)
-                    except Exception:
-                        # Source not indexed; reported below if the whole
-                        # jurisdiction comes up empty.
-                        pass
-
-                if not all_results:
-                    # An empty result here means the jurisdiction's corpus is
-                    # absent (vector search over an indexed source always
-                    # returns nearest neighbours) — say so instead of
-                    # returning [] that reads as "no relevant law exists".
-                    return [
-                        {
-                            "error": (
-                                f"No {jurisdiction} patent-law sources are "
-                                f"installed or indexed (looked for: "
-                                f"{', '.join(source_filters)}). The default "
-                                f"setup downloads US sources only. Re-run "
-                                f"'patent-creator setup' after adding the "
-                                f"{jurisdiction} sources, or search with "
-                                f"jurisdiction='US'."
-                            )
-                        }
-                    ]
+                    except Exception as exc:
+                        failed.append(source)
+                        log_error("Patent law source search failed", source=source, error=str(exc))
 
                 # Sort by relevance and limit. mpep_index.search() returns the
                 # rerank score under "relevance_score" — keying on "score" made
@@ -149,6 +137,38 @@ def register_patent_law_tools(
                         r["jurisdiction"] = "PCT"
                     else:
                         r["jurisdiction"] = "US"  # Default for legacy sources
+
+            if not source_filters:
+                searched = [s for s in expected if s not in missing]
+            # Keep known classification defects beside returned passages, not
+            # only in startup logs: these old source labels are unreliable.
+            try:
+                from mpep_search import get_index_warnings
+            except ImportError:
+                from mcp_server.mpep_search import get_index_warnings
+            index_warnings = get_index_warnings(metadata or []) if "EPC" in expected else []
+            coverage = {
+                "index_warnings": index_warnings,
+                "searched_sources": searched,
+                "missing_sources": missing,
+                "failed_sources": failed,
+                "scope": "Indexed passages only; not a completeness or currency check.",
+            }
+            if missing or failed:
+                coverage["warning"] = (
+                    "Incomplete coverage: sources not searched: "
+                    + ", ".join(missing + failed)
+                    + ". Missing from index: " + (", ".join(missing) or "none")
+                    + "; search failed: " + (", ".join(failed) or "none")
+                    + ". Run patent-creator setup --rebuild for missing sources."
+                )
+            if not all_results:
+                return [{"error": f"No {jurisdiction or 'patent-law'} passages returned. "
+                         "Sources may be missing from the installed index or searches failed. "
+                         "Check coverage; run patent-creator setup --rebuild for missing sources.",
+                         "coverage": coverage}]
+            for result in all_results:
+                result["coverage"] = coverage
 
             log_info(
                 "search_patent_law completed",
