@@ -153,10 +153,11 @@ def test_log_lines_reach_the_live_terminal_after_a_captured_import():
 
 
 def test_index_build_prints_plain_progress_lines(monkeypatch):
+    import importlib
+
     import numpy as np
 
-    import mpep_search
-
+    mpep_search = importlib.import_module("mpep_search")
     lines = []
     monkeypatch.setattr(mpep_search, "_log_info", lambda msg, **kw: lines.append(msg))
 
