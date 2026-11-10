@@ -88,7 +88,11 @@ $env:VARIABLE_NAME
 - `SERPAPI_API_KEY` - SerpApi key for `search_patents_google`, worldwide full-text Google Patents search with claims (optional, recommended; free plan 250 searches/month)
 - `OPENALEX_API_KEY` - Optional free key for `search_non_patent_literature`; paper search works without it (about 100 searches a day), the key raises that. Free at https://openalex.org/settings/api-key
 - `SEMANTIC_SCHOLAR_API_KEY` - Optional free key for `search_non_patent_literature`; without it Semantic Scholar's shared pool is often busy and is skipped (OpenAlex and arXiv still run). Free at https://www.semanticscholar.org/product/api#api-key-form
-- `HYDE_BACKEND` - Set to `api` to use Anthropic/OpenAI for HyDE query expansion
+- `HYDE_BACKEND` - Set to `api` to use Anthropic/OpenAI for HyDE query expansion.
+  Install the optional SDKs into the same environment first (the `llm` extra, or
+  run that environment's Python with `-m pip install anthropic openai`). Set a
+  matching API key and enable `PATENT_MPEP_USE_HYDE=true`. An unavailable explicit
+  API backend reports an error; it does not silently select a local backend.
 - `PATENT_BIGQUERY_MAX_BYTES_BILLED` - Override the per-query BigQuery cost ceiling, in bytes
   (default: 350 GiB, which covers a normal keyword prior-art search — those scan ~325 GiB of
   the public corpus, roughly $2/query at on-demand pricing). When a query's estimated scan

@@ -26,7 +26,9 @@ Review patent applications for USPTO compliance, analyze claims/specifications/f
 ### MPEP & Regulations
 
 - `search_mpep` - Search MPEP, 35 USC, 37 CFR
-- `get_mpep_section` - Get complete MPEP section by number
+- `get_mpep_section` - Retrieve indexed section content by number. Check `truncated`
+  and `coverage`; the default caps output at 50 chunks and subsection boundaries
+  are approximate. Increase `max_chunks` if needed, and do not claim complete text.
 
 ### Patent Search
 

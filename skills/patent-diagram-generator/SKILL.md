@@ -132,9 +132,9 @@ When this skill is invoked:
        rankdir=LR;
        node [shape=box, style=rounded];
 
-       Input [label="User Input\\n(10)"];
-       Processor [label="Processing Unit\\n(20)"];
-       Output [label="Display\\n(30)"];
+       Input [label="User Input"];
+       Processor [label="Processing Unit"];
+       Output [label="Display"];
 
        Input -> Processor [label="data"];
        Processor -> Output [label="result"];
@@ -153,16 +153,17 @@ When this skill is invoked:
    ```python
    # After creating a diagram, add patent-style reference numbers
    reference_map = {
-       "Input Sensor": 10,
-       "Central Processor": 20,
-       "Memory Storage": 30,
-       "Output Display": 40
+       "User Input": 10,
+       "Processing Unit": 20,
+       "Display": 30
    }
 
-   annotated_path = generator.add_reference_numbers(
+   report = generator.add_reference_numbers(
        svg_path=diagram_path,
-       reference_map=reference_map
+       reference_map=reference_map,
+       return_report=True
    )
+   print(report)  # Check num_references and unmatched_labels before reporting success.
    ```
 
 ## Diagram Templates

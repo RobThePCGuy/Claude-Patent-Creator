@@ -66,7 +66,11 @@ search_mpep("fee schedule", source_filter="37_CFR")
 
 ### 2. `get_mpep_section`
 
-Retrieve all content from specific MPEP section.
+Retrieve indexed content from an MPEP chapter or section. Check `truncated`,
+`returned_chunks`, `total_chunks`, `boundary` and `coverage` before presenting it.
+The default returns at most 50 chunks. Increase `max_chunks` if it is truncated.
+Subsection boundaries are approximate and extraction can leave gaps even when
+`truncated` is false; do not describe the result as guaranteed full section text.
 
 **Inputs:**
 - `section_number` (string, required): MPEP section number (e.g., `"2100"`, `"608.01"`)

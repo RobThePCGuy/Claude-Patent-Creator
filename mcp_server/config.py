@@ -299,6 +299,8 @@ def validate(key: str, value: str) -> Optional[str]:
         return f"Unknown setting: {key}"
     opt = OPTIONS_BY_KEY[key]
     if opt.type == "int":
+        if value == "" and opt.default == "":
+            return None
         try:
             number = int(value)
         except ValueError:

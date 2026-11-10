@@ -312,15 +312,17 @@ def register_diagram_tools(
             # so scope the generator to the (already cwd-confined) SVG's folder.
             generator = PatentDiagramGenerator(output_dir=input_path.parent)
 
-            output_path = generator.add_reference_numbers(
-                svg_path=input_path, reference_map=reference_map
+            report = generator.add_reference_numbers(
+                svg_path=input_path, reference_map=reference_map, return_report=True
             )
+            output_path = report["path"]
 
             return {
-                "success": True,
+                "success": not report["unmatched_labels"],
                 "path": str(output_path.absolute()),
-                "num_references": len(reference_map),
-                "message": f"Added {len(reference_map)} reference numbers to {output_path.name}",
+                "num_references": report["num_references"],
+                "unmatched_labels": report["unmatched_labels"],
+                "message": f"Added {report['num_references']} reference numbers to {output_path.name}",
             }
 
         except Exception as e:

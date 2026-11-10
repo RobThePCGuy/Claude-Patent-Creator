@@ -48,14 +48,9 @@ class HyDEQueryExpander:
         where using it for HyDE would silently consume API quota.
         """
         # Only use API if explicitly opted in (ANTHROPIC_API_KEY alone is not enough)
-        if os.getenv("HYDE_BACKEND", "").lower() == "api" and (
-            os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
-        ):
-            try:
-                self._init_api_backend()
-                return
-            except Exception:
-                pass
+        if os.getenv("HYDE_BACKEND", "").lower() == "api":
+            self._init_api_backend()
+            return
 
         # Try local model (good quality, slower)
         try:
@@ -95,7 +90,14 @@ class HyDEQueryExpander:
         except ImportError:
             pass
 
-        raise ValueError("No API backend available")
+        try:
+            from cli_command import render
+        except ImportError:
+            from mcp_server.cli_command import render
+        raise ValueError(render(
+            "HyDE API backend is unavailable. Set an API key and install its SDK: "
+            "pip install anthropic openai"
+        ))
 
     def _init_local_backend(self):
         """Initialize local model backend (lightweight GPT-2 style)"""

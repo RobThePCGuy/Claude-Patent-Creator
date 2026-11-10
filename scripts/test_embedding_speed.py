@@ -44,7 +44,7 @@ def test_embedding_speed():
     # Test different batch sizes
     batch_sizes = [32, 64, 128, 256, 512] if device == "cuda" else [16, 32, 64]
 
-    speed = 0.0
+    measurements = []
 
     for batch_size in batch_sizes:
         print(f"\n{'='*60}")
@@ -62,6 +62,7 @@ def test_embedding_speed():
             elapsed = time.time() - start
 
             speed = len(test_chunks) / elapsed
+            measurements.append((speed, batch_size))
             print(f"\n[OK] Completed in {elapsed:.2f} seconds")
             print(f"  Speed: {speed:.0f} chunks/sec")
             print(f"  Generated: {len(embeddings):,} embeddings")
@@ -72,12 +73,14 @@ def test_embedding_speed():
     print("\n" + "=" * 60)
     print("RECOMMENDATION")
     print("=" * 60)
-    if device == "cuda":
-        print("Use batch_size=256 for your RTX 5090")
-        print(f"This should process ~{speed * 0.8:.0f} chunks/sec")
-    else:
-        print("Use batch_size=32 for CPU")
+    if not measurements:
+        print("No batch size completed successfully. No recommendation is available.")
+        return 1
+    speed, batch_size = max(measurements)
+    print(f"Use batch_size={batch_size} (fastest successful batch in this run)")
+    print(f"Measured {speed:.0f} chunks/sec on {device}")
+    return 0
 
 
 if __name__ == "__main__":
-    test_embedding_speed()
+    sys.exit(test_embedding_speed())
