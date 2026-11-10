@@ -522,17 +522,27 @@ class ClaimsAnalyzer(BaseAnalyzer):
             len(claims), counts["critical"], counts["important"], counts["minor"]
         )
 
-        # Generate summary — a clean result must not read as a full bill of
-        # health when a check was skipped.
-        summary = self._generate_claims_summary(claims, counts)
+        # Scores describe findings in checks that ran, never legal compliance.
+        checks_run = ["definiteness", "subjective_terms", "internal_references", "structure"]
+        if self._antecedent_check_enabled():
+            checks_run.insert(0, "antecedent_basis")
         checks_skipped = self._skipped_checks()
+        summary = self._generate_claims_summary(claims, counts)
+        if not claims:
+            checks_skipped = [
+                {"check": check, "reason": "no numbered claims parsed; supply claims as '1. ...'"}
+                for check in ["antecedent_basis", "definiteness", "subjective_terms", "internal_references", "structure"]
+            ]
+            checks_run = []
+            summary = "No numbered claims parsed; supply claims as '1. ...'. No claim checks ran."
         if checks_skipped:
-            skipped_names = ", ".join(c["check"] for c in checks_skipped)
-            summary += (
-                f" NOTE: the following checks were skipped: {skipped_names}. "
-                f"Enable with {checks_skipped[0]['enable_with']} (findings are "
-                f"LOW confidence and need manual review)."
-            )
+            disclosures = []
+            for check in checks_skipped:
+                disclosure = f"{check['check']} ({check['reason']})"
+                if "enable_with" in check:
+                    disclosure += f"; enable with {check['enable_with']} (LOW confidence; manual review required)"
+                disclosures.append(disclosure)
+            summary = f"[INCOMPLETE] Checks skipped: {'; '.join(disclosures)}. " + summary.removeprefix("[OK] ")
 
         # Use base report generation
         additional_data = {
@@ -541,6 +551,8 @@ class ClaimsAnalyzer(BaseAnalyzer):
             "dependent_count": sum(1 for c in claims if not c["is_independent"]),
             "issues_by_type": {k: len(v) for k, v in issues_by_type.items()},
             "checks_skipped": checks_skipped,
+            "checks_run": checks_run,
+            "compliance_score_scope": "checks_run_only",
         }
 
         return self._generate_base_report(
@@ -553,7 +565,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
     def _generate_claims_summary(self, claims: list[dict], counts: dict[str, int]) -> str:
         """Generate claims-specific summary"""
         if counts["total"] == 0:
-            return f"[OK] All {len(claims)} claims are compliant with 35 USC 112(b)"
+            return f"[OK] No issues found in the checks that ran on {len(claims)} claims; this is not a legal compliance determination."
 
         parts = []
         if counts["critical"] > 0:
