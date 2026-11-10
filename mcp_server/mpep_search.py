@@ -6,6 +6,17 @@ Extracted from server.py to work as a standalone library
 """
 
 import json
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -18,7 +29,7 @@ try:
     PYMUPDF_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: PyMuPDF not found. Install with: pip install PyMuPDF",
+        _render_cmd("Warning: PyMuPDF not found. Install with: pip install PyMuPDF"),
         file=sys.stderr,
     )
     PYMUPDF_AVAILABLE = False
@@ -34,7 +45,7 @@ try:
     VECTOR_SEARCH_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: Required packages not found. Install with: pip install sentence-transformers faiss-cpu numpy torch",
+        _render_cmd("Warning: Required packages not found. Install with: pip install sentence-transformers faiss-cpu numpy torch"),
         file=sys.stderr,
     )
     VECTOR_SEARCH_AVAILABLE = False
@@ -51,7 +62,7 @@ try:
     BM25_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: rank-bm25 not found. Hybrid search disabled. Install with: pip install rank-bm25",
+        _render_cmd("Warning: rank-bm25 not found. Hybrid search disabled. Install with: pip install rank-bm25"),
         file=sys.stderr,
     )
     BM25_AVAILABLE = False
@@ -181,10 +192,10 @@ class MPEPIndex:
         if not VECTOR_SEARCH_AVAILABLE:
             raise ImportError(
                 "Vector search packages not available. "
-                "Install with: pip install sentence-transformers faiss-cpu numpy torch"
+                + _render_cmd("Install with: pip install sentence-transformers faiss-cpu numpy torch")
             )
         if not PYMUPDF_AVAILABLE:
-            raise ImportError("PyMuPDF not available. Install with: pip install PyMuPDF")
+            raise ImportError(_render_cmd("PyMuPDF not available. Install with: pip install PyMuPDF"))
 
         # Detect and use GPU if available
         self.device = get_device()

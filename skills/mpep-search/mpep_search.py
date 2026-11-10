@@ -33,9 +33,9 @@ def _get_mpep_index() -> MPEPIndex:
         # Load the index (should already be built)
         if not _mpep_index.index_file.exists():
             raise RuntimeError(
-                "MPEP index not found. Please run the setup/installation first:\n"
-                "  python install.py\n"
-                "This will download and index the MPEP, 35 USC, and 37 CFR."
+                "MPEP index not found. Run setup first (see the README Quick Start):\n"
+                "  ~/patent-creator-venv/bin/patent-creator setup\n"
+                "This downloads and indexes the MPEP, 35 USC, 37 CFR and the EPO/PCT rules."
             )
 
         _mpep_index.build_index(force_rebuild=False)

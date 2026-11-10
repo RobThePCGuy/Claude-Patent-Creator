@@ -26,8 +26,23 @@ def installed_cli() -> str:
     return "patent-creator"
 
 
+_BARE_PIP = re.compile(r"(?<![\w/\\.-])(?<!-m )pip(?= install)")
+
+
+def python_command() -> str:
+    exe = str(Path(sys.executable).absolute())
+    return f'"{exe}"' if " " in exe else exe
+
+
 def render(message: str) -> str:
-    """Replace each bare ``patent-creator <subcommand>`` with the real command."""
+    """Make every command in an instruction one that runs from this install.
+
+    Bare ``patent-creator <subcommand>`` becomes the installed executable, and
+    bare ``pip install`` becomes ``<this python> -m pip install`` (a bare pip
+    in an unactivated venv installs into a different Python).
+    """
+    pip = f"{python_command()} -m pip"
+    message = _BARE_PIP.sub(lambda _m: pip, message)
     cmd = installed_cli()
     if cmd == "patent-creator":
         return message

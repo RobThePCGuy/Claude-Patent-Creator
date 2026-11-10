@@ -60,7 +60,11 @@ if user_site in sys.path:
 try:
     from mcp.server.mcpserver import MCPServer
 except ImportError:
-    print('Error: mcp 2.x not found. Install with: pip install "mcp>=2.0.0,<3.0.0"', file=sys.stderr)
+    try:
+        from cli_command import render as _render_cmd
+    except ImportError:
+        _render_cmd = str
+    print(_render_cmd('Error: mcp 2.x not found. Install with: pip install "mcp>=2.0.0,<3.0.0"'), file=sys.stderr)
     sys.exit(1)
 
 from logging_config import get_logger

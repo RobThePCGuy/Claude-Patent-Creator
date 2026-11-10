@@ -5,6 +5,17 @@ Provides comprehensive pre-flight dependency validation
 """
 
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -263,8 +274,8 @@ class SystemHealthChecker:
                     "status": "not_configured",
                     "ready": False,
                     "error": status.get("error", "Unknown error"),
-                    "fix": status.get(
-                        "install_command", "pip install google-cloud-bigquery db-dtypes"
+                    "fix": _render(
+                        status.get("install_command", _render_cmd("pip install google-cloud-bigquery db-dtypes"))
                     ),
                     "details": "BigQuery not available. Install dependencies or configure credentials.",
                     "provides": [
@@ -426,7 +437,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "python_package": False,
                 "system_command": False,
-                "fix": "pip install graphviz && sudo apt install graphviz",
+                "fix": _render_cmd("pip install graphviz && sudo apt install graphviz"),
                 "required_for": ["diagram generation tools"],
             }
 
@@ -467,7 +478,7 @@ class SystemHealthChecker:
                 "status": "pytorch_missing",
                 "ready": False,
                 "error": "PyTorch not installed",
-                "fix": "pip install torch",
+                "fix": _render("pip install torch"),
             }
 
     def _check_disk_space(self) -> dict[str, Any]:
@@ -533,7 +544,7 @@ class SystemHealthChecker:
                 models_status["embeddings"] = {
                     "ready": False,
                     "error": str(e),
-                    "fix": "pip install sentence-transformers",
+                    "fix": _render("pip install sentence-transformers"),
                 }
 
             # Test reranker model
@@ -579,7 +590,7 @@ class SystemHealthChecker:
                 "status": "error",
                 "ready": False,
                 "error": str(e),
-                "fix": "pip install sentence-transformers",
+                "fix": _render_cmd("pip install sentence-transformers"),
             }
 
         # Overall models status
@@ -633,7 +644,11 @@ class SystemHealthChecker:
             "ready": all_installed,
             "packages": packages,
             "versions": versions,
-            "fix": "pip install -e ." if not all_installed else None,
+            "fix": _render(
+                _render_cmd("pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git")
+            )
+            if not all_installed
+            else None,
         }
 
     def get_warnings(self) -> list[str]:

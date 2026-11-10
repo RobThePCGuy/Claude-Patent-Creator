@@ -376,7 +376,11 @@ def register_diagram_tools(
             elif status["python_package"] and not status["system_command"]:
                 message = f"Python package installed but system Graphviz missing. {status.get('message', 'See https://graphviz.org/download/')}"
             elif not status["python_package"]:
-                message = "Python graphviz package missing. Install with: pip install graphviz"
+                try:
+                    from cli_command import render as _render_cmd
+                except ImportError:
+                    from mcp_server.cli_command import render as _render_cmd
+                message = _render_cmd("Python graphviz package missing. Install with: pip install graphviz")
             else:
                 message = "Diagram tools not ready"
 

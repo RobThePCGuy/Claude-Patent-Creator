@@ -45,7 +45,7 @@ scripts/
 
 **Quick Test:**
 ```bash
-python scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
 ```
 
 
@@ -134,7 +134,7 @@ print(f"Search took: {duration:.3f}s")
 
 | Problem | Solution |
 |---------|----------|
-| Import errors | Activate venv, `pip install -r requirements.txt` |
+| Import errors | Reinstall into the venv: `~/patent-creator-venv/bin/python -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git` |
 | GPU tests fail | Check `nvidia-smi`, reinstall PyTorch, or skip |
 | BigQuery fails | Re-auth: `gcloud auth application-default login` |
 | Index not found | Rebuild: `~/patent-creator-venv/bin/patent-creator rebuild-index` |
@@ -158,18 +158,18 @@ print(f"Search took: {duration:.3f}s")
 
 ### Run All Tests
 ```bash
-python scripts/test_install.py
-python scripts/test_gpu.py
-python scripts/test_bigquery.py
-python scripts/test_analyzers.py
-python scripts/test_embedding_speed.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
 ```
 
 ### Regression Test
 ```bash
-python scripts/test_install.py || exit 1
-python scripts/test_bigquery.py || exit 1
-python scripts/test_analyzers.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py || exit 1
 echo "[OK] All regression tests passed!"
 ```
 

@@ -13,6 +13,17 @@ Register for API access at: https://developers.epo.org/
 
 import base64
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import sys
 import time
 from dataclasses import dataclass, field
@@ -138,7 +149,7 @@ class EPOClient:
         if not XMLTODICT_AVAILABLE:
             warning_msg = (
                 "WARNING: xmltodict not installed. EPO API responses cannot be parsed. "
-                "Install with: pip install xmltodict"
+                + _render_cmd("Install with: pip install xmltodict")
             )
             if logger:
                 logger.warning("epo_api_xmltodict_missing")
@@ -284,7 +295,7 @@ class EPOClient:
         """
         if not XMLTODICT_AVAILABLE:
             raise EPOAPIError(
-                "xmltodict is required for EPO API. Install with: pip install xmltodict"
+                _render_cmd("xmltodict is required for EPO API. Install with: pip install xmltodict")
             )
 
         self._ensure_token()
@@ -497,7 +508,7 @@ class EPOClient:
             status["message"] = "xmltodict not installed"
             status["error"] = (
                 "xmltodict is required for EPO API. "
-                "Install with: pip install xmltodict"
+                + _render_cmd("Install with: pip install xmltodict")
             )
             return status
 
@@ -1394,7 +1405,7 @@ if __name__ == "__main__":
 
     # Check xmltodict availability
     if not XMLTODICT_AVAILABLE:
-        print("\nERROR: xmltodict not installed. Install with: pip install xmltodict")
+        print(_render_cmd("\nERROR: xmltodict not installed. Install with: pip install xmltodict"))
         sys.exit(1)
 
     # Initialize client

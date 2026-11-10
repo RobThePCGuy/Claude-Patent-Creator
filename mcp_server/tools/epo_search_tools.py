@@ -60,10 +60,14 @@ def register_epo_tools(
 
                     _epo_client = EPOClient()
                 except ImportError as e:
+                    from cli_command import render as _rc
+
                     raise ValueError(
-                        f"EPO API module not available: {e}. "
-                        "Ensure epo_api.py is in the mcp_server directory and "
-                        "xmltodict is installed: pip install xmltodict"
+                        _rc(
+                            f"EPO API module not available: {e}. "
+                            "Ensure epo_api.py is in the mcp_server directory and "
+                            "xmltodict is installed: pip install xmltodict"
+                        )
                     )
                 except Exception as e:
                     raise ValueError(f"Failed to initialize EPO client: {e}")

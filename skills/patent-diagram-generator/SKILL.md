@@ -64,7 +64,7 @@ brew install graphviz
 
 **Python Package**:
 ```bash
-pip install graphviz
+~/patent-creator-venv/bin/python -m pip install graphviz   # normally already installed
 ```
 
 ## How to Use
@@ -267,8 +267,8 @@ When creating diagrams:
 If Graphviz is not installed:
 1. Check installation: `dot -V`
 2. Install for your OS (see above)
-3. Verify Python package: `pip show graphviz`
-4. Test generation: `python scripts/test_diagrams.py`
+3. Verify Python package: `~/patent-creator-venv/bin/python -m pip show graphviz`
+4. Test generation: call the `check_diagram_tools_status` tool, then render a two-node diagram with `render_diagram`
 
 ## Tools Available
 

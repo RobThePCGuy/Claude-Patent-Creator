@@ -139,7 +139,11 @@ def launch() -> int:
                     show="•" if opt.is_secret else "",
                 ).grid(row=inner_row * 2, column=1, sticky="ew", padx=8, pady=(8, 0))
 
-            desc = opt.description + (f"  ({opt.note})" if opt.note else "")
+            try:
+                from cli_command import render as _render_cmd
+            except ImportError:
+                from mcp_server.cli_command import render as _render_cmd
+            desc = opt.description + (f"  ({_render_cmd(opt.note)})" if opt.note else "")
             ttk.Label(
                 frame, text=f"{desc}   [source: {source}]", foreground="#666", wraplength=460
             ).grid(row=inner_row * 2 + 1, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 4))

@@ -6,6 +6,17 @@ Provides easy setup and management commands
 
 import argparse
 import json
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import os
 import platform
 import shutil
@@ -204,7 +215,7 @@ def install_pytorch():
             return True  # Reinstalled - need to restart Python
         except subprocess.CalledProcessError:
             print("  [ERROR] Could not install PyTorch. Please install manually:", file=sys.stderr)
-            print("  pip install torch>=2.0.0", file=sys.stderr)
+            print(_render_cmd("  pip install torch>=2.0.0"), file=sys.stderr)
             return False  # Failed, continue anyway
 
 
@@ -1496,7 +1507,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Claude Patent Creator - Examiner-level patent creation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=_render("""
 Examples:
   patent-creator setup                    # Setup MPEP/USC/CFR sources
   patent-creator status                   # Show MPEP installation status
@@ -1510,7 +1521,7 @@ Examples:
   patent-creator check-bigquery           # Check BigQuery connection
 
 For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
-        """,
+        """),
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -1615,8 +1626,12 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
         if detail:
             print("    " + detail.replace("\n", "\n    "), file=sys.stderr)
         print(
-            "    Install them with 'pip install \".[dev]\"' and retry. "
-            "('patent-creator config' works without them.)",
+            _render(
+                "    Reinstall them with: pip install --upgrade "
+                "git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git\n"
+                "    (from a source checkout: pip install -e .), then retry.\n"
+                "    ('patent-creator config' works without them.)"
+            ),
             file=sys.stderr,
         )
         return 1

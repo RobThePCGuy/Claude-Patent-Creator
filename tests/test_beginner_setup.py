@@ -406,3 +406,31 @@ def test_health_fixes_name_commands_that_exist():
     source = inspect.getsource(health_check)
     assert "--rebuild-index" not in source  # setup has no such option
     assert '"fix": "patent-creator' not in source
+
+
+def test_install_advice_names_this_installs_python(tmp_path, monkeypatch):
+    import cli_command
+
+    monkeypatch.setattr(cli_command.sys, "executable", str(tmp_path / "venv" / "bin" / "python"))
+    out = cli_command.render("Install with: pip install graphviz")
+    assert out == f"Install with: {tmp_path / 'venv' / 'bin' / 'python'} -m pip install graphviz"
+    # already-qualified commands are left alone
+    assert cli_command.render("python -m pip install x") == "python -m pip install x"
+
+
+def test_no_user_facing_bare_install_advice_left():
+    """Every 'pip install' a user is told to run goes through cli_command.render."""
+    import re
+
+    root = Path(__file__).resolve().parent.parent / "mcp_server"
+    offenders = []
+    for path in root.rglob("*.py"):
+        if path.name == "cli_command.py":
+            continue
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            wrapped = re.compile(r"render|_rc\(")
+            if re.search(r'"[^"]*(?<!-m )pip install', line) and not wrapped.search(line) and not line.lstrip().startswith("#"):
+                ctx = "\n".join(path.read_text(encoding="utf-8").splitlines()[max(0, n - 4) : n])
+                if not wrapped.search(ctx):
+                    offenders.append(f"{path.name}:{n}")
+    assert offenders == []

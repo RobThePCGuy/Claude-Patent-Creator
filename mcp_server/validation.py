@@ -13,9 +13,11 @@ from typing import Literal, Optional
 try:
     from pydantic import BaseModel, Field, ValidationError, conint, constr, field_validator
 except ImportError as e:
-    raise ImportError(
-        "pydantic>=2.12.5 is required. Install with: pip install 'pydantic>=2.12.5'"
-    ) from e
+    try:
+        from cli_command import render as _rc
+    except ImportError:
+        from mcp_server.cli_command import render as _rc
+    raise ImportError(_rc("pydantic>=2.12.5 is required. Install with: pip install 'pydantic>=2.12.5'")) from e
 
 _COUNTRY_CODE_RE = re.compile(r"^[A-Za-z]{2}$")
 

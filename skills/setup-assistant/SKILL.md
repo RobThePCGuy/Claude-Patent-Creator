@@ -65,7 +65,7 @@ From a source checkout instead: `pip install -e .` inside a venv made in the che
 
 Handles GPU detection (installs the CUDA PyTorch build on NVIDIA and restarts itself), downloads, the index build (25-40 min without an NVIDIA GPU, with progress lines), Graphviz (asks first), BigQuery detection, and registration with a live connection test.
 
-**NVIDIA by hand only:** install the CUDA PyTorch build before `sentence-transformers`, or you get the CPU-only build: `pip install torch --index-url https://download.pytorch.org/whl/cu128`.
+**NVIDIA by hand only:** install the CUDA PyTorch build before `sentence-transformers`, or you get the CPU-only build: `~/patent-creator-venv/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cu128`.
 
 ### Phase 4: BigQuery Authentication (Optional)
 

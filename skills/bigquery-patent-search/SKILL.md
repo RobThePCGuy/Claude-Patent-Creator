@@ -199,7 +199,7 @@ If BigQuery is not configured:
 1. Check if `google-cloud-bigquery` is installed
 2. Verify authentication: `gcloud auth application-default login`
 3. Confirm project ID in environment: `GOOGLE_CLOUD_PROJECT`
-4. Test with: `python scripts/test_bigquery.py`
+4. Test with: `~/patent-creator-venv/bin/patent-creator check-bigquery`
 
 ## Cost Considerations
 

@@ -19,31 +19,31 @@ Run test suites to verify all components are working correctly.
 ### Analyzers Test
 Tests claims, specification, and formalities analyzers:
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
 ```
 
 ### GPU Test
 Verify GPU detection and CUDA support:
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
 ```
 
 ### BigQuery Test
 Test patent search via BigQuery:
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
 ```
 
 ### Embedding Speed Test
 Benchmark embedding generation:
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
 ```
 
 ### Complete Installation Test
 Full system validation:
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
 ```
 
 ## Arguments

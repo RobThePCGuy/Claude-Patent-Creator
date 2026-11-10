@@ -18,8 +18,7 @@ Set up Google Cloud authentication to enable patent search across 100M+ worldwid
 ## Command
 
 ```bash
-cd ${CLAUDE_PLUGIN_ROOT}
-python scripts/setup_bigquery_auth.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/setup_bigquery_auth.py
 ```
 
 Or using gcloud directly:
@@ -48,7 +47,7 @@ gcloud auth application-default login
 After setup, test with:
 
 ```bash
-python scripts/test_bigquery.py
+~/patent-creator-venv/bin/patent-creator check-bigquery
 ```
 
 Should return sample patent results.

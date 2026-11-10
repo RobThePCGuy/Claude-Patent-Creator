@@ -36,8 +36,8 @@ Problem Reported
 | MCP server not loading | `claude mcp list` -> Re-register if missing |
 | GPU not detected | Reinstall PyTorch with CUDA |
 | BigQuery auth fails | `gcloud auth application-default login` |
-| Index not found | `~/patent-creator-venv/bin/patent-creator rebuild-index` |
-| Import errors | Activate venv: `venv\Scripts\activate` |
+| Index not found | `~/patent-creator-venv/bin/patent-creator setup --rebuild` |
+| Import errors | Use the venv's own commands (`~/patent-creator-venv/bin/...`); nothing needs activating. Reinstall: `~/patent-creator-venv/bin/python -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git` |
 | Slow searches | Check GPU usage, reduce top_k, disable HyDE |
 | Irrelevant results | Rephrase query with MPEP terminology |
 
@@ -81,27 +81,27 @@ Problem Reported
 ~/patent-creator-venv/bin/patent-creator health
 
 # Individual components
-python scripts/test_gpu.py
-python scripts/test_bigquery.py
-python scripts/test_analyzers.py
-python scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
 ```
 
 ### Component Isolation
 
 ```python
 # Test MPEP search
-python -c "from mcp_server.mpep_search import MPEPIndex; \
+~/patent-creator-venv/bin/python -c "from mcp_server.mpep_search import MPEPIndex; \
            index = MPEPIndex(); index.build_index(); \
            print('OK' if index.search('test', top_k=1) else 'FAILED')"
 
 # Test BigQuery
-python -c "from mcp_server.bigquery_search import BigQueryPatentSearch; \
+~/patent-creator-venv/bin/python -c "from mcp_server.bigquery_search import BigQueryPatentSearch; \
            search = BigQueryPatentSearch(); \
            print('OK' if search.search_by_keywords('neural network', limit=1) else 'FAILED')"
 
 # Test analyzers
-python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
+~/patent-creator-venv/bin/python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
            analyzer = ClaimsAnalyzer(); \
            print('OK' if analyzer.analyze('1. A test claim.') else 'FAILED')"
 ```
@@ -144,9 +144,9 @@ python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
 ~/patent-creator-venv/bin/patent-creator health
 
 # Test components
-python scripts/test_gpu.py
-python scripts/test_bigquery.py
-python scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
 
 # Check registration
 claude mcp list
