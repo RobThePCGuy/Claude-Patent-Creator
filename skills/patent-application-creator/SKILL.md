@@ -73,10 +73,16 @@ Then triage (kill/pursue) with these screens:
 The current code shows WHAT exists; history shows what it BEAT, how hard
 it was, and when — and it holds mechanisms that no reader of HEAD can ever
 find, because they died in abandoned branches. For an inventor who rebuilds
-often, the abandoned branches are where the cleanest ground lives: **a
-mechanism that never merged never deployed, so it has no disclosure clock
-running and full foreign rights intact.** Run this pass alongside the
-Phase 1 code mining whenever the raw material has git history.
+often, abandoned branches may contain useful mechanisms. **Unmerged or
+undeployed does not mean undisclosed.** Public branches, commits, pull
+requests, forks, and archives may already disclose the mechanism. Record
+what was publicly accessible, where, and the earliest evidenced access date;
+a commit's authored date alone does not establish public availability. If
+access or timing cannot be established, mark disclosure status unknown.
+Never infer an unstarted disclosure clock or intact foreign rights from
+merge or deployment status. See [USPTO MPEP 2128](https://www.uspto.gov/web/offices/pac/mpep/s2128.html)
+and [EPC Article 54(2)](https://www.epo.org/en/legal/epc/2020/a54.html).
+Run this pass alongside Phase 1 whenever the material has git history.
 
 The funnel (validated on a real 808-commit, 9-branch + 92-PR-ref repo:
 ~2.5M agent tokens, minutes of wall clock):
@@ -106,8 +112,10 @@ The funnel (validated on a real 808-commit, 9-branch + 92-PR-ref repo:
    against the default branch, then verify against the SHIPPED code
    whether the mechanism migrated (a bridge branch can make "stranded"
    commits' content live elsewhere — check the deployed source, not the
-   branch topology). Only "absent from everything shipped" earns the
-   no-disclosure-clock label.
+   branch topology). Separately audit public accessibility of each mechanism,
+   including unmerged PRs and branches. "Absent from everything shipped" is
+   a deployment finding only; it establishes nothing about disclosure dates
+   or remaining patent rights. Preserve the access/date evidence and any unknowns.
 6. **Second adversarial pass until dry.** One lens misses; re-read the
    ROUTINE pile with a "what did pass 1 misjudge?" prompt until a pass
    finds nothing new.
@@ -219,8 +227,16 @@ does not label edges), with reference numerals on every node.
 ## Phase 4 — Machine verification loop (iterate to clean)
 
 1. `~/patent-creator-venv/bin/patent-creator config set PATENT_ENABLE_ANTECEDENT_CHECK 1` — the
-   antecedent check is opt-in; a campaign MUST run it.
-2. `review_patent_claims` on the full claim set. Fix genuine findings
+   antecedent check is opt-in; a campaign MUST run it. Use the executable
+   from the user's actual installation. This saves configuration; it does
+   not update an already-running server's environment.
+2. **Restart Claude Code (or restart its patent-creator MCP server)** after
+   enabling the setting. Then run `review_patent_claims` on the full claim
+   set. Inspect that result: its `checks_run` MUST include `antecedent_basis`.
+   If absent, report the check as skipped, retain the reason from
+   `checks_skipped`, and stop the verification loop until the server setting
+   is corrected and a new result confirms it ran. A successful config command
+   or restart is not evidence that the check ran. Fix genuine findings
    (form, term drift); manually verify each remaining LOW-confidence flag
    and record the verdicts — that manual pass is part of the workflow, not
    optional.

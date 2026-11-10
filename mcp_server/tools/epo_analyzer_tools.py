@@ -290,6 +290,9 @@ def register_epo_analyzer_tools(
                     "analysis_type": "automated",
                     "jurisdiction": "EPO",
                     "overall_compliant": analysis_results["overall_compliant"],
+                    "checks_run": analysis_results["checks_run"],
+                    "checks_skipped": analysis_results["checks_skipped"],
+                    "verdict_scope": analysis_results["verdict_scope"],
                     "ready_to_file": analysis_results["compliance_summary"]["ready_to_file"],
                     "summary": analysis_results["compliance_summary"]["summary"],
                     "critical_issues": analysis_results["compliance_summary"]["critical_issues"],
@@ -325,6 +328,14 @@ def register_epo_analyzer_tools(
                 return {
                     "analysis_type": "legal_search_only",
                     "jurisdiction": "EPO",
+                    "overall_compliant": False,
+                    "ready_to_file": False,
+                    "checks_run": [],
+                    "checks_skipped": [
+                        {"check": check, "reason": "automated checker unavailable"}
+                        for check in ('abstract', 'title', 'sections', 'drawing_references', 'claims_fees', 'drawings')
+                    ],
+                    "verdict_scope": "Legal references only; this is not a filing clearance.",
                     "warning": "Automated EPO analysis unavailable - showing EPC references only",
                     "requirements": formatted,
                 }
@@ -394,6 +405,9 @@ def register_epo_analyzer_tools(
                     "analysis_type": "automated",
                     "jurisdiction": "PCT",
                     "overall_compliant": analysis_results["overall_compliant"],
+                    "checks_run": analysis_results["checks_run"],
+                    "checks_skipped": analysis_results["checks_skipped"],
+                    "verdict_scope": analysis_results["verdict_scope"],
                     "ready_to_file": analysis_results["compliance_summary"]["ready_to_file"],
                     "summary": analysis_results["compliance_summary"]["summary"],
                     "critical_issues": analysis_results["compliance_summary"]["critical_issues"],
@@ -430,6 +444,14 @@ def register_epo_analyzer_tools(
                 return {
                     "analysis_type": "legal_search_only",
                     "jurisdiction": "PCT",
+                    "overall_compliant": False,
+                    "ready_to_file": False,
+                    "checks_run": [],
+                    "checks_skipped": [
+                        {"check": check, "reason": "automated checker unavailable"}
+                        for check in ('abstract', 'title', 'description', 'claims', 'terminology', 'physical', 'drawings')
+                    ],
+                    "verdict_scope": "Legal references only; this is not a filing clearance.",
                     "warning": "Automated PCT analysis unavailable - showing PCT references only",
                     "requirements": formatted,
                 }

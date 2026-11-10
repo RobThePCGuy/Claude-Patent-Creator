@@ -1,7 +1,6 @@
 ---
 name: mpep-researcher
 description: Expert in searching and interpreting USPTO MPEP, 35 USC statutes, 37 CFR regulations using hybrid RAG search (FAISS + BM25 + HyDE)
-tools: Read
 model: sonnet
 ---
 

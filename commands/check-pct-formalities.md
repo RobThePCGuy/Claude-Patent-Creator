@@ -234,11 +234,15 @@ Estimated total at filing: USD 3,560 - 4,230
 KEY DEADLINES:
 ===============
 
-Filing date + 12 months: Priority period expires
-Filing date + 16 months: Furnish priority document
-Filing date + 18 months: International publication
-Filing date + 22 months: ISA preliminary examination demand deadline
-Filing date + 30/31 months: National/regional phase entry deadline
+Use the earliest claimed priority date; if none, the PCT filing date.
+Priority + 12 months: Normally file PCT to claim the earlier filing's priority
+Priority + 16 months: Priority document deadline (Rule 17.1 alternatives apply)
+After priority + 18 months: International publication, normally promptly after expiry
+Chapter II demand: Later of priority + 22 months or 3 months from transmittal
+of the ISR (or Article 17(2)(a) declaration) and written opinion
+Priority + 30 months: US and Japan national phase entry
+Priority + 31 months: EPO regional phase entry
+Other Offices: Check the current WIPO table and national chapter; exceptions apply.
 
 FILING CHECKLIST:
 ==================
@@ -262,8 +266,14 @@ NEXT STEPS:
 3. Select Receiving Office (RO) and ISA
 4. Prepare fee payment
 5. File via ePCT (WIPO online filing system)
-6. Mark 30/31 month deadline for national phase entry
+6. Record each Office's national phase deadline measured from priority, not a later PCT filing
 ```
+
+Deadline sources: [PCT Article 2(xi)](https://www.wipo.int/en/web/pct-system/texts/articles/a2),
+[Rule 17.1](https://www.wipo.int/en/web/pct-system/texts/rules/r17),
+[Article 21(2)](https://www.wipo.int/en/web/pct-system/texts/articles/a21),
+[Rule 54bis.1](https://www.wipo.int/en/web/pct-system/texts/rules/r54bis),
+and [WIPO Office-specific time limits](https://www.wipo.int/en/web/pct-system/texts/time_limits).
 
 ## Output
 
@@ -279,7 +289,7 @@ NEXT STEPS:
 | Aspect | PCT | Direct EP | Direct US |
 |--------|-----|-----------|-----------|
 | Scope | 157 countries | 39 EPC states | US only |
-| Decision deadline | 30/31 months | Filing date | Filing date |
+| Decision deadline | Office-specific, usually 30/31 months from priority | Filing date | Filing date |
 | Search | ISA report | EP search | USPTO search |
 | Cost at filing | ~USD 3,500-4,200 | ~EUR 2,595 | ~USD 1,820 |
 | Advantage | Delays national costs | Faster EP grant | Fastest US grant |

@@ -1,7 +1,6 @@
 ---
 name: patent-illustrator
 description: Expert in creating patent-style technical diagrams - flowcharts, block diagrams, system architectures - using Graphviz with proper reference numbering.
-tools: Bash, Read, Write
 model: sonnet
 ---
 

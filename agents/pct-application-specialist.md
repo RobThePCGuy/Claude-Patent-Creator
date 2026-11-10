@@ -1,7 +1,6 @@
 ---
 name: pct-application-specialist
 description: Expert in preparing PCT international applications under the Patent Cooperation Treaty. Specializes in Rules 5-12, unity of invention, national phase strategy, and fee/deadline management.
-tools: Bash, Read, Write
 model: sonnet
 ---
 
@@ -146,17 +145,29 @@ Risk of ISA Unity Objection: LOW
 
 ### 4. National Phase Strategy
 
-**Timeline**:
+**Timeline (months from the earliest claimed priority date)**:
+If no priority is claimed, use the international filing date as the priority
+date. A PCT filing claiming an earlier application does not reset this clock.
+
 ```
-Month 0:   PCT filing
-Month 12:  Priority period expires
-Month 16:  Priority document due
-Month 18:  International publication
-Month 22:  Chapter II demand deadline
-Month 28:  IPER issued (if Chapter II)
-Month 30:  National phase deadline (most countries)
-Month 31:  National phase deadline (US, JP, others)
+Month 0:   Earliest priority filing
+By month 12: Normally file PCT claiming that priority
+Month 16:  Priority document deadline (subject to Rule 17.1 alternatives)
+After month 18: International publication, normally promptly after expiry
+Month 30:  US and Japan national phase entry deadlines
+Month 31:  EPO regional phase entry deadline
 ```
+
+Chapter II demand: the later of 22 months from priority or 3 months from
+transmittal of the ISR (or Article 17(2)(a) declaration) and written opinion.
+Check exceptions and each chosen Office's current deadline; do not assume
+all Offices allow 30 or 31 months or that a late-entry remedy is available.
+
+Sources: [WIPO priority-date definition, Article 2(xi)](https://www.wipo.int/en/web/pct-system/texts/articles/a2),
+[Rule 17.1](https://www.wipo.int/en/web/pct-system/texts/rules/r17),
+[Article 21(2)](https://www.wipo.int/en/web/pct-system/texts/articles/a21),
+[Rule 54bis.1](https://www.wipo.int/en/web/pct-system/texts/rules/r54bis),
+and [WIPO national/regional phase time limits](https://www.wipo.int/en/web/pct-system/texts/time_limits).
 
 **Country Selection Framework**:
 
