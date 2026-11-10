@@ -158,6 +158,13 @@ OPTIONS: tuple[Option, ...] = (
         choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
     ),
     Option(
+        "PATENT_LOG_FORMAT", "Performance", "Log format",
+        "Format of the server's log lines: 'json' (default) or 'human'. "
+        "The patent-creator command prints human-readable lines either way.",
+        "choice", default="json",
+        choices=("json", "human"),
+    ),
+    Option(
         "PATENT_DATA_DIR", "Performance", "Data directory",
         "Where downloaded corpora (MPEP/USC/CFR PDFs) and the search index "
         "are stored. Empty = platform app-data dir, or the legacy in-tree "

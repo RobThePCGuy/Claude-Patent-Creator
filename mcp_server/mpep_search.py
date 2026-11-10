@@ -890,6 +890,36 @@ class MPEPIndex:
             )
             print(f"To manually delete PDFs later: rm {MPEP_DIR}/*.pdf", file=sys.stderr)
 
+    def _encode_with_progress(self, texts, batch_size, slices: int = 40):
+        """Embed in slices, logging a plain progress line with time left.
+
+        This step takes over half an hour on a CPU. A tqdm bar redraws one
+        line with carriage returns, which many terminals and log captures
+        never show, so a beginner saw nothing for 36 minutes and could not
+        tell work from a hang. One ordinary line per slice always shows.
+        """
+        import time
+
+        total = len(texts)
+        step = max(batch_size, -(-total // slices))
+        parts = []
+        start = time.monotonic()
+        for begin in range(0, total, step):
+            part = texts[begin : begin + step]
+            parts.append(
+                self.model.encode(
+                    part, batch_size=batch_size, show_progress_bar=False, device=self.device
+                )
+            )
+            done = min(begin + step, total)
+            elapsed = time.monotonic() - start
+            left = elapsed / done * (total - done)
+            _log_info(
+                f"Building search index: {done * 100 // total}% ({done:,} of {total:,} chunks), "
+                f"about {int(left // 60)} min {int(left % 60)} s left"
+            )
+        return np.vstack(parts) if len(parts) > 1 else parts[0]
+
     def build_index(self, force_rebuild: bool = False):
         """Build or load the FAISS index with BM25"""
         _log_info("build_index_started", force_rebuild=force_rebuild)
@@ -1045,9 +1075,7 @@ class MPEPIndex:
             batch_size = 32  # Smaller batch for CPU
             _log_info(f"Using CPU batch size: {batch_size}", batch_size=batch_size)
 
-        embeddings = self.model.encode(
-            texts, batch_size=batch_size, show_progress_bar=True, device=self.device
-        )
+        embeddings = self._encode_with_progress(texts, batch_size)
         _log_info(f"Generated {len(embeddings):,} embeddings", embedding_count=len(embeddings))
 
         # Build FAISS index

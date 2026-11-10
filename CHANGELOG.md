@@ -54,6 +54,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   supplied or a component check failed, and lists checks run and skipped.
   `review_patent_claims` leads with skipped checks and no longer calls claims
   "compliant" when the antecedent-basis check did not run.
+- Setup looked frozen for over half an hour: the CLI imports the server stack
+  under a stderr capture, and the logger kept writing into that buffer, so
+  every index-build message vanished. Logs now follow the live terminal, the
+  build prints a plain progress line with time left every few percent, and
+  the time estimate matches the device (25-40 min without an NVIDIA GPU).
+- The missing SerpApi key message gives the exact `config set` command for
+  this install instead of a project `.env`, and BigQuery is offered as a ready
+  fallback only when it is configured. Commands setup prints name the
+  installed executable, so they work from a virtual environment.
+- A short abstract is advice, not a failure: under 50 words is MPEP
+  608.01(b)'s preference. Over 150 words still fails (37 CFR 1.72(b)).
+- Status no longer marks 35 USC, 37 CFR and Updates `[X]` after the offered
+  PDF cleanup; their text is in the index.
+- The plugin's setup command installs into the same `~/patent-creator-venv`
+  folder as the README (a normal install, so plugin updates can't break it)
+  and walks through turning on patent search.
 - Stale command suggestions (`scripts/setup_bigquery_auth.py`, `install.py`,
   `status --verbose`) point at commands that exist.
 

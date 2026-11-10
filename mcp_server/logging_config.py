@@ -101,6 +101,25 @@ class StructuredLogger(logging.LoggerAdapter):
         return msg, kwargs
 
 
+class _CurrentStderrHandler(logging.StreamHandler):
+    """Writes to whatever sys.stderr is at emit time.
+
+    A plain StreamHandler keeps the stream it was created with. The CLI
+    imports the server stack under contextlib.redirect_stderr (to keep a
+    failed import quiet), so a handler made then kept writing into that
+    throwaway buffer: every progress line of a 35-minute index build vanished
+    and setup looked frozen.
+    """
+
+    @property  # type: ignore[override]
+    def stream(self):
+        return sys.stderr
+
+    @stream.setter
+    def stream(self, value):
+        pass
+
+
 def setup_logging(
     level: str = "INFO", format_type: str = "human", log_file: Optional[Path] = None
 ) -> StructuredLogger:
@@ -126,7 +145,7 @@ def setup_logging(
     formatter = StructuredFormatter() if format_type == "json" else HumanReadableFormatter()
 
     # Create stderr handler (required for MCP protocol)
-    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler = _CurrentStderrHandler()
     stderr_handler.setFormatter(formatter)
     logger.addHandler(stderr_handler)
 

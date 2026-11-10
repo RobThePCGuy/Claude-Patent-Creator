@@ -207,31 +207,41 @@ class FormalitiesChecker(BaseAnalyzer):
         }
 
         # Check word count
+        # 37 CFR 1.72(b) caps the abstract at 150 words (a rule). The 50-word
+        # floor is only MPEP 608.01(b)'s preference ("preferably within the
+        # range of 50 to 150 words"), so a short abstract is advice, not a failure.
         if word_count < self.ABSTRACT_MIN_WORDS:
             self.issues.append(
                 FormalityIssue(
                     section="abstract",
-                    severity="WARNING",
-                    problem="Abstract is too short",
+                    severity="INFO",
+                    problem="Abstract is shorter than the preferred length",
                     current_value=f"{word_count} words",
-                    required_value=f"{self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words",
-                    fix=f"Expand abstract to at least {self.ABSTRACT_MIN_WORDS} words",
+                    required_value=(
+                        f"preferably {self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words "
+                        "(a preference, not a minimum)"
+                    ),
+                    fix=(
+                        "Make sure it summarizes what the invention is and how it works; "
+                        f"most abstracts land between {self.ABSTRACT_MIN_WORDS} and "
+                        f"{self.ABSTRACT_MAX_WORDS} words"
+                    ),
                     legal_ref="MPEP 608.01(b)",
+                    confidence="MEDIUM",
                 )
             )
-            result["compliant"] = False
-            result["issues"].append("Too short")
+            result["issues"].append("Shorter than preferred")
 
         elif word_count > self.ABSTRACT_MAX_WORDS:
             self.issues.append(
                 FormalityIssue(
                     section="abstract",
                     severity="WARNING",
-                    problem="Abstract exceeds recommended length",
+                    problem="Abstract exceeds the 150-word limit",
                     current_value=f"{word_count} words",
-                    required_value=f"{self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words",
-                    fix=f"Reduce abstract to {self.ABSTRACT_MAX_WORDS} words or less",
-                    legal_ref="MPEP 608.01(b)",
+                    required_value=f"{self.ABSTRACT_MAX_WORDS} words or fewer",
+                    fix=f"Reduce abstract to {self.ABSTRACT_MAX_WORDS} words or fewer",
+                    legal_ref="37 CFR 1.72(b); MPEP 608.01(b)",
                 )
             )
             result["compliant"] = False

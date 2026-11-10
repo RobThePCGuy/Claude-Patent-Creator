@@ -60,7 +60,12 @@ def make_tools(claims_analyzer=ClaimsAnalyzer, formalities_checker=FormalitiesCh
 
 def test_short_abstract_cannot_pass_overall():
     result = make_tools()["check_formalities"](abstract=SHORT_ABSTRACT)
-    assert result["abstract"]["compliant"] is False
+    # Under 50 words is MPEP 608.01(b)'s preference, not a rule: advice only.
+    assert result["abstract"]["compliant"] is True
+    short = [i for i in result["issues"] if i["section"] == "abstract"]
+    assert short and short[0]["severity"] == "INFO"
+    assert "preference" in short[0]["required"]
+    # Still not ready: everything but the abstract was skipped.
     assert result["overall_compliant"] is False
     assert result["ready_to_file"] is False
     assert result["checks_run"] == ["abstract"]
@@ -96,9 +101,13 @@ def test_empty_formalities_do_not_claim_success(blank):
     assert "[OK]" not in result["summary"]
 
 
+LONG_ABSTRACT = " ".join(["word"] * 160) + "."
+
+
 def test_failed_warning_level_check_blocks_complete_input(sample_good_abstract):
+    # 37 CFR 1.72(b) caps the abstract at 150 words; over it fails at WARNING level.
     result = make_tools()["check_formalities"](
-        abstract=SHORT_ABSTRACT,
+        abstract=LONG_ABSTRACT,
         title="Signal Processor",
         specification=COMPLETE_SPEC,
         drawings_present=True,

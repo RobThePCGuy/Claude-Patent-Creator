@@ -131,3 +131,91 @@ def test_graphviz_installs_after_a_yes(monkeypatch):
 
     assert cli._setup_graphviz(consent=lambda hint: True) is True
     assert ran
+
+
+# --- Second fresh-user walk -------------------------------------------------
+
+
+def test_log_lines_reach_the_live_terminal_after_a_captured_import():
+    """The CLI imports the server under redirect_stderr; logs made then must
+    still reach the real terminal later, or a 35-minute build looks frozen."""
+    import contextlib
+    import io
+
+    import logging_config
+
+    with contextlib.redirect_stderr(io.StringIO()):
+        lg = logging_config.setup_logging(format_type="human")
+    live = io.StringIO()
+    with contextlib.redirect_stderr(live):
+        lg.info("progress-line-probe")
+    assert "progress-line-probe" in live.getvalue()
+
+
+def test_index_build_prints_plain_progress_lines(monkeypatch):
+    import numpy as np
+
+    import mpep_search
+
+    lines = []
+    monkeypatch.setattr(mpep_search, "_log_info", lambda msg, **kw: lines.append(msg))
+
+    class FakeModel:
+        def encode(self, texts, **kwargs):
+            return np.ones((len(texts), 3), dtype="float32")
+
+    idx = mpep_search.MPEPIndex.__new__(mpep_search.MPEPIndex)
+    idx.model, idx.device = FakeModel(), "cpu"
+    out = idx._encode_with_progress([f"t{i}" for i in range(100)], batch_size=10, slices=4)
+
+    assert out.shape == (100, 3)
+    assert len(lines) >= 4
+    assert lines[-1].startswith("Building search index: 100%")
+    assert "left" in lines[0]
+
+
+def test_removed_source_files_are_not_flagged_once_indexed(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "INDEX_DIR", tmp_path)
+    assert "[X]" in cli._source_line("35 USC:", False)
+    (tmp_path / "mpep_index.faiss").write_bytes(b"x")
+    (tmp_path / "mpep_metadata.json").write_text("{}", encoding="utf-8")
+    line = cli._source_line("35 USC:", False)
+    assert "[X]" not in line and "removed after indexing" in line
+    assert "[OK]" in cli._source_line("35 USC:", True)
+
+
+def test_missing_serpapi_key_message_gives_a_command_that_works():
+    from google_patents_search import GooglePatentsSearch
+
+    msg = GooglePatentsSearch.setup_message()
+    assert "config set SERPAPI_API_KEY" in msg
+    assert ".env" not in msg
+    assert "restart Claude Code" in msg
+
+
+def test_bigquery_is_only_offered_as_ready_when_configured(monkeypatch):
+    from tools import google_patents_tools as gpt
+
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    assert "once the optional BigQuery setup" in gpt._bigquery_fallback()
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo")
+    assert "once the optional" not in gpt._bigquery_fallback()
+
+
+def test_printed_commands_name_the_installed_executable(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    exe = bin_dir / "patent-creator"
+    exe.write_text("", encoding="utf-8")
+    monkeypatch.setattr(cli.sys, "executable", str(bin_dir / "python"))
+    monkeypatch.setattr(cli.shutil, "which", lambda name: None)
+    assert cli._cli() == str(exe)
+
+
+def test_short_abstract_is_advice_and_over_150_words_is_a_failure():
+    from formalities_checker import FormalitiesChecker
+
+    short = FormalitiesChecker().check_all_formalities(abstract="A mug heats a beverage.")
+    assert short["results"]["abstract"]["compliant"] is True
+    long = FormalitiesChecker().check_all_formalities(abstract=" ".join(["word"] * 151) + ".")
+    assert long["results"]["abstract"]["compliant"] is False

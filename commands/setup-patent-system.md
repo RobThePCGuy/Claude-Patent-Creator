@@ -52,32 +52,35 @@ If no compatible Python is found, tell the user to install Python 3.13 from pyth
 
 ### Step 2: Create venv and Install Package
 
+Use the same folder the README's Quick Start uses, `patent-creator-venv` in the user's home folder, so every later README instruction (saving keys, `health`) works as written. If that folder already exists with a working install, skip to Step 3.
+
 ```bash
-cd ${CLAUDE_PLUGIN_ROOT}
-${PYTHON_CMD} -m venv venv
+# Linux/macOS
+${PYTHON_CMD} -m venv ~/patent-creator-venv
+# Windows (PowerShell)
+${PYTHON_CMD} -m venv $HOME\patent-creator-venv
 ```
 
-Use the venv Python for all remaining commands:
-- **Windows**: `${CLAUDE_PLUGIN_ROOT}/venv/Scripts/python`
-- **Linux/macOS**: `${CLAUDE_PLUGIN_ROOT}/venv/bin/python`
+Use the venv's commands for all remaining steps:
+- **Linux/macOS**: `VENV_PYTHON=~/patent-creator-venv/bin/python`, `CLI=~/patent-creator-venv/bin/patent-creator`
+- **Windows**: `VENV_PYTHON=$HOME\patent-creator-venv\Scripts\python.exe`, `CLI=$HOME\patent-creator-venv\Scripts\patent-creator.exe`
 
-Install the package:
+Install the package (a normal install, not `-e`: the plugin folder moves when the plugin updates, and an editable install would break with it):
 ```bash
 ${VENV_PYTHON} -m pip install --upgrade pip
-${VENV_PYTHON} -m pip install -e .
+${VENV_PYTHON} -m pip install "${CLAUDE_PLUGIN_ROOT}"
 ```
 
 ### Step 3: Run Automated Setup
 
-The `patent-creator setup` CLI handles GPU detection, PyTorch installation, MPEP downloads, and index building automatically:
-
 ```bash
-cd ${CLAUDE_PLUGIN_ROOT}
-${VENV_PYTHON} -m mcp_server.cli setup --non-interactive
+${CLI} setup --non-interactive
 ```
 
+This is long-running (25-40 minutes on a computer without an NVIDIA GPU). Use a long Bash timeout and check output periodically; a progress line appears every few percent during the index build.
+
 **What this does automatically:**
-1. Detects GPU hardware (NVIDIA CUDA, Apple MPS, or CPU)
+1. Detects GPU hardware (NVIDIA CUDA; Apple Silicon and others build on the CPU)
 2. Installs correct PyTorch version (uninstalls CPU version if GPU detected, restarts itself)
 3. Downloads MPEP PDFs if missing (~500MB)
 4. Downloads 35 USC, 37 CFR, Federal Register updates
@@ -99,24 +102,21 @@ ${VENV_PYTHON} -c "import torch; print(f'PyTorch {torch.__version__}'); print(f'
 
 ```bash
 cd ${CLAUDE_PLUGIN_ROOT}
-${VENV_PYTHON} -m mcp_server.cli health
+${CLI} health
 ```
 
-### Step 5: Check BigQuery Status (Optional — enhances patent search)
+### Step 5: Turn On Patent Search
 
-BigQuery adds 100M+ worldwide patent search. The setup auto-detects existing gcloud credentials.
+Rule search, claim and formality checks, diagrams (once Graphviz is installed) and research-paper search work with no keys. Searching existing **patents** needs one of these; tell the user plainly, and recommend the first:
 
-**If setup output showed `BigQuery: [OK]`** — nothing to do, it works.
+1. **Free SerpApi key (recommended, 250 searches a month).** The user signs up at https://serpapi.com/users/sign_up and copies the key from https://serpapi.com/manage-api-key. Ask them to paste it, then save it:
+   ```bash
+   ${CLI} config set SERPAPI_API_KEY "THE_KEY"
+   ```
+   Never echo the key back in chat. They restart Claude Code afterward.
+2. **BigQuery (optional).** Needs a Google Cloud project (the BigQuery sandbox works without a billing account). If setup output showed `BigQuery: [OK]`, it already works. Otherwise: `! gcloud auth application-default login`, then `${CLI} config set GOOGLE_CLOUD_PROJECT their-project-id`, then `${CLI} check-bigquery`.
 
-**If BigQuery is not configured** — this is fine. MPEP search, claims review, EPO analysis, and all other features work without it. BigQuery just adds prior art search across 100M+ patents.
-
-If the user wants to enable it later, they can run:
-```
-! gcloud auth application-default login
-```
-This opens a browser for Google sign-in. No credit card needed (free tier: 1TB/month).
-
-**Do NOT present BigQuery setup as a required step or a failure.** The system is fully functional without it.
+Do not present a missing key as a failed setup; the rest of the system is ready.
 
 ## Troubleshooting
 
@@ -136,7 +136,7 @@ ${VENV_PYTHON} -m pip install torch torchvision torchaudio --index-url https://d
 
 Retry:
 ```bash
-${VENV_PYTHON} -m mcp_server.cli setup --non-interactive
+${CLI} setup --non-interactive
 ```
 Won't re-download files that already exist. Only downloads missing sources.
 
@@ -144,7 +144,7 @@ Won't re-download files that already exist. Only downloads missing sources.
 
 Use CPU mode (slower but less memory):
 ```bash
-PATENT_MPEP_DEVICE=cpu ${VENV_PYTHON} -m mcp_server.cli setup --rebuild --non-interactive
+PATENT_MPEP_DEVICE=cpu ${CLI} setup --rebuild --non-interactive
 ```
 
 ### BigQuery Not Working

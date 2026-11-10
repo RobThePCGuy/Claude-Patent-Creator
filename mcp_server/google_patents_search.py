@@ -31,6 +31,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any, Optional
 
 ENDPOINT = "https://serpapi.com/search.json"
@@ -50,6 +51,24 @@ class GooglePatentsQuotaError(ValueError):
 
 def _date_bound(year: int, end: bool) -> str:
     return f"{year:04d}{'1231' if end else '0101'}"
+
+
+def _config_command() -> str:
+    """The exact patent-creator executable for this install.
+
+    The server runs on the venv's python, so the console script sits next to
+    it. A beginner who installed into a venv has no bare ``patent-creator``
+    on PATH, so a bare name in this message would fail with "command not found".
+    """
+    import sys
+
+    folder = Path(sys.executable).absolute().parent
+    for name in ("patent-creator", "patent-creator.exe"):
+        candidate = folder / name
+        if candidate.exists():
+            text = str(candidate)
+            return f'"{text}"' if " " in text else text
+    return "patent-creator"
 
 
 class GooglePatentsSearch:
@@ -113,8 +132,9 @@ class GooglePatentsSearch:
     def setup_message() -> str:
         return (
             "Google Patents search needs a free SerpApi key (250 searches a month). "
-            f"Sign up at {SIGNUP_URL}, copy the key from {KEY_URL}, and set "
-            "SERPAPI_API_KEY in the project .env file."
+            f"Sign up at {SIGNUP_URL}, copy the key from {KEY_URL}, then save it by "
+            f'running this in a terminal: {_config_command()} config set SERPAPI_API_KEY "YOUR_KEY" '
+            "and restart Claude Code. (This is Step 3 of the README's Quick Start.)"
         )
 
     def search(

@@ -11,22 +11,19 @@ Expert system for installing, configuring, and setting up the Claude Patent Crea
 
 Installing first time, setting up new environment, configuring authentication, troubleshooting installation, migrating to new machine, updating dependencies, verifying health.
 
-## Quick Setup (5 Minutes)
+## Quick Setup (about an hour, mostly waiting)
+
+Follow the README's Quick Start; it is the tested path. In short:
 
 ```bash
-# 1. Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/macOS
-
-# 2. Run installer
-python install.py
-
-# 3. Restart Claude Code
-
-# 4. Test
-# Ask Claude: "Search MPEP for claim definiteness"
+# Mac/Linux (Windows: py -m venv patent-creator-venv, then .\patent-creator-venv\Scripts\...)
+cd ~
+python3 -m venv patent-creator-venv
+patent-creator-venv/bin/pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
+patent-creator-venv/bin/patent-creator setup
 ```
+
+Setup takes 25-40 minutes without an NVIDIA GPU and ends by testing the connection to Claude Code. Then restart Claude Code and ask: "Search MPEP for claim definiteness". From a plugin, `/claude-patent-creator-standalone:setup-patent-system` does the same steps into the same folder.
 
 ## Complete Setup Lifecycle
 
@@ -118,20 +115,15 @@ claude mcp list
 
 ### Phase 6: Configuration Files
 
-Create `.env`:
+Nothing is required. Save optional keys with the config command (they go in `~/.config/claude-patent-creator/config.json`, or `%APPDATA%\claude-patent-creator\config.json` on Windows):
 
 ```bash
-# Required
-GOOGLE_CLOUD_PROJECT=your_project_id
-ANTHROPIC_API_KEY=<YOUR_ANTHROPIC_API_KEY>
-
-# Optional
-PATENT_LOG_LEVEL=INFO
-PATENT_LOG_FORMAT=human
-
-# Windows only
-CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe
+~/patent-creator-venv/bin/patent-creator config set SERPAPI_API_KEY "key"        # patent search, free 250/month (recommended)
+~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT my-proj # optional BigQuery search
+~/patent-creator-venv/bin/patent-creator config list                             # everything, with sources
 ```
+
+ANTHROPIC_API_KEY / OPENAI_API_KEY are only for HyDE with HYDE_BACKEND=api, which is off by default. A `.env` in a source checkout also works.
 
 ### Phase 7: Health Check
 
@@ -185,7 +177,7 @@ If BigQuery is also configured, mention patent search as available. If not, do N
 - Permissions: May need sudo
 
 ### macOS
-- Apple Silicon: Use MPS (auto-detected)
+- Apple Silicon: builds the index on the CPU (faster than MPS for this job, 25-40 min)
 - Intel: Use CPU or external GPU
 - Homebrew: May need for dependencies
 

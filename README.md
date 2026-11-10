@@ -114,7 +114,7 @@ Quit Claude Code completely and open it again. Then ask it:
 
 > Search MPEP for claim definiteness requirements
 
-You should get rule excerpts with MPEP section and page numbers. That means everything is connected.
+You should get rule excerpts, each labeled with the MPEP chapter, the PDF file and the page it came from. That means everything is connected.
 
 ### Step 3: Turn on patent search (free key)
 
@@ -146,7 +146,10 @@ Run the health check. It says what's working and what to fix:
 - Mac/Linux: `~/patent-creator-venv/bin/patent-creator health`
 - Windows: `.\patent-creator-venv\Scripts\patent-creator health` (from `cd ~`)
 
-`patent-creator verify-config` tests the connection to Claude Code by starting the tool exactly the way Claude does.
+To test the connection to Claude Code, starting the tool exactly the way Claude does:
+
+- Mac/Linux: `~/patent-creator-venv/bin/patent-creator verify-config`
+- Windows: `.\patent-creator-venv\Scripts\patent-creator verify-config` (from `cd ~`)
 
 <details>
 <summary><strong>Other ways to install</strong></summary>
@@ -387,7 +390,7 @@ patent-creator config list
 | `EPO_OPS_KEY`, `EPO_OPS_SECRET` | European patent full text | Free registration: [developers.epo.org](https://developers.epo.org) |
 | `USPTO_API_KEY` | USPTO Open Data Portal search | [data.uspto.gov](https://data.uspto.gov/myodp) |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api`. HyDE is off by default and has local backends that need no key | Your API account |
-| `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Logging detail | `INFO`, `human` by default |
+| `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO` and `json` by default; the `patent-creator` command always prints readable lines |
 | `PATENT_MPEP_DEVICE` | Force `cpu` or `gpu` for the index build | Detected automatically |
 | `PATENT_DATA_DIR` | Move the downloaded data and index | Default shown in [What Setup Does](#what-setup-does) |
 
@@ -591,7 +594,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, branch naming,
 
 ### Open Source Dependencies
 
-This project builds on excellent open source work: [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk), [FAISS](https://github.com/facebookresearch/faiss) (Meta AI Research), [Sentence Transformers](https://www.sbert.net/) (UKP Lab), [HuggingFace Transformers](https://huggingface.co/transformers/), [PyTorch](https://pytorch.org/), [rank-bm25](https://github.com/dorianbrown/rank-bm25), [PyMuPDF](https://pymupdf.readthedocs.io/), [Graphviz](https://graphviz.org/), [Pydantic](https://docs.pydantic.dev/), and [Google Cloud BigQuery](https://cloud.google.com/bigquery).
+This project builds on excellent open source work: [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk), [FAISS](https://github.com/facebookresearch/faiss) (Meta AI Research), [Sentence Transformers](https://www.sbert.net/) (UKP Lab), [HuggingFace Transformers](https://huggingface.co/transformers/), [PyTorch](https://pytorch.org/), [rank-bm25](https://github.com/dorianbrown/rank_bm25), [PyMuPDF](https://pymupdf.readthedocs.io/), [Graphviz](https://graphviz.org/), [Pydantic](https://docs.pydantic.dev/), and [Google Cloud BigQuery](https://cloud.google.com/bigquery).
 
 ### Data Sources
 
