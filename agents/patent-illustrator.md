@@ -44,7 +44,7 @@ steps = [
     {"id": "start", "label": "Start", "shape": "ellipse", "next": ["step1"]},
     {"id": "step1", "label": "Receive User Input\\n(S100)", "shape": "box", "next": ["step2"]},
     {"id": "step2", "label": "Validate Input\\n(S110)", "shape": "box", "next": ["decision"]},
-    {"id": "decision", "label": "Is Valid?", "shape": "diamond", "next": ["step3", "error"]},
+    {"id": "decision", "label": "Is Valid?", "shape": "diamond", "next": [{"id": "step3", "label": "Yes"}, {"id": "error", "label": "No"}]},
     {"id": "step3", "label": "Process Data\\n(S120)", "shape": "box", "next": ["step4"]},
     {"id": "error", "label": "Return Error", "shape": "box", "next": ["end"]},
     {"id": "step4", "label": "Generate Output\\n(S130)", "shape": "box", "next": ["end"]},
@@ -250,9 +250,9 @@ templates = generator.get_templates()  # MCP tool: get_diagram_templates()
 ### USPTO Standards
 
 **Size**:
-- Minimum margins: 1 inch top, 0.75 inches sides
-- Maximum drawing area: 6.5" x 8.5" (portrait)
-- Alternative: 9" x 6.5" (landscape)
+- Minimum margins: top and left 2.5 cm, right 1.5 cm, bottom 1.0 cm
+- Maximum drawing area: 17.0 x 26.2 cm on A4, or 17.6 x 24.4 cm on US Letter
+- Source: [37 CFR 1.84(f)-(g), MPEP 608.02](https://www.uspto.gov/web/offices/pac/mpep/s608.html)
 
 **Quality**:
 - Clear black lines

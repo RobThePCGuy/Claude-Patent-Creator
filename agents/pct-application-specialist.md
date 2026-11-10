@@ -68,7 +68,7 @@ Required sections in order:
 - Clear and concise
 
 **Abstract (Rule 8 PCT)**:
-- Maximum 150 words
+- Preferably 50-150 words in English
 - Technical field, problem, solution, principal use
 - Most illustrative figure designated
 - Not used for interpretation
@@ -77,7 +77,7 @@ Required sections in order:
 - A4 paper (29.7cm x 21cm)
 - Usable area: 26.2cm x 17cm
 - Margins: top 2.5cm, left 2.5cm, right 1.5cm, bottom 1cm
-- No text except single words
+- Use only indispensable short keywords in drawings; explain other details in the description
 - Reference signs matching description
 
 **Physical Requirements (Rule 11 PCT)**:
@@ -137,7 +137,7 @@ Risk of ISA Unity Objection: LOW
 
 | ISA | Pros | Cons | Best For |
 |-----|------|------|----------|
-| ISA/EP | Thorough search, accepted by EPO | Expensive (EUR 1,775) | EP-focused filings |
+| ISA/EP | Thorough search, accepted by EPO | Check current search fee | EP-focused filings |
 | ISA/US | Fast, accepted by USPTO | Less thorough for non-US art | US-focused filings |
 | ISA/KR | Cost-effective | Less international coverage | Budget-conscious |
 | ISA/CN | Growing quality | Language limitations | CN-focused filings |
@@ -197,24 +197,13 @@ Consider:
 
 **International Phase**:
 
-| Fee | Amount | Notes |
-|-----|--------|-------|
-| Transmittal fee | Varies by RO | RO/US: USD 280 |
-| International filing fee | CHF 1,330 | ePCT: -CHF 200 |
-| Search fee | Varies by ISA | ISA/EP: EUR 1,775 |
-| Additional pages | CHF 16/page | Beyond 30 pages |
-| Late payment surcharge | 50% of fee | If late |
+Retrieve amounts and due dates from the official schedules for the selected route, Office, currency, entity status, and payment date. Record the source URL and date checked with every estimate. Do not reuse a static total.
 
-**National Phase (Estimates per Country)**:
+- [EPO fee schedule](https://www.epo.org/en/applying/fees)
+- [WIPO PCT fee schedule](https://www.wipo.int/en/web/pct-system/texts/rules/rtax)
+- [USPTO fee schedule](https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule)
 
-| Country | Entry Fee | Translation | Total Estimate |
-|---------|-----------|-------------|----------------|
-| US (371) | ~USD 1,600 | N/A (English) | ~USD 2,000 |
-| EP | ~EUR 2,595 | ~EUR 500+ | ~EUR 3,500 |
-| CN | ~CNY 3,500 | ~CNY 15,000 | ~CNY 20,000 |
-| JP | ~JPY 195,000 | ~JPY 300,000 | ~JPY 500,000 |
-| KR | ~KRW 460,000 | ~KRW 2,000,000 | ~KRW 2,500,000 |
-| IN | ~INR 16,000 | ~INR 50,000 | ~INR 70,000 |
+The PCT international filing-fee supplement is based on sheets beyond 30, not claims beyond 15. Electronic reductions depend on the filing format and applicable conditions; using ePCT alone does not fix the reduction. Additional search fees for lack of unity and national-phase claims fees are separate.
 
 ### 6. Responding to ISA Communications
 
@@ -269,7 +258,7 @@ Consider:
    - Industrial applicability
 
 3. **Prepare Abstract**:
-   - Max 150 words
+   - Preferably 50-150 words in English
    - Designate most illustrative figure
 
 ### Phase 3: Validation (15-30 min)
@@ -338,7 +327,7 @@ Every PCT application must:
 - [ ] Have all Rule 5 description sections in order
 - [ ] Have consecutively numbered claims (Rule 6)
 - [ ] Maintain unity of invention (Rule 13)
-- [ ] Have abstract of max 150 words with figure (Rule 8)
+- [ ] Have abstract of preferably 50-150 words in English with figure (Rule 8)
 - [ ] Meet physical requirements (Rule 11)
 - [ ] Disclose best mode
 - [ ] State industrial applicability
@@ -372,3 +361,5 @@ Works with other skills/agents:
 - **Complete PCT Preparation**: 3-5 hours
 - **National Phase Strategy**: 30-60 minutes
 - **ISA Response Preparation**: 60-90 minutes
+
+Legal references: [PCT Rule 8.1(b)](https://www.wipo.int/en/web/pct-system/texts/rules/r8) gives a preferred English abstract length, not a hard maximum; [Rule 11.11](https://www.wipo.int/en/web/pct-system/texts/rules/r11) permits indispensable short catchwords, including in flow diagrams.

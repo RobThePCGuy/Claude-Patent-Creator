@@ -5,6 +5,8 @@ description: Expert system for reviewing utility patent applications against USP
 
 # Patent Creator Skill
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Comprehensive patent creation system with USPTO MPEP, prior art databases, and USPTO API for complete patent application analysis.
 
 ## When to Use
@@ -69,14 +71,14 @@ Runs all analyzers in **parallel** for comprehensive analysis:
 - Definiteness
 - Claim structure
 - Subjective terms
-- Means-plus-function compliance
+- Means-plus-function: separate manual review with the specification required
 
 ### Specification Review (/review-specification)
 
 **35 USC 112(a) Requirements:**
 - Written description
 - Enablement
-- Best mode
+- Best mode: manual review only; not implemented by the analyzer
 - Claim support
 
 ### Formalities Check (/review-formalities)

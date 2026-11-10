@@ -5,13 +5,15 @@ allowed-tools: Bash, Read, Write
 
 # Review Patent Claims
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Automated analysis of patent claims for USPTO compliance with detailed issue reporting and fixes.
 
 ## What This Command Does
 
 Performs comprehensive automated claims analysis:
 
-1. **Antecedent Basis Checking**:
+1. **Antecedent Basis Checking (opt-in)**:
    - Finds terms used without prior introduction
    - Detects "said/the" used before "a/an"
    - Tracks term usage across claims
@@ -83,7 +85,7 @@ results = analyzer.analyze_claims(claims_text)
 ```
 
 This checks:
-- All terms for antecedent basis
+- Possible antecedent issues, only when enabled
 - All language for definiteness
 - Claim structure and dependencies
 - Cross-references and pointers
@@ -283,7 +285,7 @@ claims-review-[date]/
 
 ### Antecedent Basis Checking
 
-Detects:
+Only when enabled, the pattern checker looks for:
 - Missing "a/an" before first use
 - "Said/the" used before introduction
 - Terms in dependent claims not in parent
@@ -313,9 +315,7 @@ BETTER:     "a surface having a flatness tolerance of < 0.1mm"
 
 ### Means-Plus-Function
 
-Detects:
-- Means-plus-function elements
-- Checks for corresponding structure in specification
+Means-plus-function interpretation requires separate manual review. The claims-only tool cannot inspect corresponding structure in the specification. Obtain the specification and separately review it under 35 USC 112(f) and [MPEP 2181](https://www.uspto.gov/web/offices/pac/mpep/s2181.html).
 
 Example:
 ```

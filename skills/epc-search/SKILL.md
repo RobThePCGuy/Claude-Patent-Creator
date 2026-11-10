@@ -14,7 +14,7 @@ Hybrid RAG search across the European Patent Convention (EPC), EPO Guidelines fo
 Invoke this skill when users ask to:
 - Find EPC articles or rules on a specific topic
 - Search EPO Guidelines for Examination
-- Look up PCT rules or Administrative Instructions
+- Look up indexed PCT rules; use WIPO directly for Administrative Instructions
 - Compare EPC requirements with USPTO/MPEP practice
 - Research EPO Board of Appeal case law principles
 - Understand European patent prosecution procedure
@@ -44,8 +44,7 @@ Provides legal research across European and international patent law:
 3. **PCT Rules Search** (Patent Cooperation Treaty):
    - PCT Articles 1-69
    - PCT Rules 1-96 (Regulations under the PCT)
-   - Administrative Instructions under the PCT
-   - WIPO Standards (ST.25, ST.26, ST.36)
+   - Setup does not download the Administrative Instructions or full WIPO Standards (ST.25, ST.26, ST.36). Incidental mentions in other sources are not the standards themselves. Retrieve these from [WIPO PCT texts](https://www.wipo.int/en/web/pct-system/texts) and [WIPO standards](https://www.wipo.int/en/web/standards).
 
 4. **Cross-Jurisdiction Comparison**:
    - EPC vs 35 USC mapping
@@ -64,7 +63,7 @@ When this skill is invoked:
 
 1. **Determine jurisdiction**:
    - EPO: search EPC articles/rules and EPO Guidelines
-   - PCT: search PCT articles/rules and Administrative Instructions
+   - PCT: search indexed articles/rules; obtain Administrative Instructions from WIPO
    - Both: search across all sources
    - Comparison: search EPO + USPTO sources
 
@@ -123,8 +122,8 @@ When this skill is invoked:
 | Art. 84 | Claims | Clarity, conciseness, support |
 | Rule 42 | Description | Content and form of description |
 | Rule 43 | Claims | Two-part form, numbering, categories |
-| Rule 46 | Drawings | Form and content requirements |
-| Rule 47 | Abstract | Max 150 words, figure designation |
+| Rule 49(2) | Drawings | Presentation requirements set by the President |
+| Rule 47 | Abstract | preferably no more than 150 words, figure designation |
 
 ### Examination Procedure
 
@@ -145,7 +144,7 @@ When this skill is invoked:
 | Rule 4 | The request | Form PCT/RO/101 contents |
 | Rule 5 | The description | Required sections and order |
 | Rule 6 | The claims | Numbering, form, categories |
-| Rule 8 | The abstract | Max 150 words, figure |
+| Rule 8 | The abstract | Preferably 50-150 English words; figure under Rule 8.2 |
 | Rule 11 | Physical requirements | Paper, margins, fonts |
 | Rule 12 | Language | Accepted languages |
 
@@ -156,45 +155,43 @@ When this skill is invoked:
 | Rule 13 | Unity of invention | Single general inventive concept |
 | Rule 33 | Relevant prior art | ISA search scope |
 | Rule 39 | Subject matter not searched | Excluded from ISA search |
-| Rule 43bis | International search report | Written opinion of ISA |
+| Rule 43 | International search report | Contents and form of ISR |
+| Rule 43bis | Written opinion | Written opinion of ISA |
 
 ### National Phase
 
 | Rule | Topic | Description |
 |------|-------|-------------|
-| Rule 49 | Physical requirements | National phase format |
-| Rule 49.6 | Translation | Language requirements |
+| Rule 49 | National phase | Copy, translation and fee under Article 22 |
+| Rule 49.5 | Translation | Contents and physical requirements of translation |
+| Rule 49.6 | Reinstatement of rights | Failure to perform Article 22 acts in time; conditions apply |
 | Rule 51bis | Certain national requirements | National law compliance |
 
 ## EPO Guidelines Structure
 
-```
-Part A: Formalities Examination
-├── Chapter I: Checking the application on filing
-├── Chapter II: Filing and examination for formalities
-├── Chapter III: Special cases (divisionals, PCT)
-└── Chapter IV: Designation of inventor
+| Topic | EPO Guidelines section |
+|-------|------------------------|
+| Formalities | Part A; A-II filing and filing-date requirements, A-III formal requirements |
+| Abstract | F-II, 2 |
+| Description | F-II, 4 |
+| Drawings | F-II, 5 |
+| Sufficiency | F-III |
+| Claims | F-IV |
+| Two-part form | F-IV, 2.2-2.3 |
+| Independent and dependent claims | F-IV, 3.4 |
+| Clarity | F-IV, 4 |
+| Description support | F-IV, 6 |
+| Unity | F-V |
+| Priority | F-VI |
+| Inventions and exclusions | G-II |
+| Industrial application | G-III |
+| State of the art | G-IV |
+| Non-prejudicial disclosures | G-V |
+| Novelty | G-VI |
+| Inventive step | G-VII |
 
-Part F: The Patent Application
-├── Chapter I: Description
-├── Chapter II: Claims (MOST COMMONLY SEARCHED)
-│   ├── F-IV, 2: Independent claims
-│   ├── F-IV, 3: Two-part form
-│   ├── F-IV, 4: Clarity
-│   ├── F-IV, 6: Support by description
-│   └── F-IV, 7: Dependent claims
-├── Chapter III: Sufficiency of disclosure
-├── Chapter V: Abstract
-└── Chapter VI: Drawings
+Check the [current Guidelines contents](https://www.epo.org/en/legal/guidelines-epc/2026/index.html) before citing a subsection.
 
-Part G: Patentability
-├── Chapter I: Excluded subject matter
-├── Chapter II: Non-technical subject matter
-├── Chapter III: Novelty
-├── Chapter V: Non-prejudicial disclosures
-├── Chapter VI: Inventive step (problem-solution)
-└── Chapter VII: Inventive step (combinability)
-```
 
 ## Presentation Format
 
@@ -223,13 +220,12 @@ Jurisdiction: EPO (EPC + Guidelines)
     - Functional features must be verifiable
 
 [2] Rule 43(1) EPC - Form and content of claims
-    "...shall contain: (a) a statement indicating the designation
-    of the subject-matter and those technical features necessary
-    for the definition... (preamble); and (b) a characterising
-    portion preceded by 'characterised in that'..."
+    Where appropriate, use a preamble identifying the relevant known
+    features and a characterising portion stating the additional
+    features for which protection is sought (paraphrase).
 
-    EPO Guidelines F-IV, 3.2 - Two-part form
-    "Independent claims should normally be in the two-part form..."
+    EPO Guidelines F-IV, 2.2-2.3 - Two-part form
+    Use two-part form where appropriate; assess the exceptions before rewriting.
 
 ---
 
@@ -246,8 +242,8 @@ Related MPEP Comparison:
 | Art. 54 (Novelty) | 35 USC 102 | Art. 33(2) |
 | Art. 56 (Inventive step) | 35 USC 103 | Art. 33(3) |
 | Art. 83 (Sufficiency) | 35 USC 112(a) Enablement | Rule 5.1(a)(v) |
-| Art. 84 (Clarity) | 35 USC 112(b) | Rule 6.1 |
-| Art. 84 (Support) | 35 USC 112(a) Written desc. | Rule 6.1 |
+| Art. 84 (Clarity) | 35 USC 112(b) | Article 6 |
+| Art. 84 (Support) | 35 USC 112(a) Written desc. | Article 6 |
 | Rule 42 (Description) | MPEP 608 | Rule 5 |
 | Rule 43 (Claims) | 37 CFR 1.75 | Rule 6 |
 | Rule 47 (Abstract) | 37 CFR 1.72 | Rule 8 |
@@ -259,3 +255,7 @@ Related MPEP Comparison:
 - **Read**: To load legal documents
 - **Bash**: To run legal search queries
 - **Write**: To save research results and legal memoranda
+
+Legal references: [EPC Rule 47](https://www.epo.org/en/legal/epc/2020/r47.html), [two-part form where appropriate](https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_2_3.html), [Rule 49(2)](https://www.epo.org/en/legal/epc/2020/r49.html), and [President's presentation decision, OJ EPO 2025 A49](https://www.epo.org/en/legal/official-journal/2025/07/a49). Rule 46 was deleted effective 1 February 2023.
+
+PCT map sources: [Rule 43](https://www.wipo.int/en/web/pct-system/texts/rules/r43), [Rule 43bis](https://www.wipo.int/en/web/pct-system/texts/rules/r43bis), [Rule 49](https://www.wipo.int/en/web/pct-system/texts/rules/r49), and [Article 6](https://www.wipo.int/en/web/pct-system/texts/articles/a6).

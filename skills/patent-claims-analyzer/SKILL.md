@@ -7,6 +7,8 @@ model: sonnet
 
 # Patent Claims Analyzer Skill
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Automated analysis of patent claims for USPTO compliance with 35 USC 112(b) requirements.
 
 ## When to Use
@@ -23,7 +25,7 @@ Invoke this skill when users ask to:
 
 Performs comprehensive automated analysis:
 
-1. **Antecedent Basis Checking**:
+1. **Antecedent Basis Checking (opt-in)**:
    - Finds terms used without prior introduction
    - Detects missing "a/an" before first use
    - Identifies improper "said/the" before first use
@@ -86,33 +88,28 @@ When this skill is invoked:
 ## Analysis Output Structure
 
 ```python
+# Issue objects in results["issues"] (illustrative values):
 {
-    "claim_count": 20,
-    "independent_count": 3,
-    "dependent_count": 17,
-    "compliance_score": 85,  # 0-100
-    "total_issues": 12,
-    "critical_issues": 2,
-    "important_issues": 7,
-    "minor_issues": 3,
-    "issues": [
-        {
-            "category": "antecedent_basis",
-            "severity": "critical",
-            "claim_number": 1,
-            "term": "said processor",
-            "description": "Term 'processor' used with 'said' before first introduction",
-            "mpep_cite": "MPEP 2173.05(e)",
-            "suggestion": "Change 'said processor' to 'the processor' or introduce with 'a processor' first"
-        },
-        # ... more issues
-    ]
+    "severity": "IMPORTANT",  # CRITICAL, IMPORTANT, MINOR, or WARNING
+    "type": "definiteness",
+    "claim": 1,
+    "location": "body",
+    "term": "approximately",
+    "problem": "Potentially unclear term; review in context",
+    "fix": "Consider an objective criterion where needed",
+    "mpep": "MPEP 2173.05(b)",
+    "confidence": "MEDIUM"
 }
 ```
 
+The report also includes `claim_count`, `independent_count`, `dependent_count`,
+`compliance_score`, issue counts, `issues_by_type`, and `summary`.
+US reports also include `checks_run`, `checks_skipped`, and `compliance_score_scope`.
+
+
 ## Common Issues Detected
 
-1. **Antecedent Basis Errors**:
+1. **Antecedent Basis Errors (only when enabled)**:
    - Using "said/the" before "a/an" introduction
    - Terms appearing in dependent claims not in parent
    - Missing antecedent in claim body
@@ -123,7 +120,7 @@ When this skill is invoked:
    - Ambiguous language: "and/or", "optionally"
 
 3. **Structure Issues**:
-   - Means-plus-function without adequate structure
+   - Means-plus-function and corresponding specification structure require separate manual review; the analyzer does not check them
    - Improper claim dependencies
    - Missing preamble or transition
 

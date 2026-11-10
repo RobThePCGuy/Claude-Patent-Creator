@@ -37,12 +37,12 @@ class PCTFormalitiesChecker(BaseAnalyzer):
     PCT Rules checked:
     - Rule 5: Content and structure of the description
     - Rule 6: Claims requirements (independent claims, numbering, unity)
-    - Rule 8: Abstract requirements (max 150 words, figure indication)
+    - Rule 8: Abstract requirements (preferably 50-150 English words, figure indication)
     - Rule 10: Terminology and signs (metric, Celsius/Kelvin)
     - Rule 11: Physical requirements (A4, margins, font)
     """
 
-    # PCT Rule 8.1(b) - Abstract max words
+    # PCT Rule 8.1(b) - Preferred upper word count for English abstracts
     ABSTRACT_MAX_WORDS = 150
 
     # PCT Rule 11.2 - Minimum margins (cm) for A4 paper
@@ -258,13 +258,12 @@ class PCTFormalitiesChecker(BaseAnalyzer):
         Rule 8.1(a): The abstract shall consist of a summary of the
         disclosure as contained in the description, claims, and drawings.
 
-        Rule 8.1(b): The abstract shall be so drafted that it can
-        efficiently serve as a scanning tool... It shall not contain
-        more than 150 words.
+        Rule 8.1(b): Be as concise as the disclosure permits, preferably
+        50-150 words in English or when translated into English.
 
-        Rule 8.1(c): If the international application contains drawings,
-        the applicant shall indicate the figure which should accompany
-        the abstract.
+        Rules 3.3(a)(iii) and 8.2: The request suggests a figure; the ISA
+        determines the figure to publish with the abstract. A text scan
+        here cannot verify the request or the figure itself.
         """
         abstract = abstract.strip()
         words = abstract.split()
@@ -276,21 +275,20 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             "issues": [],
         }
 
-        # Check max word count (Rule 8.1(b) - hard limit of 150 words)
+        # Advisory English word-count preference under Rule 8.1(b).
         if word_count > self.ABSTRACT_MAX_WORDS:
             self.issues.append(
                 PCTFormalityIssue(
                     section="abstract",
-                    severity="CRITICAL",
-                    problem="Abstract exceeds maximum allowed length",
+                    severity="WARNING",
+                    problem="Abstract exceeds preferred English word count",
                     current_value=f"{word_count} words",
-                    required_value=f"<= {self.ABSTRACT_MAX_WORDS} words",
-                    fix=f"Reduce abstract to {self.ABSTRACT_MAX_WORDS} words or fewer",
+                    required_value="Preferably 50-150 words in English",
+                    fix="Consider shortening while preserving a concise summary of the disclosure",
                     legal_ref="PCT Rule 8.1(b)",
                 )
             )
-            result["compliant"] = False
-            result["issues"].append("Exceeds 150 words")
+            result["issues"].append("Exceeds preferred English word count (advisory)")
 
         # Check for very short abstract
         if word_count < 20:
@@ -308,7 +306,7 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             result["compliant"] = False
             result["issues"].append("Too short")
 
-        # Check for figure indication when drawings present (Rule 8.1(c))
+        # Check for figure indication when drawings present (Rules 3.3(a)(iii) and 8.2)
         if drawings_present:
             fig_indication = bool(re.search(
                 r"(?i)fig(?:ure)?\.?\s*\d+|drawing\s*\d+", abstract
@@ -324,7 +322,7 @@ class PCTFormalitiesChecker(BaseAnalyzer):
                         current_value="No figure reference found",
                         required_value="Indication of the figure to accompany the abstract",
                         fix="Add reference to the figure that best characterizes the invention (e.g., 'Fig. 1')",
-                        legal_ref="PCT Rule 8.1(c)",
+                        legal_ref="PCT Rules 3.3(a)(iii) and 8.2",
                     )
                 )
                 result["issues"].append("Missing figure indication")

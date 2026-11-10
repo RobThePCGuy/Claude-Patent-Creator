@@ -108,13 +108,15 @@ results = mpep_index.search(
 **Written Description (35 USC 112)**:
 - § 112(a): Written description, enablement, best mode
 - § 112(b): Definiteness, claiming
-- § 112(c): Means-plus-function claiming
-- § 112(d)-(f): Reference in claims, dependent claims, multiple claims
+- § 112(c): Form of claims
+- § 112(d): Dependent claims
+- § 112(e): Multiple dependent claims
+- § 112(f): Functional claiming, including means-plus-function
 
 **Examination Procedures**:
 - MPEP 700: Examination of applications
 - MPEP 2100: Patentability
-- MPEP 2000: Restriction and election
+- MPEP 800: Restriction and election
 - MPEP 1200: Appeal
 
 **Formalities**:
@@ -164,7 +166,7 @@ statute_results = mpep_index.search(
 ### Step 3: Result Analysis
 
 Each result contains:
-- **Score**: Relevance (0.0-1.0)
+- **Score**: Raw relevance score, not a probability or percentage; values can be negative or exceed one
 - **Text**: Full content of chunk
 - **Section**: MPEP section number or statute citation
 - **Page**: Page numbers in source document
@@ -284,8 +286,8 @@ Query: "[User's question]"
 
 TOP RESULTS:
 
-[1] MPEP § 2163 - Claim Definiteness (Score: 95%)
-    Source: MPEP | Pages: 2100-81 to 2100-85
+[1] MPEP § 2173 - Claim Definiteness (raw relevance score: [returned value])
+    Source: MPEP | Pages: [returned source pages]
 
     A claim is indefinite when it contains words or phrases whose
     meaning is unclear... [excerpt]
@@ -297,7 +299,7 @@ TOP RESULTS:
 
 ---
 
-[2] 35 U.S.C. § 112(b) - Claim Specification (Score: 92%)
+[2] 35 U.S.C. § 112(b) - Claims (raw relevance score: [returned value])
     Source: 35_USC | Statute
 
     The specification shall conclude with one or more claims
@@ -306,7 +308,7 @@ TOP RESULTS:
 
 ---
 
-[3] MPEP § 2173.05(b) - Subjective Terms (Score: 88%)
+[3] MPEP § 2173.05(b) - Subjective Terms (raw relevance score: [returned value])
     Source: MPEP | Pages: 2100-145 to 2100-148
 
     Terms of degree such as "substantially", "about", "approximately"
@@ -369,3 +371,5 @@ Generates hypothetical answer, then searches using both original query and hypot
 - **Simple Query**: 30-60 seconds
 - **Complex Research**: 2-5 minutes
 - **Deep Analysis**: 5-10 minutes
+
+Reference map: [MPEP 2181, section 112(f)](https://www.uspto.gov/web/offices/pac/mpep/s2181.html), [MPEP chapter 800](https://www.uspto.gov/web/offices/pac/mpep/mpep-0800.html), [MPEP 2173, definiteness](https://www.uspto.gov/web/offices/pac/mpep/s2173.html), and [MPEP 2163, written description](https://www.uspto.gov/web/offices/pac/mpep/s2163.html).

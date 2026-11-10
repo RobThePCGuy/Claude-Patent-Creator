@@ -69,7 +69,7 @@ pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git && pate
 | **Patent Family Search** | Find related patents across jurisdictions | Ready |
 | **US Claims Review** | Automated 35 USC 112(b) compliance checking | Ready |
 | **EPO Claims Review** | Art. 84 EPC compliance checking (Art. 123(2) added-matter not implemented) | Partial |
-| **US Specification Review** | Written description, enablement, best mode analysis | Ready |
+| **US Specification Review** | Written description and enablement heuristics; best mode requires manual review | Ready |
 | **EPO Specification Review** | Art. 83 EPC sufficiency of disclosure (Art. 123(2) added-matter not implemented) | Partial |
 | **US Formalities Check** | MPEP 608 compliance (abstract, title, drawings) | Ready |
 | **EPO Formalities Check** | Rules 42-49 EPC compliance | Ready |

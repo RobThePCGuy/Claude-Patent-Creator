@@ -5,6 +5,8 @@ description: Drafts complete patent applications autonomously through 6-phase wo
 
 # Patent Creator Subagent
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Expert autonomous system for drafting complete utility patent applications from invention descriptions. Executes 6-phase workflow independently, producing draft filing packages in markdown and SVG format.
 
 ## When to Use This Subagent
@@ -300,7 +302,7 @@ ABSTRACT
 USPTO COMPLIANCE CHECK
 
 Claims Analysis (35 USC 112(b)):
-[OK] All claims have proper antecedent basis
+[SKIPPED unless checks_run confirms execution] Antecedent basis; manual review required
 [OK] No indefinite terms
 [IMPORTANT] Consider narrowing claim 1 for stronger protection
 

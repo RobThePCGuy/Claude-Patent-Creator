@@ -10,7 +10,9 @@ model: claude-sonnet-4-5-20250929
 
 # PCT Formalities Check
 
-Verify all formal requirements for a PCT international application under PCT Rules 5-12.
+The formalities tool receives text and a drawings-present flag, not page or drawing files. Physical layout, margins, paper size, line spacing, drawing quality, request forms, and payments are not inspected. Mark them NOT CHECKED until a separate review of the final documents or records supplies evidence. Report only checks actually run; the checklist below is not a prefilled result.
+
+Review supplied text and identify manual checks for formal requirements for a PCT international application under PCT Rules 5-12.
 
 **Check Type:** $ARGUMENTS
 
@@ -19,21 +21,21 @@ Verify all formal requirements for a PCT international application under PCT Rul
 1. **Request Form** (Rule 4 PCT) - Form PCT/RO/101, designations, priority claims
 2. **Description** (Rule 5 PCT) - Required sections, manner of description
 3. **Claims** (Rule 6 PCT) - Numbering, form, unity of invention (Rule 13 PCT)
-4. **Abstract** (Rule 8 PCT) - Max 150 words, figure designation
+4. **Abstract** (Rule 8 PCT) - preferably 50-150 words in English, figure designation
 5. **Drawings** (Rule 11 PCT) - Technical standards, margins, paper size
-6. **Sequence Listings** (Rule 12 PCT) - If applicable (WIPO Standard ST.26)
+6. **Sequence Listings** (Rules 5.2 and 13ter PCT) - If applicable (WIPO Standard ST.26)
 7. **Physical Requirements** (Rule 11 PCT) - Paper, margins, font, numbering
 8. **Unity of Invention** (Rule 13 PCT) - Single general inventive concept
 9. **Fees** - International filing fee, search fee, transmittal fee
 10. **Language** (Rule 12 PCT) - Accepted languages per Receiving Office
 
-Specified check type focuses on that requirement; otherwise checks everything.
+Specified check type focuses on that requirement; otherwise reviews the supplied text and lists outstanding manual checks.
 
 ## Process
 
 1. Ask for application sections (or read from file)
 2. Check each PCT formality requirement
-3. Search PCT rules and Administrative Instructions
+3. Search indexed PCT rules; consult WIPO directly for Administrative Instructions
 4. Generate compliance report with:
    - Requirements checklist per rule
    - Non-compliance issues with rule citations
@@ -78,7 +80,7 @@ Required sections in order:
 
 ### Abstract (Rule 8 PCT)
 
-- Maximum 150 words
+- preferably 50-150 words in English
 - Summary of disclosure including technical field, problem, solution
 - Must designate most illustrative figure
 - Not used for interpreting scope of protection
@@ -111,6 +113,8 @@ Required sections in order:
 
 ## Report Structure
 
+Illustrative format only. Replace all counts and findings with observed results. Use NOT CHECKED whenever the evidence is unavailable. Never copy example passes into a real report.
+
 ```
 PCT FORMALITIES COMPLIANCE REPORT
 ====================================
@@ -132,9 +136,9 @@ STATUS: CORRECTIONS NEEDED BEFORE FILING
 REQUEST (Rule 4 PCT):
 ======================
 
-[PASS] Form PCT/RO/101 complete
-[PASS] Applicant details (name, address, nationality)
-[PASS] Title matches description
+[NOT CHECKED] Form PCT/RO/101 complete; verify the actual request and records
+[NOT CHECKED] Applicant details (name, address, nationality); verify the actual request and records
+[NOT CHECKED] Title matches description; verify the actual request and records
 [PASS] All states designated (automatic since 2004)
 [FAIL] Priority claim missing certified copy reference
   -> Rule 17.1 PCT: Certified copy of priority
@@ -142,8 +146,8 @@ REQUEST (Rule 4 PCT):
      priority date
   -> Fix: Indicate priority document will be furnished
      or request DAS access code
-[PASS] Inventor designation complete
-[PASS] ISA selected
+[NOT CHECKED] Inventor designation complete; verify the actual request and records
+[NOT CHECKED] ISA selected; verify the actual request and records
 
 DESCRIPTION (Rule 5 PCT):
 ===========================
@@ -178,36 +182,35 @@ CLAIMS (Rule 6 PCT):
 ABSTRACT (Rule 8 PCT):
 ========================
 
-[PASS] Word count: 138 (max 150)
+[PASS] Word count: 138 (preferably 50-150 words in English)
 [FAIL] No figure designated
-  -> Rule 8.1(b) PCT: "applicant shall indicate the
-     figure which should accompany the abstract"
-  -> Fix: Add figure designation to abstract page
+  -> Rules 3.3(a)(iii) and 8.2 PCT: indicate the suggested
+     figure in the request; the ISA selects the figure to publish
+  -> Manual review: check the suggested figure in the request under Rule 3.3(a)(iii)
 [PASS] Technical field indicated
 [PASS] Concise summary of disclosure
 
 PHYSICAL REQUIREMENTS (Rule 11 PCT):
 ======================================
 
-[PASS] A4 paper format
-[PASS] Margins within specification
-[PASS] Line spacing: 1.5 or greater
-[FAIL] Page numbering not consecutive across elements
+[NOT CHECKED] A4 paper format; inspect final pages/drawings manually
+[NOT CHECKED] Margins within specification; inspect final pages/drawings manually
+[NOT CHECKED] Line spacing: 1.5 or greater; inspect final pages/drawings manually
+[NOT CHECKED] Page numbering; inspect the final documents
   -> Rule 11.7 PCT: Sheets shall be numbered in
      consecutive Arabic numerals
   -> Fix: Number all sheets consecutively
-[PASS] Text legible and reproducible
+[NOT CHECKED] Text legible and reproducible; inspect final pages/drawings manually
 
 DRAWINGS (Rule 11 PCT):
 =========================
 
-[PASS] Margins within specification
-[PASS] Reference signs consistent with description
-[WARN] Fig. 5 line weight may be too light for reproduction
-  -> Rule 11.13 PCT: "lines and strokes shall be
-     drawn without the aid of instruments but must be
-     sufficiently dense and dark"
-  -> Recommendation: Increase line weight
+[NOT CHECKED] Margins within specification; inspect final pages/drawings manually
+[NOT CHECKED] Reference signs consistent with description; inspect final pages/drawings manually
+[NOT CHECKED] Figure line quality; inspect the final drawings
+  -> Rule 11.13(a), (f) PCT: lines must be reproducible and
+     ordinarily drawn with drafting instruments (paraphrase)
+  -> If reproduction is unclear, adjust line weight and inspect again
 
 UNITY OF INVENTION (Rule 13 PCT):
 ====================================
@@ -220,16 +223,8 @@ UNITY OF INVENTION (Rule 13 PCT):
 FEES CALCULATION (RO/US):
 ===========================
 
-Transmittal fee (USPTO as RO): USD 280
-International filing fee: CHF 1,330 (~USD 1,530)
-  Electronic filing reduction: -CHF 200
-  Net filing fee: CHF 1,130 (~USD 1,300)
-Search fee (ISA/EP): EUR 1,775 (~USD 1,950)
-  or Search fee (ISA/US): USD 2,680
-Additional page fee: USD 0 (within 30-page limit)
-Additional claims fee: USD 0 (within 15-claim limit)
----
-Estimated total at filing: USD 3,560 - 4,230
+[NOT CALCULATED] Verify current schedules before estimating or paying.
+Record fee code, amount, currency, due date, source URL, and date checked.
 
 KEY DEADLINES:
 ===============
@@ -251,7 +246,7 @@ FILING CHECKLIST:
 [x] Description with all Rule 5 sections
 [x] Claims (numbered, proper form)
 [ ] Abstract with designated figure (NEEDS FIX)
-[x] Drawings (A4, proper margins)
+[ ] Drawings (A4 and margins require final-file inspection)
 [ ] Page numbering (NEEDS FIX)
 [ ] Priority document certified copy
 [ ] Fee payment (transmittal + filing + search)
@@ -291,9 +286,19 @@ and [WIPO Office-specific time limits](https://www.wipo.int/en/web/pct-system/te
 | Scope | 157 countries | 39 EPC states | US only |
 | Decision deadline | Office-specific, usually 30/31 months from priority | Filing date | Filing date |
 | Search | ISA report | EP search | USPTO search |
-| Cost at filing | ~USD 3,500-4,200 | ~EUR 2,595 | ~USD 1,820 |
+| Cost at filing | Check WIPO and RO/ISA schedules | Check EPO schedule | Check USPTO schedule |
 | Advantage | Delays national costs | Faster EP grant | Fastest US grant |
 
 ---
 
 **DISCLAIMER:** This tool assists with patent application preparation but does NOT replace legal advice from a registered patent attorney or agent. Always consult with legal counsel before filing. Not affiliated with or endorsed by WIPO or any patent office.
+
+Legal references: [PCT Rule 8.1(b)](https://www.wipo.int/en/web/pct-system/texts/rules/r8) gives a preferred English abstract length, not a hard maximum; [Rule 11.11](https://www.wipo.int/en/web/pct-system/texts/rules/r11) permits indispensable short catchwords, including in flow diagrams.
+
+Retrieve amounts and due dates from the official schedules for the selected route, Office, currency, entity status, and payment date. Record the source URL and date checked with every estimate. Do not reuse a static total.
+
+- [EPO fee schedule](https://www.epo.org/en/applying/fees)
+- [WIPO PCT fee schedule](https://www.wipo.int/en/web/pct-system/texts/rules/rtax)
+- [USPTO fee schedule](https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule)
+
+The PCT international filing-fee supplement is based on sheets beyond 30, not claims beyond 15. Electronic reductions depend on the filing format and applicable conditions; using ePCT alone does not fix the reduction. Additional search fees for lack of unity and national-phase claims fees are separate.

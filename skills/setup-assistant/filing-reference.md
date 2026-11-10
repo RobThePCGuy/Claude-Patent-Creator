@@ -46,12 +46,15 @@ Key fee categories for utility nonprovisional filing:
 
 ### Micro Entity (37 CFR 1.29)
 - Qualifies for 80% fee reduction
-- Requirements: gross income under the current threshold (updated annually), not named on more than 4 previously filed applications, not assigned/obligated rights to an entity exceeding the income limit
+- Gross-income basis: first qualify as a small entity, then satisfy the income, prior-application, and rights-transfer conditions for each relevant applicant/inventor under 37 CFR 1.29(a). The limit is no more than four counted prior applications. Foreign applications, provisional applications, and PCT applications for which the US basic national fee was not paid are excluded; the prior-employment exclusion in 1.29(b) may also apply. Five prior provisional filings alone do not disqualify an inventor.
+- A separate institution-of-higher-education basis exists under 1.29(d). Check the applicable basis and certification; do not infer eligibility from inventor status alone.
+- Source: [MPEP 509.04](https://www.uspto.gov/web/offices/pac/mpep/s509.html)
 - **Current threshold:** Check https://www.uspto.gov/patents/basics/using-legal-services/micro-entity-status
 
 ### Small Entity (37 CFR 1.27)
 - Qualifies for 60% fee reduction
-- Individuals, small businesses (<500 employees), and nonprofits
+- A person, qualifying small business, or qualifying nonprofit must satisfy 37 CFR 1.27, including the restrictions on assignment, licensing, and obligations to transfer rights to a non-small entity. Being an individual alone is insufficient. Review all relevant rights holders and obligations before claiming status.
+- Source: [MPEP 509.02 and 37 CFR 1.27](https://www.uspto.gov/web/offices/pac/mpep/s509.html)
 
 ## Information Disclosure Statement (IDS)
 

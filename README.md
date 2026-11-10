@@ -283,7 +283,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | Tool | What it does |
 |---|---|
 | `review_patent_claims` | 35 USC 112(b) compliance check (definiteness, antecedent basis, structure) |
-| `review_specification` | 35 USC 112(a) adequacy check (written description, enablement, best mode) |
+| `review_specification` | 35 USC 112(a) written-description and enablement heuristics; best mode requires manual review |
 | `check_formalities` | MPEP 608 compliance (abstract, title, drawings, required sections) |
 | `review_epo_claims` | Art. 84 EPC claim check (clarity, support, two-part form) |
 | `review_epo_specification` | Art. 83 EPC sufficiency and Rule 42 sections |
