@@ -37,7 +37,7 @@ ls pdfs/  # Should show mpep-*.pdf, consolidated_laws.pdf, consolidated_rules.pd
 
 **Download PDFs:**
 ```bash
-patent-creator download-mpep
+~/patent-creator-venv/bin/patent-creator download-mpep
 # Or: python install.py (Select "Download MPEP PDFs")
 ```
 
@@ -59,7 +59,7 @@ for pdf in Path('pdfs').glob('*.pdf'):
 ## Phase 2: Index Building
 
 ```bash
-patent-creator rebuild-index
+~/patent-creator-venv/bin/patent-creator rebuild-index
 # Or: python mcp_server/server.py --rebuild-index
 ```
 
@@ -92,7 +92,7 @@ ls -lh mcp_server/index/
 # Expected: mpep_index.faiss (~150MB), mpep_metadata.json (~80MB), mpep_bm25.pkl (~60MB)
 
 # Verify health
-patent-creator health
+~/patent-creator-venv/bin/patent-creator health
 # Should show: [OK] MPEP Index: Ready (12,543 chunks)
 
 # Manual test
@@ -121,10 +121,10 @@ print(f'Search results: {len(results)}')
 cp -r mcp_server/index mcp_server/index_backup_$(date +%Y%m%d)
 
 # Rebuild
-patent-creator rebuild-index
+~/patent-creator-venv/bin/patent-creator rebuild-index
 
 # Verify
-patent-creator health
+~/patent-creator-venv/bin/patent-creator health
 
 # Remove backup if successful
 rm -rf mcp_server/index_backup_*
@@ -137,7 +137,7 @@ rm -rf mcp_server/index_backup_*
 wget https://www.uspto.gov/web/offices/pac/mpep/mpep-2900.pdf -O pdfs/mpep-2900.pdf
 
 # Rebuild (includes new section)
-patent-creator rebuild-index
+~/patent-creator-venv/bin/patent-creator rebuild-index
 ```
 
 **Note:** Incremental updates not supported. Full rebuild required.
@@ -160,9 +160,9 @@ patent-creator rebuild-index
 
 | Command | Purpose |
 |---------|---------|
-| `patent-creator download-mpep` | Download MPEP PDFs |
-| `patent-creator rebuild-index` | Build/rebuild search index |
-| `patent-creator health` | Check index health |
+| `~/patent-creator-venv/bin/patent-creator download-mpep` | Download MPEP PDFs |
+| `~/patent-creator-venv/bin/patent-creator rebuild-index` | Build/rebuild search index |
+| `~/patent-creator-venv/bin/patent-creator health` | Check index health |
 | `ls -lh mcp_server/index/` | View index files |
 
 **Best Practices:**

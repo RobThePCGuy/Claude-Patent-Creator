@@ -137,7 +137,7 @@ print(f"Search took: {duration:.3f}s")
 | Import errors | Activate venv, `pip install -r requirements.txt` |
 | GPU tests fail | Check `nvidia-smi`, reinstall PyTorch, or skip |
 | BigQuery fails | Re-auth: `gcloud auth application-default login` |
-| Index not found | Rebuild: `patent-creator rebuild-index` |
+| Index not found | Rebuild: `~/patent-creator-venv/bin/patent-creator rebuild-index` |
 | Too slow | Check GPU usage, first run slower, check system load |
 
 

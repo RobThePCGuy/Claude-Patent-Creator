@@ -10,6 +10,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+
+def _render(message: str) -> str:
+    """Name the installed patent-creator command (see cli_command)."""
+    try:
+        from cli_command import render
+    except ImportError:
+        from mcp_server.cli_command import render
+    return render(message)
+
+
+def _pip() -> str:
+    """pip for the interpreter running this tool: a bare 'pip' in an
+    unactivated venv would install into the wrong Python."""
+    exe = str(Path(sys.executable).absolute())
+    return (f'"{exe}"' if " " in exe else exe) + " -m pip"
+
+
 try:
     from logging_config import get_logger
 
@@ -107,7 +124,7 @@ class SystemHealthChecker:
             return {
                 "status": "missing",
                 "ready": False,
-                "fix": "patent-creator setup",
+                "fix": _render("patent-creator setup"),
                 "details": "MPEP index not built. Run setup to download and index USPTO rules.",
                 "required_for": [
                     "search_mpep",
@@ -154,7 +171,7 @@ class SystemHealthChecker:
                 "status": "corrupt",
                 "ready": False,
                 "error": str(e),
-                "fix": "patent-creator setup --rebuild-index",
+                "fix": _render("patent-creator setup --rebuild"),
                 "details": "Index files exist but are corrupted. Rebuild required.",
             }
 
@@ -264,7 +281,7 @@ class SystemHealthChecker:
                 "status": "error",
                 "ready": False,
                 "error": str(e),
-                "fix": "pip install google-cloud-bigquery db-dtypes",
+                "fix": f"{_pip()} install google-cloud-bigquery db-dtypes",
                 "details": "BigQuery module not available",
             }
 
@@ -280,7 +297,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "available": False,
                 "api_key_configured": False,
-                "fix": "Set USPTO_API_KEY environment variable",
+                "fix": _render('patent-creator config set USPTO_API_KEY "YOUR_KEY"') + ", then restart Claude Code",
                 "details": (
                     "Get API key at: https://data.uspto.gov/myodp\n"
                     "Setup takes 5 minutes. Requires USPTO account and ID.me verification."
@@ -350,7 +367,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "available": False,
                 "error": "USPTO API module not available",
-                "fix": "pip install -e .",
+                "fix": _pip() + " install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git",
             }
         except Exception as e:
             if logger:
@@ -397,7 +414,7 @@ class SystemHealthChecker:
                     "ready": False,
                     "python_package": True,
                     "system_command": False,
-                    "fix": "Install system Graphviz: sudo apt install graphviz (Linux) or winget install graphviz (Windows)",
+                    "fix": "Install the free Graphviz program: brew install graphviz (Mac), winget install graphviz (Windows) or sudo apt install graphviz (Linux), then restart Claude Code",
                     "details": "Python package installed but system Graphviz missing",
                     "required_for": ["render_diagram", "create_flowchart", "create_block_diagram"],
                 }

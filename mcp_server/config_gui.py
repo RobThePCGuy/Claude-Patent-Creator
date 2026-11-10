@@ -60,9 +60,15 @@ def launch() -> int:
             file=sys.stderr,
         )
         print(f"    {exc}", file=sys.stderr)
+        try:
+            from cli_command import render
+        except ImportError:
+            from mcp_server.cli_command import render
         print(
-            "    Use the command line instead, e.g.:\n"
-            "      patent-creator config set GOOGLE_CLOUD_PROJECT my-project-id",
+            render(
+                "    Use the command line instead, e.g.:\n"
+                "      patent-creator config set GOOGLE_CLOUD_PROJECT my-project-id"
+            ),
             file=sys.stderr,
         )
         return 1

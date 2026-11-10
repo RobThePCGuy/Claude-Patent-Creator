@@ -630,19 +630,34 @@ class MPEPIndex:
 
     @staticmethod
     def _guidelines_locator(url: str) -> Optional[str]:
-        """'.../guidelines-epc/2026/d_v_5_1.html' -> 'Part D, Chapter V, 5.1'."""
+        """Citation locator from an official Guidelines page URL.
+
+        '.../2026/d_v_5_1.html'   -> 'Part D, Chapter V, 5.1'
+        '.../2026/f_iia2_1.html'  -> 'Part F, Chapter II, Annex 2, 1'
+        '.../2026/c_va.html'      -> 'Part C, Chapter V, Annex'
+        '.../2026/foreword_3.html'-> 'Foreword, 3'
+        Anything else -> None (the caller then labels it generically, never
+        with the previous page's location).
+        """
         import re
 
-        m = re.search(r"/([a-h])(?:_([ivxlc]+))?((?:_\d+)*)\.html$", url or "")
-        if not m:
-            return None
-        part, chapter, numbers = m.group(1), m.group(2), m.group(3)
-        bits = [f"Part {part.upper()}"]
-        if chapter:
-            bits.append(f"Chapter {chapter.upper()}")
-        if numbers:
-            bits.append(".".join(n for n in numbers.split("_") if n))
-        return ", ".join(bits)
+        name = (url or "").rsplit("/", 1)[-1]
+        m = re.fullmatch(r"([a-h])(?:_([ivxlc]+)(a(\d*))?)?((?:_\d+)*)\.html", name)
+        if m:
+            part, chapter, annex, annex_no, numbers = m.groups()
+            bits = [f"Part {part.upper()}"]
+            if chapter:
+                bits.append(f"Chapter {chapter.upper()}")
+            if annex is not None:
+                bits.append(f"Annex {annex_no}" if annex_no else "Annex")
+            if numbers:
+                bits.append(".".join(n for n in numbers.split("_") if n))
+            return ", ".join(bits)
+        m = re.fullmatch(r"foreword((?:_\d+)*)\.html", name)
+        if m:
+            numbers = ".".join(n for n in m.group(1).split("_") if n)
+            return "Foreword" + (f", {numbers}" if numbers else "")
+        return None
 
     def extract_text_from_epo_guidelines(self, text_path: Path) -> list[dict[str, Any]]:
         """Extract text from EPO Guidelines for Examination (text file from HTML scrape).
@@ -681,9 +696,18 @@ class MPEPIndex:
                 }
                 if current_url:
                     meta["source_url"] = current_url
+                page_text = "\n".join(buffer)
+                # The 50-character floor drops PDF debris; a whole official
+                # page can legitimately be one short sentence (e.g. d_viii:
+                # "General remarks on decisions appear in E-IX."), so a
+                # short non-empty page is kept as its one chunk.
+                min_len = 1 if len(page_text.strip()) < 50 else 50
                 chunks.extend(
                     self._chunk_text_with_metadata(
-                        text="\n".join(buffer), section_label=current_section, base_metadata=meta
+                        text=page_text,
+                        section_label=current_section,
+                        base_metadata=meta,
+                        min_chunk_length=min_len,
                     )
                 )
                 buffer.clear()
@@ -701,10 +725,13 @@ class MPEPIndex:
                     flush()
                     current_url = source_match.group(1)
                     locator = self._guidelines_locator(current_url)
-                    if locator:
-                        current_part = locator.split(",")[0]
-                        title = page_title or "Guidelines"
-                        current_section = f"EPO Guidelines {locator} - {title}"
+                    title = page_title or "Guidelines"
+                    # A page with no recognised locator must not keep the
+                    # previous page's Part/Chapter.
+                    current_part = locator.split(",")[0] if locator else "EPO Guidelines"
+                    current_section = (
+                        f"EPO Guidelines {locator} - {title}" if locator else f"EPO Guidelines - {title}"
+                    )
                     continue
 
                 section_match = re.match(r"(?:###+|####)\s*(.+)", line)
@@ -715,8 +742,10 @@ class MPEPIndex:
                         # A page title; its Source line follows and sets the URL.
                         page_title = heading
                     locator = self._guidelines_locator(current_url) if current_url else None
-                    where = locator or current_part
-                    current_section = f"EPO Guidelines {where} - {heading}"
+                    where = locator or (current_part if not current_url else None)
+                    current_section = (
+                        f"EPO Guidelines {where} - {heading}" if where else f"EPO Guidelines - {heading}"
+                    )
                     continue
 
                 buffer.append(line)

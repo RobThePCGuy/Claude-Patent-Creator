@@ -209,7 +209,7 @@ venv/bin/python -m pytest -q
 ```
 
 ### Critical Files
-- `~/.config/claude-patent-creator/config.json` - saved settings and keys (`patent-creator config path`)
+- `~/.config/claude-patent-creator/config.json` - saved settings and keys (`~/patent-creator-venv/bin/patent-creator config path`)
 - `~/.local/share/claude-patent-creator/data/` - downloaded sources and the search index (`PATENT_DATA_DIR` moves it)
 - `.env` - environment variables, source checkout only
 - `pdfs/` - MPEP PDF files

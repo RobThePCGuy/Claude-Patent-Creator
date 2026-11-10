@@ -366,3 +366,43 @@ def test_recovery_messages_name_the_installed_command(tmp_path, monkeypatch):
     assert out == f"Run {exe} setup --rebuild, or '{exe} config list'."
     # names that merely contain the word are left alone
     assert cli_command.render("claude-patent-creator stays") == "claude-patent-creator stays"
+
+
+def test_short_guidelines_pages_are_kept_and_unknown_pages_get_no_stale_locator(tmp_path):
+    import importlib
+
+    mpep_search = importlib.import_module("mpep_search")
+    long_body = " ".join(f"Decision text {i}." for i in range(80))
+    text = (
+        "### VII. Decisions\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/d_vii.html\n" + long_body + "\n"
+        "### Chapter VIII – Decisions\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/d_viii.html\n"
+        "General remarks on decisions appear in E-IX.\n"
+        "### Index for Computer-Implemented Inventions\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/j.html\n" + long_body + "\n"
+        "### Chapter V – Annex\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/c_va.html\n" + long_body + "\n"
+    )
+    path = tmp_path / "epo_guidelines.txt"
+    path.write_text(text, encoding="utf-8")
+    idx = mpep_search.MPEPIndex.__new__(mpep_search.MPEPIndex)
+    metas = [mpep_search.MPEPIndex._chunk_to_metadata(c) for c in idx.extract_text_from_epo_guidelines(path)]
+    by_page = {}
+    for m in metas:
+        by_page.setdefault(m["source_url"].rsplit("/", 1)[-1], []).append(m)
+
+    assert "d_viii.html" in by_page  # a one-sentence page is still searchable
+    assert all("Part D" not in m["section"] for m in by_page["j.html"])
+    assert all(m["part"] == "EPO Guidelines" for m in by_page["j.html"])
+    assert all("Part C, Chapter V, Annex" in m["section"] for m in by_page["c_va.html"])
+
+
+def test_health_fixes_name_commands_that_exist():
+    import inspect
+
+    import health_check
+
+    source = inspect.getsource(health_check)
+    assert "--rebuild-index" not in source  # setup has no such option
+    assert '"fix": "patent-creator' not in source

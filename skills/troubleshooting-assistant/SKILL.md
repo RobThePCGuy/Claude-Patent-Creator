@@ -36,7 +36,7 @@ Problem Reported
 | MCP server not loading | `claude mcp list` -> Re-register if missing |
 | GPU not detected | Reinstall PyTorch with CUDA |
 | BigQuery auth fails | `gcloud auth application-default login` |
-| Index not found | `patent-creator rebuild-index` |
+| Index not found | `~/patent-creator-venv/bin/patent-creator rebuild-index` |
 | Import errors | Activate venv: `venv\Scripts\activate` |
 | Slow searches | Check GPU usage, reduce top_k, disable HyDE |
 | Irrelevant results | Rephrase query with MPEP terminology |
@@ -78,7 +78,7 @@ Problem Reported
 
 ```bash
 # Full system health
-patent-creator health
+~/patent-creator-venv/bin/patent-creator health
 
 # Individual components
 python scripts/test_gpu.py
@@ -114,7 +114,7 @@ python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
 
 ## Best Practices for Prevention
 
-1. Regular health checks (weekly `patent-creator health`)
+1. Regular health checks (weekly `~/patent-creator-venv/bin/patent-creator health`)
 2. Monitor logs for warnings/errors
 3. Keep dependencies updated (test before deploying)
 4. Backup before changes (especially index rebuilds)
@@ -133,7 +133,7 @@ python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
 | "ModuleNotFoundError" | Dependencies | Activate venv, reinstall |
 | "CUDA not available" | GPU | Reinstall PyTorch with CUDA |
 | "Permission denied" (BigQuery) | Auth | `gcloud auth application-default login` |
-| "Index not found" | Index | `patent-creator rebuild-index` |
+| "Index not found" | Index | `~/patent-creator-venv/bin/patent-creator rebuild-index` |
 | "Out of memory" | Index Build | Reduce batch size |
 | "Validation error" | Input | Check Pydantic model parameters |
 
@@ -141,7 +141,7 @@ python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
 
 ```bash
 # System health
-patent-creator health
+~/patent-creator-venv/bin/patent-creator health
 
 # Test components
 python scripts/test_gpu.py
@@ -152,7 +152,7 @@ python scripts/test_install.py
 claude mcp list
 
 # Check paths
-patent-creator verify-config
+~/patent-creator-venv/bin/patent-creator verify-config
 
 # Enable debug logging
 export PATENT_LOG_LEVEL=DEBUG

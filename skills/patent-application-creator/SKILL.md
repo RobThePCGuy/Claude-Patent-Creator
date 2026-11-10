@@ -218,7 +218,7 @@ does not label edges), with reference numerals on every node.
 
 ## Phase 4 — Machine verification loop (iterate to clean)
 
-1. `patent-creator config set PATENT_ENABLE_ANTECEDENT_CHECK 1` — the
+1. `~/patent-creator-venv/bin/patent-creator config set PATENT_ENABLE_ANTECEDENT_CHECK 1` — the
    antecedent check is opt-in; a campaign MUST run it.
 2. `review_patent_claims` on the full claim set. Fix genuine findings
    (form, term drift); manually verify each remaining LOW-confidence flag
