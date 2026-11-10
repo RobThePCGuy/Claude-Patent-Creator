@@ -158,8 +158,8 @@ statute_results = mpep_index.search(
     is_statute=True
 )
 
-# Section-specific retrieval
-section_chunks = mpep_index.get_section("2163")  # MPEP 2163
+# Section-specific retrieval: use the MCP tool (MPEPIndex has no get_section)
+# get_mpep_section(section_number="2163", max_chunks=10)
 ```
 
 ### Step 3: Result Analysis
@@ -337,12 +337,12 @@ Works with other skills/agents:
 
 ### Full Section Retrieval
 
-Get all chunks from a specific MPEP section:
-```python
-chunks = mpep_index.get_section("2163", max_chunks=50)
+Get a specific MPEP section with the `get_mpep_section` MCP tool:
+```
+get_mpep_section(section_number="2163", max_chunks=50)
 ```
 
-Returns complete section content for deep analysis.
+Returns the section's text from its chapter, in order. It says when boundaries are approximate (adjacent text can be included) and when the result was cut off at `max_chunks`; check `truncated` before treating it as the whole section.
 
 ### HyDE Query Expansion
 

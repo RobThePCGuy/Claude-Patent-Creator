@@ -13,9 +13,21 @@ Dependencies:
     - GooglePatentsSearch from google_patents_search module
 """
 
+import os
 from typing import Any, Optional
 
 import anyio
+
+
+def _bigquery_fallback() -> str:
+    """Only point at BigQuery as a ready fallback when it is set up."""
+    if os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        return "search_patents_bigquery (about $2 a search past Google's free monthly TiB)"
+    return (
+        "search_patents_bigquery, once the optional BigQuery setup is done "
+        "(a Google Cloud project; see 'Setting up BigQuery' in the README). "
+        "The free SerpApi key is the quicker route."
+    )
 
 
 def register_google_patents_tools(
@@ -45,7 +57,7 @@ def register_google_patents_tools(
             return {
                 "ready": False,
                 "message": GooglePatentsSearch.setup_message(),
-                "fallback": "search_patents_bigquery (about $2 a search past Google's free monthly TiB)",
+                "fallback": _bigquery_fallback(),
             }
         try:
             return {"ready": True, **searcher.account()}
@@ -120,12 +132,12 @@ def register_google_patents_tools(
         try:
             results = await anyio.to_thread.run_sync(_do_search)
         except (GooglePatentsNotConfiguredError, GooglePatentsQuotaError) as e:
-            return [{"error": str(e), "fallback": "search_patents_bigquery"}]
+            return [{"error": str(e), "fallback": _bigquery_fallback()}]
         except Exception as e:
             # Messages from GooglePatentsSearch are already key-redacted and
             # carry no exception chain; no traceback is logged for that reason.
             log_error("search_patents_google_failed", error=str(e))
-            return [{"error": str(e), "fallback": "search_patents_bigquery"}]
+            return [{"error": str(e), "fallback": _bigquery_fallback()}]
 
         log_info("search_patents_google: got results", count=len(results))
         return results

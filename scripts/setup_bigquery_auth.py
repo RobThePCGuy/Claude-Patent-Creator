@@ -1,112 +1,63 @@
 #!/usr/bin/env python3
+"""Sign in to Google for the optional BigQuery patent search.
+
+This hands off to Google's own `gcloud auth application-default login`,
+which opens a browser and saves Application Default Credentials. (An earlier
+version ran its own OAuth flow with placeholder client credentials, which
+could never sign anyone in.)
+
+Usage:
+    python scripts/setup_bigquery_auth.py [your-project-id]
 """
-Simple script to set up BigQuery authentication using browser OAuth flow
-"""
-import json
-import os
-import platform
+
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-try:
-    from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-untyped]
-except ImportError:
-    print("Installing required packages...")
-    import subprocess
-
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "google-auth-oauthlib"])
-    from google_auth_oauthlib.flow import InstalledAppFlow  # type: ignore[import-untyped]
-
-# Scopes needed for BigQuery
-SCOPES = [
-    "https://www.googleapis.com/auth/bigquery",
-    "https://www.googleapis.com/auth/cloud-platform",
-]
+INSTALL_URL = "https://cloud.google.com/sdk/docs/install"
 
 
-def get_gcloud_credentials_path():
-    """
-    Get the correct gcloud application default credentials path for the current OS
+def _cli() -> str:
+    """The installed patent-creator command, quoted for this shell."""
+    try:
+        from mcp_server.cli_command import installed_cli
+    except ImportError:
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        try:
+            from mcp_server.cli_command import installed_cli
+        except ImportError:
+            return "patent-creator"
+    return installed_cli()
 
-    Returns:
-        Path: Platform-specific credentials path
-    """
-    if platform.system() == "Windows":
-        # Windows: %APPDATA%\gcloud\application_default_credentials.json
-        appdata = os.environ.get("APPDATA")
-        if appdata:
-            return Path(appdata) / "gcloud" / "application_default_credentials.json"
-        else:
-            return (
-                Path.home()
-                / "AppData"
-                / "Roaming"
-                / "gcloud"
-                / "application_default_credentials.json"
-            )
+
+def _exe(cli: str) -> str:
+    """The bare path from a possibly quoted command, for subprocess."""
+    return cli.removeprefix("& ").strip('"')
+
+
+def main() -> int:
+    gcloud = shutil.which("gcloud")
+    if not gcloud:
+        print("BigQuery sign-in needs Google's gcloud tool, which isn't installed.")
+        print(f"Install it from {INSTALL_URL}, open a new terminal, and run this again.")
+        return 1
+
+    project = sys.argv[1] if len(sys.argv) > 1 else ""
+    cmd = [gcloud, "auth", "application-default", "login"]
+    if project:
+        cmd += ["--project", project]
+    print("Opening your browser to sign in to Google...")
+    if subprocess.call(cmd) != 0:
+        print("Sign-in did not finish. Run this again when you're ready.")
+        return 1
+
+    cli = _cli()
+    if project:
+        subprocess.call([_exe(cli), "config", "set", "GOOGLE_CLOUD_PROJECT", project])
     else:
-        # Linux/macOS: $HOME/.config/gcloud/application_default_credentials.json
-        return Path.home() / ".config" / "gcloud" / "application_default_credentials.json"
-
-
-def main():
-    print("BigQuery Authentication Setup")
-    print("=" * 60)
-    print()
-
-    creds = None
-    creds_path = get_gcloud_credentials_path()
-    creds_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # OAuth client configuration (public client ID for gcloud)
-    # NOTE: Avoid shipping credentials in public repositories.
-    # If you want to use a client ID/secret here, provide them via env variables
-    # or a local client_secrets.json file. Using gcloud auth is preferred.
-    client_config = {
-        "installed": {
-            "client_id": "<YOUR_CLIENT_ID>",
-            "client_secret": "<YOUR_CLIENT_SECRET>",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": ["http://localhost"],
-        }
-    }
-
-    print("Opening browser for authentication...")
-    print("(If browser doesn't open, copy the URL from terminal)")
-    print()
-
-    flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-    creds = flow.run_local_server(port=0)
-
-    # Get project ID from user
-    print()
-    print("To use BigQuery, we need your Google Cloud project ID.")
-    print("Find it at: https://console.cloud.google.com/bigquery")
-    print("(Look for 'SANDBOX' at top left, project ID is in the top bar)")
-    print()
-
-    project_id = input("Enter your project ID: ").strip()
-
-    # Save credentials
-    creds_data = {
-        "client_id": creds.client_id,
-        "client_secret": creds.client_secret,
-        "refresh_token": creds.refresh_token,
-        "type": "authorized_user",
-        "quota_project_id": project_id,
-    }
-
-    with creds_path.open("w") as f:
-        json.dump(creds_data, f, indent=2)
-
-    print()
-    print("[OK] Authentication successful!")
-    print(f"[OK] Credentials saved to: {creds_path}")
-    print(f"[OK] Project ID: {project_id}")
-    print()
-    print("BigQuery is now ready to use!")
-
+        print(f'\nNow save your project ID: {cli} config set GOOGLE_CLOUD_PROJECT your-project-id')
+    print(f"Then test it: {cli} check-bigquery")
     return 0
 
 

@@ -1,15 +1,17 @@
 # Setting Environment Variables
 
+> **Commands on this page** assume `patent-creator` is on your PATH. With the README's install, type `~/patent-creator-venv/bin/patent-creator` instead (Windows PowerShell: `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`). Keys and settings are easiest to save with `patent-creator config set KEY VALUE`; an environment variable overrides a saved value.
+
 This guide shows how to set environment variables for API keys on different platforms.
 
 > **Easier: use the built-in config command.** Instead of editing environment
 > variables you can store settings in a config file the server reads:
 >
 > ```bash
-> patent-creator config list                 # every setting, its value, and source
-> patent-creator config set GOOGLE_CLOUD_PROJECT my-project-id
-> patent-creator config set PATENT_BIGQUERY_MAX_BYTES_BILLED 268435456000   # ~250 GiB
-> patent-creator config path                 # where the file lives
+> ~/patent-creator-venv/bin/patent-creator config list                 # every setting, its value, and source
+> ~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT my-project-id
+> ~/patent-creator-venv/bin/patent-creator config set PATENT_BIGQUERY_MAX_BYTES_BILLED 268435456000   # ~250 GiB
+> ~/patent-creator-venv/bin/patent-creator config path                 # where the file lives
 > ```
 >
 > Resolution order is **environment variable > config file > default**, so an

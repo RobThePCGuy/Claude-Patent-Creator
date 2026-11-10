@@ -6,6 +6,18 @@ Extracted from server.py to work as a standalone library
 """
 
 import json
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
+import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -18,7 +30,7 @@ try:
     PYMUPDF_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: PyMuPDF not found. Install with: pip install PyMuPDF",
+        _render_cmd("Warning: PyMuPDF not found. Install with: pip install PyMuPDF"),
         file=sys.stderr,
     )
     PYMUPDF_AVAILABLE = False
@@ -34,7 +46,7 @@ try:
     VECTOR_SEARCH_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: Required packages not found. Install with: pip install sentence-transformers faiss-cpu numpy torch",
+        _render_cmd("Warning: Required packages not found. Install with: pip install sentence-transformers faiss-cpu numpy torch"),
         file=sys.stderr,
     )
     VECTOR_SEARCH_AVAILABLE = False
@@ -51,7 +63,7 @@ try:
     BM25_AVAILABLE = True
 except ImportError:
     print(
-        "Warning: rank-bm25 not found. Hybrid search disabled. Install with: pip install rank-bm25",
+        _render_cmd("Warning: rank-bm25 not found. Hybrid search disabled. Install with: pip install rank-bm25"),
         file=sys.stderr,
     )
     BM25_AVAILABLE = False
@@ -154,6 +166,22 @@ def _log_debug(message: str, **kwargs):
         logger.debug(message, extra=kwargs)
 
 
+def get_index_warnings(metadata: list[dict[str, Any]]) -> list[str]:
+    """Read-only corpus checks for health callers and index loading.
+
+    This detects the known EPC classification defect; an empty list is not
+    certification that an index is complete or legally current.
+    """
+    sources = {m.get("source", "MPEP") for m in metadata}
+    if "EPC_RULES" in sources and "EPC" not in sources:
+        return [
+            "EPC_RULES is indexed but EPC articles are absent. This index may "
+            "have the EPC classification defect; article/rule labels are unreliable. "
+            "Rebuild required: patent-creator setup --rebuild."
+        ]
+    return []
+
+
 class MPEPIndex:
     """Manages indexing and retrieval of MPEP documents with advanced RAG techniques"""
 
@@ -165,10 +193,10 @@ class MPEPIndex:
         if not VECTOR_SEARCH_AVAILABLE:
             raise ImportError(
                 "Vector search packages not available. "
-                "Install with: pip install sentence-transformers faiss-cpu numpy torch"
+                + _render_cmd("Install with: pip install sentence-transformers faiss-cpu numpy torch")
             )
         if not PYMUPDF_AVAILABLE:
-            raise ImportError("PyMuPDF not available. Install with: pip install PyMuPDF")
+            raise ImportError(_render_cmd("PyMuPDF not available. Install with: pip install PyMuPDF"))
 
         # Detect and use GPU if available
         self.device = get_device()
@@ -308,7 +336,7 @@ class MPEPIndex:
             meta["supersedes_mpep"] = c.get("supersedes_mpep", False)
         else:
             # EPO/PCT structural fields, when the extractor recorded them
-            for key in ("part", "article", "rule"):
+            for key in ("part", "article", "rule", "source_url"):
                 if key in c:
                     meta[key] = c[key]
         return meta
@@ -549,100 +577,108 @@ class MPEPIndex:
     # ==========================================================================
 
     def extract_text_from_epc(self, pdf_path: Path) -> list[dict[str, Any]]:
-        """Extract text from European Patent Convention PDF.
+        """Extract bookmarked Convention articles and Implementing Regulations.
 
-        The EPC 17th edition PDF contains both the Convention articles and the
-        Implementing Regulations. This method splits them by detecting the
-        section boundary and produces chunks with source="EPC" for articles
-        and source="EPC_RULES" for rules.
+        The official multilingual edition includes amendment tables, contents,
+        protocols and other instruments. Those are not Convention articles or
+        Implementing Regulations. Use the publisher's outline, not occurrences
+        of their names in running text. Outline titles also separate article
+        numbers from superscript footnotes (text extraction yields "8479").
         """
         import re
 
-        epc_chunks = []
-        rules_chunks = []
-        doc = None
+        chunks = []
         try:
-            doc = fitz.open(pdf_path)  # type: ignore[union-attr]
-            current_article = "EPC"
-            in_rules_section = False
-
-            for page_num, page in enumerate(doc):  # type: ignore[arg-type]
-                text = page.get_text()
-                if not text.strip():
-                    continue
-
-                # Detect transition to Implementing Regulations
-                if re.search(r"IMPLEMENTING\s+REGULATIONS", text, re.IGNORECASE):
-                    in_rules_section = True
-
-                if in_rules_section:
-                    # Detect rule numbers: "Rule 1", "Rule 42", etc.
-                    rule_matches = list(re.finditer(r"Rule\s+(\d+)\s*\n\s*([^\n]{1,100})", text))
-                    current_label = current_article
-
-                    if rule_matches:
-                        for match in rule_matches:
-                            rule_num = match.group(1)
-                            rule_title = match.group(2).strip()
-                            current_label = f"Rule {rule_num} EPC - {rule_title}"
-
-                    page_chunks = self._chunk_text_with_metadata(
-                        text=text,
-                        section_label=current_label,
-                        base_metadata={
-                            "source": "EPC_RULES",
-                            "file": pdf_path.name,
-                            "section": current_label,
-                            "page": page_num + 1,
-                            "is_statute": False,
-                            "is_regulation": True,
-                            "is_update": False,
-                        },
-                    )
-                    rules_chunks.extend(page_chunks)
-                else:
-                    # Detect article numbers: "Article 52", "Article 84", etc.
-                    art_matches = list(re.finditer(r"Article\s+(\d+)\s*\n\s*([^\n]{1,100})", text))
-
-                    if art_matches:
-                        for match in art_matches:
-                            art_num = match.group(1)
-                            art_title = match.group(2).strip()
-                            current_article = f"Art. {art_num} EPC - {art_title}"
-
-                    page_chunks = self._chunk_text_with_metadata(
-                        text=text,
-                        section_label=current_article,
-                        base_metadata={
-                            "source": "EPC",
-                            "file": pdf_path.name,
-                            "section": current_article,
-                            "page": page_num + 1,
-                            "is_statute": True,
-                            "is_regulation": False,
-                            "is_update": False,
-                        },
-                    )
-                    epc_chunks.extend(page_chunks)
-
+            with fitz.open(pdf_path) as doc:
+                toc = doc.get_toc()
+                rules_index = next(
+                    i for i, (level, title, _) in enumerate(toc)
+                    if level == 1 and title.startswith("Implementing Regulations")
+                )
+                rules_end = next(
+                    (i for i in range(rules_index + 1, len(toc)) if toc[i][0] == 1),
+                    len(toc),
+                )
+                groups = [
+                    ("EPC", "Article", toc[:rules_index], toc[rules_index][2]),
+                    ("EPC_RULES", "Rule", toc[rules_index:rules_end],
+                     toc[rules_end][2] if rules_end < len(toc) else len(doc) + 1),
+                ]
+                for source, kind, entries, end_page in groups:
+                    headings = {}
+                    for _, title, page in entries:
+                        if re.match(rf"^{kind} \d+[a-z]?\s", title):
+                            headings.setdefault(page, []).append(title)
+                    if not headings:
+                        raise ValueError(f"No bookmarked {kind} body found")
+                    label = ""
+                    for page_num in range(min(headings), end_page):
+                        if page_num in headings:
+                            # A multilingual PDF page can contain several articles.
+                            # List all of them rather than assigning the last to all text.
+                            label = "EPC: " + "; ".join(headings[page_num])
+                        chunks.extend(self._chunk_text_with_metadata(
+                            text=doc[page_num - 1].get_text(),
+                            section_label=label,
+                            base_metadata={
+                                "source": source, "file": pdf_path.name,
+                                "section": label, "page": page_num,
+                                "is_statute": source == "EPC",
+                                "is_regulation": source == "EPC_RULES",
+                                "is_update": False,
+                            },
+                        ))
         except Exception as e:
-            _log_error(f"Error processing EPC {pdf_path}: {e}", exc_info=True, file_path=str(pdf_path))
-        finally:
-            if doc is not None:
-                doc.close()
-
+            _log_error(f"EPC body boundaries could not be verified; not indexed: {e}")
+            return []
+        counts = {source: sum(c["source"] == source for c in chunks)
+                  for source in ("EPC", "EPC_RULES")}
         _log_info(
-            f"Extracted {len(epc_chunks)} EPC article chunks and {len(rules_chunks)} EPC rules chunks",
-            epc_chunks=len(epc_chunks),
-            rules_chunks=len(rules_chunks),
+            f"Extracted {counts['EPC']} EPC article chunks and "
+            f"{counts['EPC_RULES']} EPC rules chunks. Coverage: bookmarked article "
+            "and rule bodies only; front matter, contents and other instruments excluded."
         )
-        return epc_chunks + rules_chunks
+        return chunks
+
+    @staticmethod
+    def _guidelines_locator(url: str) -> Optional[str]:
+        """Citation locator from an official Guidelines page URL.
+
+        '.../2026/d_v_5_1.html'   -> 'Part D, Chapter V, 5.1'
+        '.../2026/f_iia2_1.html'  -> 'Part F, Chapter II, Annex 2, 1'
+        '.../2026/c_va.html'      -> 'Part C, Chapter V, Annex'
+        '.../2026/foreword_3.html'-> 'Foreword, 3'
+        Anything else -> None (the caller then labels it generically, never
+        with the previous page's location).
+        """
+        import re
+
+        name = (url or "").rsplit("/", 1)[-1]
+        m = re.fullmatch(r"([a-h])(?:_([ivxlc]+)(a(\d*))?)?((?:_\d+)*)\.html", name)
+        if m:
+            part, chapter, annex, annex_no, numbers = m.groups()
+            bits = [f"Part {part.upper()}"]
+            if chapter:
+                bits.append(f"Chapter {chapter.upper()}")
+            if annex is not None:
+                bits.append(f"Annex {annex_no}" if annex_no else "Annex")
+            if numbers:
+                bits.append(".".join(n for n in numbers.split("_") if n))
+            return ", ".join(bits)
+        m = re.fullmatch(r"foreword((?:_\d+)*)\.html", name)
+        if m:
+            numbers = ".".join(n for n in m.group(1).split("_") if n)
+            return "Foreword" + (f", {numbers}" if numbers else "")
+        return None
 
     def extract_text_from_epo_guidelines(self, text_path: Path) -> list[dict[str, Any]]:
         """Extract text from EPO Guidelines for Examination (text file from HTML scrape).
 
-        The Guidelines are organized into 8 parts (A-H), each with chapters and
-        sections. This method detects the Part/Chapter/Section structure.
+        The scraper writes each official page as "### <title>" then
+        "Source: <url>" then its text. Every chunk carries that page's URL and
+        its Part/Chapter/section locator (derived from the URL), so a
+        continuation chunk cites the same official page as the first one. A
+        "PART A - ..." header (PDF-derived text) sets the part as before.
         """
         import re
 
@@ -652,85 +688,81 @@ class MPEPIndex:
             if not text.strip():
                 return chunks
 
-            # Split by part headers
             current_part = "EPO Guidelines"
             current_section = "EPO Guidelines"
+            current_url: Optional[str] = None
+            page_title: Optional[str] = None
+            buffer: list[str] = []
 
-            # Process line by line, detecting headers
-            lines = text.split("\n")
-            buffer = []
+            def flush():
+                if not buffer:
+                    return
+                meta = {
+                    "source": "EPO_GUIDELINES",
+                    "file": text_path.name,
+                    "section": current_section,
+                    "part": current_part,
+                    "is_statute": False,
+                    "is_regulation": False,
+                    "is_update": False,
+                }
+                if current_url:
+                    meta["source_url"] = current_url
+                page_text = "\n".join(buffer)
+                # The 50-character floor drops PDF debris; a whole official
+                # page can legitimately be one short sentence (e.g. d_viii:
+                # "General remarks on decisions appear in E-IX."), so a
+                # short non-empty page is kept as its one chunk.
+                min_len = 1 if len(page_text.strip()) < 50 else 50
+                chunks.extend(
+                    self._chunk_text_with_metadata(
+                        text=page_text,
+                        section_label=current_section,
+                        base_metadata=meta,
+                        min_chunk_length=min_len,
+                    )
+                )
+                buffer.clear()
 
-            for line in lines:
-                # Detect part headers: "PART A - FORMALITIES EXAMINATION"
+            for line in text.split("\n"):
                 part_match = re.match(r"PART\s+([A-H])\s*[-–]\s*(.+)", line, re.IGNORECASE)
                 if part_match:
-                    # Flush buffer
-                    if buffer:
-                        buffer_text = "\n".join(buffer)
-                        page_chunks = self._chunk_text_with_metadata(
-                            text=buffer_text,
-                            section_label=current_section,
-                            base_metadata={
-                                "source": "EPO_GUIDELINES",
-                                "file": text_path.name,
-                                "section": current_section,
-                                "part": current_part,
-                                "is_statute": False,
-                                "is_regulation": False,
-                                "is_update": False,
-                            },
-                        )
-                        chunks.extend(page_chunks)
-                        buffer = []
-
-                    current_part = f"Part {part_match.group(1)}"
+                    flush()
+                    current_part = f"Part {part_match.group(1).upper()}"
                     current_section = f"EPO Guidelines {current_part} - {part_match.group(2).strip()}"
                     continue
 
-                # Detect chapter/section headers
+                source_match = re.match(r"Source:\s*(https?://\S+)\s*$", line)
+                if source_match:
+                    flush()
+                    current_url = source_match.group(1)
+                    locator = self._guidelines_locator(current_url)
+                    title = page_title or "Guidelines"
+                    # A page with no recognised locator must not keep the
+                    # previous page's Part/Chapter.
+                    current_part = locator.split(",")[0] if locator else "EPO Guidelines"
+                    current_section = (
+                        f"EPO Guidelines {locator} - {title}" if locator else f"EPO Guidelines - {title}"
+                    )
+                    continue
+
                 section_match = re.match(r"(?:###+|####)\s*(.+)", line)
                 if section_match:
-                    # Flush buffer
-                    if buffer:
-                        buffer_text = "\n".join(buffer)
-                        page_chunks = self._chunk_text_with_metadata(
-                            text=buffer_text,
-                            section_label=current_section,
-                            base_metadata={
-                                "source": "EPO_GUIDELINES",
-                                "file": text_path.name,
-                                "section": current_section,
-                                "part": current_part,
-                                "is_statute": False,
-                                "is_regulation": False,
-                                "is_update": False,
-                            },
-                        )
-                        chunks.extend(page_chunks)
-                        buffer = []
-
-                    current_section = f"EPO Guidelines {current_part} - {section_match.group(1).strip()}"
+                    flush()
+                    heading = section_match.group(1).strip()
+                    if line.startswith("### ") and not line.startswith("#### "):
+                        # A page title; its Source line follows and sets the URL.
+                        page_title = heading
+                    locator = self._guidelines_locator(current_url) if current_url else None
+                    where = locator or (current_part if not current_url else None)
+                    current_section = (
+                        f"EPO Guidelines {where} - {heading}" if where else f"EPO Guidelines - {heading}"
+                    )
                     continue
 
                 buffer.append(line)
 
-            # Flush remaining buffer
-            if buffer:
-                buffer_text = "\n".join(buffer)
-                page_chunks = self._chunk_text_with_metadata(
-                    text=buffer_text,
-                    section_label=current_section,
-                    base_metadata={
-                        "source": "EPO_GUIDELINES",
-                        "file": text_path.name,
-                        "section": current_section,
-                        "part": current_part,
-                        "is_statute": False,
-                        "is_regulation": False,
-                        "is_update": False,
-                    },
-                )
-                chunks.extend(page_chunks)
+            flush()
 
         except Exception as e:
             _log_error(f"Error processing EPO Guidelines {text_path}: {e}", exc_info=True)
@@ -857,6 +889,10 @@ class MPEPIndex:
         print("\nThe index has been successfully built from these PDFs.", file=sys.stderr)
         print("You can now delete the PDF files to save disk space.", file=sys.stderr)
         print("The index will continue to work without them.", file=sys.stderr)
+        print(
+            "Rebuilding the index later downloads them again (about 500 MB).",
+            file=sys.stderr,
+        )
         print(f"{'='*60}", file=sys.stderr)
 
         try:
@@ -886,6 +922,46 @@ class MPEPIndex:
             )
             print(f"To manually delete PDFs later: rm {MPEP_DIR}/*.pdf", file=sys.stderr)
 
+    def _embed_batch_size(self) -> int:
+        batch_size = 256 if self.device == "cuda" else 32
+        override = os.environ.get("PATENT_EMBED_BATCH_SIZE", "").strip()
+        if override:
+            try:
+                batch_size = max(1, int(override))
+            except ValueError:
+                _log_warning(f"Ignoring PATENT_EMBED_BATCH_SIZE={override!r}: not a whole number")
+        return batch_size
+
+    def _encode_with_progress(self, texts, batch_size, slices: int = 40):
+        """Embed in slices, logging a plain progress line with time left.
+
+        This step takes over half an hour on a CPU. A tqdm bar redraws one
+        line with carriage returns, which many terminals and log captures
+        never show, so a beginner saw nothing for 36 minutes and could not
+        tell work from a hang. One ordinary line per slice always shows.
+        """
+        import time
+
+        total = len(texts)
+        step = max(batch_size, -(-total // slices))
+        parts = []
+        start = time.monotonic()
+        for begin in range(0, total, step):
+            part = texts[begin : begin + step]
+            parts.append(
+                self.model.encode(
+                    part, batch_size=batch_size, show_progress_bar=False, device=self.device
+                )
+            )
+            done = min(begin + step, total)
+            elapsed = time.monotonic() - start
+            left = elapsed / done * (total - done)
+            _log_info(
+                f"Building search index: {done * 100 // total}% ({done:,} of {total:,} chunks), "
+                f"about {int(left // 60)} min {int(left % 60)} s left"
+            )
+        return np.vstack(parts) if len(parts) > 1 else parts[0]
+
     def build_index(self, force_rebuild: bool = False):
         """Build or load the FAISS index with BM25"""
         _log_info("build_index_started", force_rebuild=force_rebuild)
@@ -900,6 +976,9 @@ class MPEPIndex:
                 f"Loaded existing index with {len(self.chunks)} chunks",
                 chunk_count=len(self.chunks),
             )
+
+            for warning in get_index_warnings(self.metadata):
+                _log_warning(warning)
 
             # Load BM25 tokenized corpus from JSON and rebuild index
             if BM25_AVAILABLE and BM25Okapi and self.bm25_file.exists():
@@ -1021,8 +1100,14 @@ class MPEPIndex:
             _log_info(f"Extracted {len(pct_guide_chunks)} PCT Guidelines chunks", chunk_count=len(pct_guide_chunks))
 
         if not all_chunks:
+            try:
+                from cli_command import render as _render_cmd
+            except ImportError:
+                from mcp_server.cli_command import render as _render_cmd
             raise ValueError(
-                "No chunks extracted from any sources. Run patent-creator setup to download sources."
+                _render_cmd(
+                    "No chunks extracted from any sources. Run patent-creator setup to download sources."
+                )
             )
 
         # Create embeddings (no prefix for documents with BGE)
@@ -1033,17 +1118,12 @@ class MPEPIndex:
         )
         texts = [chunk["text"] for chunk in all_chunks]
 
-        # Optimize batch size for GPU/CPU
-        if self.device == "cuda":
-            batch_size = 256  # Large batch for GPU
-            _log_info(f"Using GPU batch size: {batch_size}", batch_size=batch_size)
-        else:
-            batch_size = 32  # Smaller batch for CPU
-            _log_info(f"Using CPU batch size: {batch_size}", batch_size=batch_size)
+        # Batch size: 256 on CUDA, 32 otherwise (placeholder heuristics). A
+        # GPU that runs out of memory can lower it with PATENT_EMBED_BATCH_SIZE.
+        batch_size = self._embed_batch_size()
+        _log_info(f"Using batch size {batch_size} on {self.device}", batch_size=batch_size)
 
-        embeddings = self.model.encode(
-            texts, batch_size=batch_size, show_progress_bar=True, device=self.device
-        )
+        embeddings = self._encode_with_progress(texts, batch_size)
         _log_info(f"Generated {len(embeddings):,} embeddings", embedding_count=len(embeddings))
 
         # Build FAISS index

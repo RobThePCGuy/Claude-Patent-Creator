@@ -7,6 +7,8 @@ model: sonnet
 
 # BigQuery Patent Search Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Fast, cloud-based patent searching across 100 million+ worldwide patents using Google BigQuery.
 
 ## When to Use
@@ -199,7 +201,7 @@ If BigQuery is not configured:
 1. Check if `google-cloud-bigquery` is installed
 2. Verify authentication: `gcloud auth application-default login`
 3. Confirm project ID in environment: `GOOGLE_CLOUD_PROJECT`
-4. Test with: `python scripts/test_bigquery.py`
+4. Test with: `~/patent-creator-venv/bin/patent-creator check-bigquery`
 
 ## Cost Considerations
 

@@ -25,6 +25,11 @@ from typing import Any, Optional
 import anyio
 
 
+def _render_install(message: str) -> str:
+    from cli_command import render
+
+    return render(message)
+
 def register_bigquery_tools(
     mcp,
     log_info,
@@ -69,9 +74,13 @@ def register_bigquery_tools(
 
                     _bigquery_searcher = BigQueryPatentSearch()
                 except ImportError as e:
+                    from cli_command import render as _rc
+
                     raise ValueError(
-                        f"BigQuery not available: {e}. "
-                        "Install with: pip install google-cloud-bigquery db-dtypes"
+                        _rc(
+                            f"BigQuery not available: {e}. "
+                            "Install with: pip install google-cloud-bigquery db-dtypes"
+                        )
                     )
                 except Exception as e:
                     raise ValueError(f"Failed to initialize BigQuery: {e}")
@@ -97,7 +106,7 @@ def register_bigquery_tools(
             return {
                 "available": False,
                 "error": "google-cloud-bigquery not installed",
-                "install_command": "pip install google-cloud-bigquery db-dtypes",
+                "install_command": _render_install("pip install google-cloud-bigquery db-dtypes"),
             }
         except Exception as e:
             log_error("check_bigquery_status exception", exc_info=True, error=str(e))

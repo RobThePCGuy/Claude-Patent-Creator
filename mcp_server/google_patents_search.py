@@ -52,6 +52,14 @@ def _date_bound(year: int, end: bool) -> str:
     return f"{year:04d}{'1231' if end else '0101'}"
 
 
+def _config_command() -> str:
+    try:
+        from cli_command import installed_cli
+    except ImportError:  # imported as mcp_server.google_patents_search
+        from mcp_server.cli_command import installed_cli
+    return installed_cli()
+
+
 class GooglePatentsSearch:
     """Keyword search over Google Patents' worldwide full text via SerpApi."""
 
@@ -113,8 +121,9 @@ class GooglePatentsSearch:
     def setup_message() -> str:
         return (
             "Google Patents search needs a free SerpApi key (250 searches a month). "
-            f"Sign up at {SIGNUP_URL}, copy the key from {KEY_URL}, and set "
-            "SERPAPI_API_KEY in the project .env file."
+            f"Sign up at {SIGNUP_URL}, copy the key from {KEY_URL}, then save it by "
+            f'running this in a terminal: {_config_command()} config set SERPAPI_API_KEY "YOUR_KEY" '
+            "and restart Claude Code. (This is Step 3 of the README's Quick Start.)"
         )
 
     def search(

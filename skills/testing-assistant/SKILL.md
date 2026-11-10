@@ -5,6 +5,8 @@ description: Manages testing lifecycle including unit tests, integration tests, 
 
 # Testing Assistant Skill
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Expert system for testing and validating the Claude Patent Creator.
 
 **FOR CLAUDE:** Test scripts in scripts/ directory.
@@ -45,7 +47,7 @@ scripts/
 
 **Quick Test:**
 ```bash
-python scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
 ```
 
 
@@ -134,10 +136,10 @@ print(f"Search took: {duration:.3f}s")
 
 | Problem | Solution |
 |---------|----------|
-| Import errors | Activate venv, `pip install -r requirements.txt` |
+| Import errors | Reinstall into the venv: `~/patent-creator-venv/bin/python -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git` |
 | GPU tests fail | Check `nvidia-smi`, reinstall PyTorch, or skip |
 | BigQuery fails | Re-auth: `gcloud auth application-default login` |
-| Index not found | Rebuild: `patent-creator rebuild-index` |
+| Index not found | Rebuild: `~/patent-creator-venv/bin/patent-creator rebuild-index` |
 | Too slow | Check GPU usage, first run slower, check system load |
 
 
@@ -158,18 +160,18 @@ print(f"Search took: {duration:.3f}s")
 
 ### Run All Tests
 ```bash
-python scripts/test_install.py
-python scripts/test_gpu.py
-python scripts/test_bigquery.py
-python scripts/test_analyzers.py
-python scripts/test_embedding_speed.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_embedding_speed.py
 ```
 
 ### Regression Test
 ```bash
-python scripts/test_install.py || exit 1
-python scripts/test_bigquery.py || exit 1
-python scripts/test_analyzers.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py || exit 1
+~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py || exit 1
 echo "[OK] All regression tests passed!"
 ```
 

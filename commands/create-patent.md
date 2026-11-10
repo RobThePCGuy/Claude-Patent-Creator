@@ -159,7 +159,7 @@ Before running this command:
 
 1. **MPEP Index Built**:
    - Run `/setup-patent-system` first (one-time)
-   - Or manually: `cd ${CLAUDE_PLUGIN_ROOT} && python mcp_server/server.py --rebuild-index`
+   - Or manually: `~/patent-creator-venv/bin/patent-creator setup` (Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe setup`)
 
 2. **BigQuery Configured** (for patent search):
    - Google Cloud project created

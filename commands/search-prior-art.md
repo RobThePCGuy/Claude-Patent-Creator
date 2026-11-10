@@ -1,5 +1,5 @@
 ---
-description: Conduct comprehensive prior art search using 7-step methodology across 100M+ patents via BigQuery
+description: Conduct comprehensive prior art search using 7-step methodology across 100M+ patents (Google Patents via SerpApi, or BigQuery) and research papers
 allowed-tools: Bash, Read, Write
 ---
 
@@ -58,7 +58,7 @@ password databases.
 
 ### Step 2: Keyword Search
 
-I'll search BigQuery (100M+ patents) using keywords derived from your description:
+I'll search 100M+ patents with Google Patents (`search_patents_google`, free SerpApi key) or, if that isn't set up and BigQuery is, `search_patents_bigquery`, using keywords derived from your description. I'll also search research papers published before your priority date (`search_non_patent_literature`). If no patent search is set up, I'll say so and point you to the free key (README Quick Start, Step 3) instead of reporting no prior art.
 
 ```python
 # I'll run searches like:
@@ -125,7 +125,7 @@ I'll create a comprehensive report with:
 - Invention: [Description]
 - Searcher: Claude Patent Creator
 - Date: [Date]
-- Databases: BigQuery (100M+ patents)
+- Databases: Google Patents (SerpApi) or BigQuery, whichever is set up, plus research papers
 - Conclusion: [Patentability assessment]
 
 ## Patentability Assessment
@@ -218,12 +218,9 @@ prior-art-search-[date]/
 
 ## Requirements
 
-**Must Have**:
-1. **BigQuery Access**:
-   - Google Cloud project
-   - BigQuery API enabled
-   - Authenticated: `gcloud auth application-default login`
-   - Environment: `GOOGLE_CLOUD_PROJECT=your-project-id`
+**Must Have** (one of):
+1. **A free SerpApi key** (recommended): README Quick Start, Step 3.
+2. **BigQuery**: a Google Cloud project, `gcloud auth application-default login`, and `~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id`. Needed for the CPC classification step; without it that step runs as keyword searches and the report says so.
 
 **Optional**:
 - USPTO API key (for additional coverage)

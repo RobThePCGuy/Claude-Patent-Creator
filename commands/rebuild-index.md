@@ -5,20 +5,22 @@ allowed-tools: Bash
 
 # Rebuild MPEP Index
 
+> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+
 Rebuild the hybrid search index (FAISS + BM25) from MPEP PDFs.
 
 ## Instructions
 
 1. Verify MPEP PDFs are present (${CLAUDE_PLUGIN_ROOT}/pdfs)
 2. Run rebuild command
-3. Wait for completion (5-15 min GPU, 35-65 min CPU)
+3. Wait for completion (about 5 minutes with an NVIDIA GPU, 25-40 minutes otherwise; a progress line appears every few percent)
 4. Verify index health
 
 ## Command
 
 ```bash
-cd ${CLAUDE_PLUGIN_ROOT}
-patent-creator setup --rebuild
+~/patent-creator-venv/bin/patent-creator setup --rebuild
+# Windows: $HOME\patent-creator-venv\Scripts\patent-creator.exe setup --rebuild
 ```
 
 ## What This Does

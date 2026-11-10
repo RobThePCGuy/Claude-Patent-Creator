@@ -158,6 +158,19 @@ OPTIONS: tuple[Option, ...] = (
         choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
     ),
     Option(
+        "PATENT_EMBED_BATCH_SIZE", "Performance", "Index build batch size",
+        "Chunks embedded per batch while building the index. Empty = 256 on an "
+        "NVIDIA GPU, 32 otherwise. Lower it (16 or 8) if the GPU runs out of memory.",
+        "int", minimum=1, maximum=4096,
+    ),
+    Option(
+        "PATENT_LOG_FORMAT", "Performance", "Log format",
+        "Format of log lines: 'json' (the server's default) or 'human'. "
+        "Unset, the patent-creator command prints human-readable lines.",
+        "choice", default="json",
+        choices=("json", "human"),
+    ),
+    Option(
         "PATENT_DATA_DIR", "Performance", "Data directory",
         "Where downloaded corpora (MPEP/USC/CFR PDFs) and the search index "
         "are stored. Empty = platform app-data dir, or the legacy in-tree "
@@ -260,7 +273,9 @@ def get_effective(key: str) -> tuple[str, str]:
     if key not in OPTIONS_BY_KEY:
         raise KeyError(f"Unknown setting: {key}")
     env = os.environ.get(key)
-    if env not in (None, ""):
+    # A value apply_config_to_env() copied in from the file is still a file
+    # value; reporting it as "env" would hide where the user saved it.
+    if env not in (None, "") and _APPLIED_FROM_FILE.get(key) != env:
         return env, "env"  # type: ignore[return-value]
     file_vals = load_file()
     if file_vals.get(key, "") != "":
@@ -309,6 +324,10 @@ def normalize(key: str, value: str) -> str:
     return value
 
 
+# Keys this process copied from the config file into os.environ, and the value.
+_APPLIED_FROM_FILE: dict[str, str] = {}
+
+
 def apply_config_to_env() -> None:
     """Inject file-backed settings into the environment for keys the environment
     does not already define, so existing os.environ readers pick them up.
@@ -316,3 +335,4 @@ def apply_config_to_env() -> None:
     for key, value in load_file().items():
         if value != "" and os.environ.get(key, "") == "":
             os.environ[key] = value
+            _APPLIED_FROM_FILE[key] = value

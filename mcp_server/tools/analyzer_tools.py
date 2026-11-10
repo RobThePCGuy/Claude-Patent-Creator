@@ -98,7 +98,9 @@ def register_analyzer_tools(
                     "issues_by_type": analysis_results["issues_by_type"],
                     # Skipped-check disclosure must survive the MCP boundary;
                     # dropping it here silently undid the report's honesty.
-                    "checks_skipped": analysis_results.get("checks_skipped", []),
+                    "checks_skipped": analysis_results["checks_skipped"],
+                    "checks_run": analysis_results["checks_run"],
+                    "compliance_score_scope": analysis_results["compliance_score_scope"],
                     "summary": analysis_results["summary"],
                     "issues": analysis_results["issues"],
                     "mpep_references": mpep_refs,
@@ -125,6 +127,11 @@ def register_analyzer_tools(
                     "analysis_type": "mpep_search_only",
                     "warning": "Automated analysis unavailable - showing MPEP references only",
                     "relevant_sections": formatted,
+                    "checks_run": [],
+                    "checks_skipped": [
+                        {"check": check, "reason": "ClaimsAnalyzer unavailable"}
+                        for check in ("antecedent_basis", "definiteness", "subjective_terms", "internal_references", "structure")
+                    ],
                 }
 
         except ValueError as e:
@@ -286,6 +293,9 @@ def register_analyzer_tools(
 
                 result = {
                     "analysis_type": "automated",
+                    "checks_run": analysis_results["checks_run"],
+                    "checks_skipped": analysis_results["checks_skipped"],
+                    "verdict_scope": analysis_results["verdict_scope"],
                     "overall_compliant": analysis_results["overall_compliant"],
                     "ready_to_file": analysis_results["compliance_summary"]["ready_to_file"],
                     "summary": analysis_results["compliance_summary"]["summary"],
@@ -323,6 +333,13 @@ def register_analyzer_tools(
                     "analysis_type": "mpep_search_only",
                     "warning": "Automated analysis unavailable - showing MPEP references only",
                     "requirements": formatted,
+                    "ready_to_file": False,
+                    "overall_compliant": False,
+                    "checks_run": [],
+                    "checks_skipped": [
+                        {"check": check, "reason": "FormalitiesChecker unavailable"}
+                        for check in ("abstract", "title", "sections", "drawing_references", "figure_numeral_coverage", "abstract_title_overlap")
+                    ],
                 }
 
         except ValueError as e:

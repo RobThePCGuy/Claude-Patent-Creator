@@ -5,6 +5,17 @@ Automatically detects and helps install Graphviz on Windows, macOS, and Linux
 """
 
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import platform
 import shutil
 import subprocess
@@ -81,7 +92,7 @@ class GraphvizInstaller:
 
         if not self.status["python_package"]:
             instructions.append("1. Install Python graphviz package:")
-            instructions.append("   pip install graphviz")
+            instructions.append(_render_cmd("   pip install graphviz"))
             instructions.append("")
 
         if not self.status["system_binary"]:

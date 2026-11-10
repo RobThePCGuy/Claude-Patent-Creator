@@ -58,13 +58,15 @@ export GOOGLE_CLOUD_PROJECT=your-project-id
 **Prerequisites**:
 1. Register at https://developers.epo.org/
 2. Create an application to get Consumer Key and Secret
-3. Set environment variables
+3. Save them (Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe` in place of the Mac/Linux path)
 
 **Setup**:
 ```bash
-export EPO_OPS_CONSUMER_KEY=your-key
-export EPO_OPS_CONSUMER_SECRET=your-secret
+~/patent-creator-venv/bin/patent-creator config set EPO_OPS_KEY "your-consumer-key"
+~/patent-creator-venv/bin/patent-creator config set EPO_OPS_SECRET "your-consumer-secret"
 ```
+
+Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
 
 ## How to Use
 
@@ -99,20 +101,14 @@ When this skill is invoked:
    )
    ```
 
-   **EPO OPS full-text retrieval**:
+   **EPO OPS full-text retrieval** (claims and description of one patent):
    ```python
-   results = search_epo_patents(
-       query="EP3456789",
-       search_type="full_text"
-   )
+   patent = get_epo_patent(patent_number="EP3456789")
    ```
 
    **EPO OPS family search**:
    ```python
-   results = search_epo_patents(
-       query="EP3456789",
-       search_type="family"
-   )
+   family = get_epo_patent_family(patent_number="EP3456789")
    ```
 
 3. **Present results**:

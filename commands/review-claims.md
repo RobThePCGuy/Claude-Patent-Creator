@@ -333,7 +333,7 @@ Example:
 ## Requirements
 
 **Python Environment**:
-- Python 3.9+
+- Python 3.10-3.13
 - Access to ${CLAUDE_PLUGIN_ROOT}
 - Claims analyzer module
 

@@ -108,6 +108,7 @@ def register_mpep_tools(
                 "is_update": r["metadata"].get("is_update", False),
                 "relevance_score": round(r["relevance_score"], 3),
                 "text": r["text"],
+                **({"source_url": r["metadata"]["source_url"]} if r["metadata"].get("source_url") else {}),
             }
 
             # Add source-specific fields if present
@@ -123,21 +124,79 @@ def register_mpep_tools(
 
     @mcp.tool()
     def get_mpep_section(section_number: str, max_chunks: int = 50) -> dict[str, Any]:
-        """Get all text chunks from a specific MPEP section number (e.g., "2100", "700", "608")."""
-        # Find all chunks from the specified section
-        section_pattern = f"MPEP {section_number}"
-        matching_chunks = [
-            {"text": chunk, "metadata": meta}
-            for chunk, meta in zip(mpep_index.chunks, mpep_index.metadata)
-            if section_pattern in meta["section"]
-        ]
+        """Retrieve a chapter or section body, with boundary and coverage limits.
 
-        if not matching_chunks:
-            return {"error": f"No content found for MPEP section {section_number}"}
+        Examples: 600, 608, 608.01(b), 2173.02. Legacy indexes store chapter
+        labels; subsection headings are located in their indexed text.
+        """
+        return retrieve_mpep_section(mpep_index, section_number, max_chunks)
 
-        # Return requested number of chunks
-        return {
-            "section": section_number,
-            "total_chunks": len(matching_chunks),
-            "chunks": matching_chunks[:max_chunks],
-        }
+
+def retrieve_mpep_section(index, section_number: str, max_chunks: int = 50) -> dict[str, Any]:
+    """Locate revision-marked body headings, excluding contents and references."""
+    import re
+
+    section = section_number.strip()
+    if not re.fullmatch(r"\d{3,4}(?:\.\d+)?(?:\([a-z]\))?", section):
+        return {"error": "Use an MPEP section such as 608.01(b), or use search_mpep."}
+    if max_chunks < 1:
+        return {"error": "max_chunks must be at least 1."}
+    chapter = f"MPEP {int(section.split('.')[0]) // 100 * 100}"
+    entries = [(i, text, meta) for i, (text, meta) in enumerate(zip(index.chunks, index.metadata))
+               if meta.get("source", "MPEP") == "MPEP" and meta.get("section") == chapter]
+    entries.sort(key=lambda item: (item[2].get("page", 0), item[0]))
+    chapter_request = section == chapter.removeprefix("MPEP ")
+    selected = []
+    if chapter_request:
+        selected = [{"text": t, "metadata": m} for _, t, m in entries]
+    else:
+        # Rejoin overlapping chunks within each page so split headings and
+        # revision markers can be recognized. Retain spans to return citations.
+        body, spans, previous_page = "", [], None
+        for _, text, meta in entries:
+            text = re.sub(r"^\[MPEP \d+\] ?", "", text)
+            overlap = 0
+            if meta.get("page") == previous_page:
+                overlap = next((n for n in range(min(100, len(text), len(body)), 0, -1)
+                                if body.endswith(text[:n])), 0)
+            else:
+                body += "\n"
+            start = len(body) - overlap
+            body += text[overlap:]
+            spans.append((start, len(body), text, meta))
+            previous_page = meta.get("page")
+        heading = re.compile(
+            r"(?m)^[ \t]*(\d{3,4}(?:\.\d+)?(?:\([a-z]\))?)[ \t]+"
+            r"(?=\S)[^\[\]\n]+(?:\n(?![ \t]*\d{3,4}\b)[^\[\]\n]+){0,3}?"
+            r"[ \t\n]*\[R-[^\]\n]+\]"
+        )
+        headings = list(heading.finditer(body))
+        first = next((h for h in headings if h.group(1) == section), None)
+        if first:
+            end = len(body)
+            for h in headings:
+                number = h.group(1)
+                descendant = number.startswith(section + ".") or number.startswith(section + "(")
+                if h.start() > first.start() and number != section and not descendant:
+                    end = h.start()
+                    break
+            selected = [{"text": text, "metadata": meta}
+                        for start, stop, text, meta in spans
+                        if start < end and stop > first.start()]
+    if not selected:
+        return {"section": section, "chapter": chapter,
+                "error": f"Section {section} heading was not found in indexed {chapter} text. "
+                         "Try search_mpep with the section number and topic; this does not "
+                         "establish that the section is absent from the MPEP."}
+    return {
+        "section": section, "chapter": chapter,
+        "boundary": "exact" if chapter_request else "approximate",
+        "coverage": f"Indexed content from {chapter}. " + (
+            "Chapter boundary follows the stored chapter label." if chapter_request else
+            "Body heading located; includes subsections until the next peer/parent heading. "
+            "Chunk boundaries are approximate and can include adjacent text; PDF extraction "
+            "and missing headings can leave gaps. This is not guaranteed full section text."
+        ),
+        "total_chunks": len(selected), "returned_chunks": min(max_chunks, len(selected)),
+        "truncated": len(selected) > max_chunks, "chunks": selected[:max_chunks],
+    }

@@ -112,25 +112,74 @@ class FormalitiesChecker(BaseAnalyzer):
             "sections": None,
         }
 
+        # Blank strings are missing inputs, not completed checks.
+        abstract = abstract.strip() if abstract else None
+        title = title.strip() if title else None
+        specification = specification.strip() if specification else None
+        checks_run = []
+        checks_skipped = []
+
         if abstract:
             results["abstract"] = self._check_abstract(abstract)
+            checks_run.append("abstract")
+        else:
+            checks_skipped.append({"check": "abstract", "reason": "no abstract supplied"})
 
         if title:
             results["title"] = self._check_title(title)
+            checks_run.append("title")
+        else:
+            checks_skipped.append({"check": "title", "reason": "no title supplied"})
 
         if specification:
             results["sections"] = self._check_specification_sections(specification)
+            checks_run.append("sections")
             results["drawings"] = self._check_drawing_references(specification, drawings_present)
+            checks_run.append("drawing_references")
+            if not results["drawings"]["figure_count"]:
+                numeral_skip_reason = "no figure references found in specification"
+            elif not re.search(r"(?i)DETAILED\s+DESCRIPTION", specification):
+                numeral_skip_reason = "no detailed description supplied"
+            else:
+                numeral_skip_reason = None
+        else:
+            for check in ("sections", "drawing_references"):
+                checks_skipped.append({"check": check, "reason": "no specification supplied"})
+            numeral_skip_reason = "no specification supplied"
+
+        if numeral_skip_reason:
+            checks_skipped.append({"check": "figure_numeral_coverage", "reason": numeral_skip_reason})
+        else:
+            checks_run.append("figure_numeral_coverage")
+
+        if not drawings_present:
+            checks_skipped.append({"check": "drawings", "reason": "no drawings supplied"})
 
         # Cross-document consistency checks
         if abstract and title:
-            self._check_abstract_title_overlap(abstract, title)
+            overlap_skip_reason = self._check_abstract_title_overlap(abstract, title)
+            if overlap_skip_reason:
+                checks_skipped.append({"check": "abstract_title_overlap", "reason": overlap_skip_reason})
+            else:
+                checks_run.append("abstract_title_overlap")
+        else:
+            missing = [name for name, value in (("abstract", abstract), ("title", title)) if not value]
+            checks_skipped.append({
+                "check": "abstract_title_overlap", "reason": f"no {' or '.join(missing)} supplied"
+            })
 
+        summary = self._generate_compliance_summary(results, checks_skipped)
         return {
             "results": results,
             "issues": [self._issue_to_dict(issue) for issue in self.issues],
-            "compliance_summary": self._generate_compliance_summary(results),
-            "overall_compliant": len([i for i in self.issues if i.severity == "CRITICAL"]) == 0,
+            "compliance_summary": summary,
+            "overall_compliant": summary["ready_to_file"],
+            "checks_run": checks_run,
+            "checks_skipped": checks_skipped,
+            "verdict_scope": (
+                "Automated text and drawing-reference checks only; drawings_present is a "
+                "declaration, not inspection of drawing files. This is not a filing clearance."
+            ),
         }
 
     def _check_abstract(self, abstract: str) -> dict:
@@ -158,31 +207,41 @@ class FormalitiesChecker(BaseAnalyzer):
         }
 
         # Check word count
+        # 37 CFR 1.72(b) caps the abstract at 150 words (a rule). The 50-word
+        # floor is only MPEP 608.01(b)'s preference ("preferably within the
+        # range of 50 to 150 words"), so a short abstract is advice, not a failure.
         if word_count < self.ABSTRACT_MIN_WORDS:
             self.issues.append(
                 FormalityIssue(
                     section="abstract",
-                    severity="WARNING",
-                    problem="Abstract is too short",
+                    severity="INFO",
+                    problem="Abstract is shorter than the preferred length",
                     current_value=f"{word_count} words",
-                    required_value=f"{self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words",
-                    fix=f"Expand abstract to at least {self.ABSTRACT_MIN_WORDS} words",
+                    required_value=(
+                        f"preferably {self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words "
+                        "(a preference, not a minimum)"
+                    ),
+                    fix=(
+                        "Make sure it summarizes what the invention is and how it works; "
+                        f"most abstracts land between {self.ABSTRACT_MIN_WORDS} and "
+                        f"{self.ABSTRACT_MAX_WORDS} words"
+                    ),
                     legal_ref="MPEP 608.01(b)",
+                    confidence="MEDIUM",
                 )
             )
-            result["compliant"] = False
-            result["issues"].append("Too short")
+            result["issues"].append("Shorter than preferred")
 
         elif word_count > self.ABSTRACT_MAX_WORDS:
             self.issues.append(
                 FormalityIssue(
                     section="abstract",
                     severity="WARNING",
-                    problem="Abstract exceeds recommended length",
+                    problem="Abstract exceeds the 150-word limit",
                     current_value=f"{word_count} words",
-                    required_value=f"{self.ABSTRACT_MIN_WORDS}-{self.ABSTRACT_MAX_WORDS} words",
-                    fix=f"Reduce abstract to {self.ABSTRACT_MAX_WORDS} words or less",
-                    legal_ref="MPEP 608.01(b)",
+                    required_value=f"{self.ABSTRACT_MAX_WORDS} words or fewer",
+                    fix=f"Reduce abstract to {self.ABSTRACT_MAX_WORDS} words or fewer",
+                    legal_ref="37 CFR 1.72(b); MPEP 608.01(b)",
                 )
             )
             result["compliant"] = False
@@ -496,15 +555,15 @@ class FormalitiesChecker(BaseAnalyzer):
 
         return issues
 
-    def _check_abstract_title_overlap(self, abstract: str, title: str) -> None:
-        """Warn if the abstract's first sentence substantially repeats the title."""
+    def _check_abstract_title_overlap(self, abstract: str, title: str) -> Optional[str]:
+        """Warn on repetition; return a reason if the comparison could not run."""
         if not abstract or not title:
-            return
+            return "no abstract or title supplied"
 
         # Extract first sentence of abstract
         first_sentence_match = re.match(r"([^.!?]+[.!?])", abstract)
         if not first_sentence_match:
-            return
+            return "abstract has no sentence ending in '.', '!' or '?'"
 
         first_sentence = first_sentence_match.group(1).lower()
         title_lower = title.lower()
@@ -514,7 +573,7 @@ class FormalitiesChecker(BaseAnalyzer):
         sentence_words = set(re.findall(r"\w{3,}", first_sentence))
 
         if not title_words:
-            return
+            return "title has no words of at least three characters to compare"
 
         overlap = len(title_words & sentence_words) / len(title_words)
         if overlap > 0.7:
@@ -530,9 +589,8 @@ class FormalitiesChecker(BaseAnalyzer):
                 )
             )
 
-    def _generate_compliance_summary(self, results: dict) -> dict:
+    def _generate_compliance_summary(self, results: dict, checks_skipped: list[dict]) -> dict:
         """Generate overall compliance summary"""
-        passed_checks = 0
         critical_issues = 0
         warnings = 0
         info = 0
@@ -545,28 +603,27 @@ class FormalitiesChecker(BaseAnalyzer):
             else:
                 info += 1
 
-        # Count passed checks from results
-        if results.get("abstract") and results["abstract"].get("compliant"):
-            passed_checks += 1
-        if results.get("title") and results["title"].get("compliant"):
-            passed_checks += 1
-        if results.get("sections") and results["sections"].get("compliant"):
-            passed_checks += 1
-        if results.get("drawings") and results["drawings"].get("compliant"):
-            passed_checks += 1
+        # Every required result must exist and pass. A WARNING can fail a
+        # check, so the absence of CRITICAL issues alone is not a pass.
+        all_passed = all(result is not None and result.get("compliant") for result in results.values())
+        ready = not checks_skipped and all_passed and critical_issues == 0
+        summary = self._format_summary(critical_issues, warnings, info)
+        if checks_skipped:
+            skipped = "; ".join(f"{check['check']} ({check['reason']})" for check in checks_skipped)
+            summary = f"[INCOMPLETE] Checks skipped: {skipped}. " + summary
 
         return {
             "critical_issues": critical_issues,
             "warnings": warnings,
             "info": info,
-            "ready_to_file": critical_issues == 0,
-            "summary": self._format_summary(critical_issues, warnings, info),
+            "ready_to_file": ready,
+            "summary": summary,
         }
 
     def _format_summary(self, critical: int, warnings: int, info: int) -> str:
         """Format human-readable summary"""
         if critical == 0 and warnings == 0 and info == 0:
-            return "[OK] All formalities requirements met"
+            return "No issues found in the automated checks that ran."
 
         parts = []
         if critical > 0:

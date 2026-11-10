@@ -5,10 +5,38 @@ Provides comprehensive pre-flight dependency validation
 """
 
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+
+def _render(message: str) -> str:
+    """Name the installed patent-creator command (see cli_command)."""
+    try:
+        from cli_command import render
+    except ImportError:
+        from mcp_server.cli_command import render
+    return render(message)
+
+
+def _pip() -> str:
+    """pip for the interpreter running this tool: a bare 'pip' in an
+    unactivated venv would install into the wrong Python."""
+    exe = str(Path(sys.executable).absolute())
+    return (f'"{exe}"' if " " in exe else exe) + " -m pip"
+
 
 try:
     from logging_config import get_logger
@@ -107,7 +135,7 @@ class SystemHealthChecker:
             return {
                 "status": "missing",
                 "ready": False,
-                "fix": "patent-creator setup",
+                "fix": _render("patent-creator setup"),
                 "details": "MPEP index not built. Run setup to download and index USPTO rules.",
                 "required_for": [
                     "search_mpep",
@@ -154,7 +182,7 @@ class SystemHealthChecker:
                 "status": "corrupt",
                 "ready": False,
                 "error": str(e),
-                "fix": "patent-creator setup --rebuild-index",
+                "fix": _render("patent-creator setup --rebuild"),
                 "details": "Index files exist but are corrupted. Rebuild required.",
             }
 
@@ -246,8 +274,8 @@ class SystemHealthChecker:
                     "status": "not_configured",
                     "ready": False,
                     "error": status.get("error", "Unknown error"),
-                    "fix": status.get(
-                        "install_command", "pip install google-cloud-bigquery db-dtypes"
+                    "fix": _render(
+                        status.get("install_command", _render_cmd("pip install google-cloud-bigquery db-dtypes"))
                     ),
                     "details": "BigQuery not available. Install dependencies or configure credentials.",
                     "provides": [
@@ -264,7 +292,7 @@ class SystemHealthChecker:
                 "status": "error",
                 "ready": False,
                 "error": str(e),
-                "fix": "pip install google-cloud-bigquery db-dtypes",
+                "fix": f"{_pip()} install google-cloud-bigquery db-dtypes",
                 "details": "BigQuery module not available",
             }
 
@@ -280,7 +308,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "available": False,
                 "api_key_configured": False,
-                "fix": "Set USPTO_API_KEY environment variable",
+                "fix": _render('patent-creator config set USPTO_API_KEY "YOUR_KEY"') + ", then restart Claude Code",
                 "details": (
                     "Get API key at: https://data.uspto.gov/myodp\n"
                     "Setup takes 5 minutes. Requires USPTO account and ID.me verification."
@@ -350,7 +378,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "available": False,
                 "error": "USPTO API module not available",
-                "fix": "pip install -e .",
+                "fix": _pip() + " install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git",
             }
         except Exception as e:
             if logger:
@@ -397,7 +425,7 @@ class SystemHealthChecker:
                     "ready": False,
                     "python_package": True,
                     "system_command": False,
-                    "fix": "Install system Graphviz: sudo apt install graphviz (Linux) or winget install graphviz (Windows)",
+                    "fix": "Install the free Graphviz program: brew install graphviz (Mac), winget install graphviz (Windows) or sudo apt install graphviz (Linux), then restart Claude Code",
                     "details": "Python package installed but system Graphviz missing",
                     "required_for": ["render_diagram", "create_flowchart", "create_block_diagram"],
                 }
@@ -409,7 +437,7 @@ class SystemHealthChecker:
                 "ready": False,
                 "python_package": False,
                 "system_command": False,
-                "fix": "pip install graphviz && sudo apt install graphviz",
+                "fix": _render_cmd("pip install graphviz && sudo apt install graphviz"),
                 "required_for": ["diagram generation tools"],
             }
 
@@ -450,7 +478,7 @@ class SystemHealthChecker:
                 "status": "pytorch_missing",
                 "ready": False,
                 "error": "PyTorch not installed",
-                "fix": "pip install torch",
+                "fix": _render("pip install torch"),
             }
 
     def _check_disk_space(self) -> dict[str, Any]:
@@ -516,7 +544,7 @@ class SystemHealthChecker:
                 models_status["embeddings"] = {
                     "ready": False,
                     "error": str(e),
-                    "fix": "pip install sentence-transformers",
+                    "fix": _render("pip install sentence-transformers"),
                 }
 
             # Test reranker model
@@ -562,7 +590,7 @@ class SystemHealthChecker:
                 "status": "error",
                 "ready": False,
                 "error": str(e),
-                "fix": "pip install sentence-transformers",
+                "fix": _render_cmd("pip install sentence-transformers"),
             }
 
         # Overall models status
@@ -616,7 +644,11 @@ class SystemHealthChecker:
             "ready": all_installed,
             "packages": packages,
             "versions": versions,
-            "fix": "pip install -e ." if not all_installed else None,
+            "fix": _render(
+                _render_cmd("pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git")
+            )
+            if not all_installed
+            else None,
         }
 
     def get_warnings(self) -> list[str]:

@@ -555,7 +555,7 @@ def register_with_claude():
 
     # Get absolute paths - use Path.resolve() to ensure clean absolute paths
     project_root = Path(__file__).parent.resolve()
-    python_path = Path(get_venv_python()).resolve()  # sys.executable is already absolute
+    python_path = Path(get_venv_python()).absolute()  # never resolve: keeps the venv symlink
     server_path = (project_root / "mcp_server" / "server.py").resolve()
 
     # Verify paths exist
@@ -742,8 +742,6 @@ def main():
   PATENT_LOG_FILE=logs/app.log   # Optional file output
 
 {Colors.BOLD}Performance Tuning{Colors.ENDC}
-  PATENT_ENABLE_METRICS=true     # Enable performance tracking
-  PATENT_OPERATION_TIMEOUT=300   # Timeout in seconds (default: 5 min)
   PATENT_ENABLE_CACHE=true       # Enable result caching
 
 {Colors.BOLD}API Configuration{Colors.ENDC}

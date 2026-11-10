@@ -6,8 +6,20 @@ Provides easy setup and management commands
 
 import argparse
 import json
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +31,33 @@ from pathlib import Path
 _pkg_dir = str(Path(__file__).parent)
 if _pkg_dir not in sys.path:
     sys.path.insert(0, _pkg_dir)
+
+# Saved settings must reach the environment before anything reads it: data
+# paths (PATENT_DATA_DIR) are computed at import and commands like
+# check-bigquery read GOOGLE_CLOUD_PROJECT from the environment. Precedence
+# matches the server: real env var > project .env > saved settings.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+except ImportError:
+    pass
+try:
+    from config import apply_config_to_env as _apply_saved_settings
+
+    _apply_saved_settings()
+except Exception as _e:  # a broken config file must not block 'config' itself
+    print(f"[WARN] saved settings not applied: {_e}", file=sys.stderr)
+
+# People read this command's output, so prefer readable log lines here. This
+# changes only the default; it never touches PATENT_LOG_FORMAT, so the saved
+# server setting is reported and inherited unchanged.
+try:
+    from logging_config import prefer_format as _prefer_log_format
+
+    _prefer_log_format("human")
+except ImportError:
+    pass
 
 # Import hardware detection for PyTorch installation
 import contextlib
@@ -93,6 +132,19 @@ except ImportError:
         PathFormatter = None
 
 
+def _render(message: str) -> str:
+    from cli_command import render
+
+    return render(message)
+
+
+def _cli() -> str:
+    """The exact patent-creator command for this install (see cli_command)."""
+    from cli_command import installed_cli
+
+    return installed_cli()
+
+
 def install_pytorch():
     """Install PyTorch with hardware-specific acceleration.
 
@@ -163,7 +215,7 @@ def install_pytorch():
             return True  # Reinstalled - need to restart Python
         except subprocess.CalledProcessError:
             print("  [ERROR] Could not install PyTorch. Please install manually:", file=sys.stderr)
-            print("  pip install torch>=2.0.0", file=sys.stderr)
+            print(_render_cmd('  pip install "torch>=2.0.0"'), file=sys.stderr)
             return False  # Failed, continue anyway
 
 
@@ -227,7 +279,8 @@ def _auto_detect_bigquery():
         # Try to run auth non-interactively (will fail, but the error is clear)
         print("\n[INFO] gcloud CLI detected but no application-default credentials", file=sys.stderr)
         print("  To enable BigQuery patent search (100M+ patents, free):", file=sys.stderr)
-        print("  Run: ! gcloud auth application-default login", file=sys.stderr)
+        print("  In a terminal, run: gcloud auth application-default login", file=sys.stderr)
+        print("  (inside Claude Code you can type: ! gcloud auth application-default login)", file=sys.stderr)
     else:
         # No gcloud at all — this is fine, BigQuery is optional
         print("\n[INFO] BigQuery patent search not configured (optional)", file=sys.stderr)
@@ -257,6 +310,94 @@ def _verify_bigquery_setup():
         pass
 
 
+def mcp_handshake(python_cmd: str, server_script: str, timeout: float = 180.0) -> tuple[bool, str]:
+    """Start the server exactly as Claude Code will and complete an MCP handshake.
+
+    A matching path in ~/.claude.json proves nothing: the registered Python can
+    exist and still be unable to import mcp. Only a real initialize round trip
+    shows Claude will connect. Returns (ok, detail) where detail is the server
+    name on success or the tail of its stderr on failure.
+    """
+    import tempfile
+    import threading
+
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "patent-creator-verify", "version": "1"},
+        },
+    }
+    err_file = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")  # noqa: SIM115 - closed on every path below
+    try:
+        proc = subprocess.Popen(
+            [python_cmd, server_script],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=err_file,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as e:
+        err_file.close()
+        return False, f"could not start {python_cmd}: {e}"
+
+    found: dict = {}
+
+    def _read():
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(msg, dict) and msg.get("id") == 1:
+                found["msg"] = msg
+                return
+
+    reader = threading.Thread(target=_read, daemon=True)
+    reader.start()
+    try:
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps(request) + "\n")
+        proc.stdin.flush()
+    except (BrokenPipeError, OSError):
+        pass
+    reader.join(timeout)
+    with contextlib.suppress(Exception):
+        proc.kill()
+    with contextlib.suppress(Exception):
+        proc.wait(timeout=10)
+    msg = found.get("msg")
+    err_file.seek(0)
+    tail = "\n".join(err_file.read().strip().splitlines()[-8:])
+    err_file.close()
+    if msg and "result" in msg:
+        name = ((msg["result"] or {}).get("serverInfo") or {}).get("name", "server")
+        return True, str(name)
+    if msg and "error" in msg:
+        return False, f"server answered with an error: {msg['error']}\n{tail}"
+    if proc.returncode not in (None, 0, -9) and not reader.is_alive():
+        return False, tail or f"server exited with code {proc.returncode}"
+    return False, tail or f"no answer within {int(timeout)} s"
+
+
+def _report_handshake(python_str: str, server_str: str) -> bool:
+    print("\nTesting the connection the way Claude Code will...", file=sys.stderr)
+    ok, detail = mcp_handshake(python_str, server_str)
+    if ok:
+        print(f"  [OK] Server started and answered ({detail})", file=sys.stderr)
+        return True
+    print("  [X] Claude Code will NOT be able to connect: the server did not answer.", file=sys.stderr)
+    for line in detail.splitlines():
+        print(f"      {line}", file=sys.stderr)
+    return False
+
+
 def configure_mcp_server():
     """
     Register the MCP server with Claude Code using 'claude mcp add' command
@@ -266,7 +407,9 @@ def configure_mcp_server():
     # Get correct paths - server.py is in project_root/mcp_server/, not in MPEP_DIR (pdfs/)
     project_root = Path(__file__).parent.parent.resolve()  # Go up from mcp_server/ to project root
     server_script = (project_root / "mcp_server" / "server.py").resolve()
-    python_path = Path(sys.executable).resolve()
+    # Keep the venv symlink: resolving it registers the base interpreter,
+    # which cannot import mcp and makes Claude fail to connect.
+    python_path = Path(sys.executable).absolute()
 
     print("\n" + "=" * 60, file=sys.stderr)
     print("Registering MCP Server with Claude Code", file=sys.stderr)
@@ -353,8 +496,10 @@ def configure_mcp_server():
             print("  Name: claude-patent-creator", file=sys.stderr)
             print(f"  Python: {python_str}", file=sys.stderr)
             print(f"  Script: {server_str}", file=sys.stderr)
+            if not _report_handshake(python_str, server_str):
+                return False
             print("\nVerify with: claude mcp list", file=sys.stderr)
-            print("\nVerify paths with: patent-creator verify-config", file=sys.stderr)
+            print(f"\nVerify paths with: {_cli()} verify-config", file=sys.stderr)
             return True
         else:
             print(f"\n[X] Failed to register MCP server: {result.stderr}", file=sys.stderr)
@@ -425,11 +570,11 @@ def setup_bigquery_auth_prompt():
 
     response = input("Setup BigQuery authentication now? (y/N): ").strip().lower()
     if response != "y":
-        print("\n[SKIPPED] You can setup BigQuery later by running:", file=sys.stderr)
-        print("  python scripts/setup_bigquery_auth.py", file=sys.stderr)
-        print("\nOR manually with gcloud CLI:", file=sys.stderr)
+        print("\n[SKIPPED] BigQuery is optional. To set it up later:", file=sys.stderr)
         print("  1. Install gcloud: https://cloud.google.com/sdk/docs/install", file=sys.stderr)
         print("  2. Run: gcloud auth application-default login", file=sys.stderr)
+        print(f"  3. Run: {_cli()} config set GOOGLE_CLOUD_PROJECT your-project-id", file=sys.stderr)
+        print(f"  4. Test: {_cli()} check-bigquery", file=sys.stderr)
         return False
 
     print("\n" + "-" * 60, file=sys.stderr)
@@ -464,7 +609,7 @@ def setup_bigquery_auth_prompt():
     print("   (Creates a free Google Cloud project if you don't have one)", file=sys.stderr)
 
     print("\n4. Re-run this setup after authentication:", file=sys.stderr)
-    print("   patent-creator setup", file=sys.stderr)
+    print(f"   {_cli()} setup", file=sys.stderr)
 
     print("\n" + "=" * 60, file=sys.stderr)
     input("\nPress Enter to continue setup (BigQuery will be skipped for now)...")
@@ -504,14 +649,45 @@ def _normalize_interactivity(args) -> None:
         )
 
 
-def _setup_graphviz(ensure_fn=None) -> bool:
+def _graphviz_install_hint() -> str:
+    """One platform-specific command a beginner can copy."""
+    system = platform.system()
+    if system == "Darwin":
+        return "brew install graphviz"
+    if system == "Windows":
+        return "winget install graphviz"
+    return "sudo apt-get install graphviz   (Fedora: sudo dnf install graphviz)"
+
+
+def _graphviz_ready() -> bool:
+
+    return shutil.which("dot") is not None
+
+
+def _setup_graphviz(ensure_fn=None, consent=None) -> bool:
     """Provision system Graphviz so the diagram tools work out of the box.
 
-    Best effort: any failure prints guidance and returns False without
-    blocking the rest of setup. ``ensure_fn`` is injectable for tests.
+    Installing Graphviz changes the computer outside this tool (Homebrew,
+    winget, apt), so it only happens after the user says yes. ``consent`` is
+    a callable asked once before installing; None means "never install, just
+    say how" (non-interactive runs). Best effort: any failure prints guidance
+    and returns False without blocking setup. ``ensure_fn`` is injectable for
+    tests and bypasses the consent step.
     """
     print("\nChecking Graphviz (diagram tools)...", file=sys.stderr)
     if ensure_fn is None:
+        if _graphviz_ready():
+            print("  [OK] Graphviz is installed", file=sys.stderr)
+            return True
+        hint = _graphviz_install_hint()
+        if consent is None or not consent(hint):
+            print(
+                "  [SKIP] Graphviz is not installed. Only the diagram tools need it."
+                f"\n         To add it later, run: {hint}"
+                "\n         then restart Claude Code.",
+                file=sys.stderr,
+            )
+            return False
         try:
             from graphviz_installer import ensure_graphviz as ensure_fn
         except ImportError:
@@ -621,27 +797,52 @@ def setup_command(args):
     pdf_count = check_mpep_pdfs()
 
     print("\nChecking current status...", file=sys.stderr)
-    print(
-        f"  MPEP PDFs: {'[OK]' if sources_status['mpep'] else '[X]'} ({pdf_count} files)",
-        file=sys.stderr,
-    )
-    print(f"  35 USC:    {'[OK]' if sources_status['35_usc'] else '[X]'}", file=sys.stderr)
-    print(f"  37 CFR:    {'[OK]' if sources_status['37_cfr'] else '[X]'}", file=sys.stderr)
-    print(
-        f"  Updates:   {'[OK]' if sources_status['subsequent_pubs'] else '[X]'}",
-        file=sys.stderr,
+    if sources_status["mpep"]:
+        print(f"  MPEP PDFs: [OK] ({pdf_count} files)", file=sys.stderr)
+    elif _index_ready():
+        print(
+            "  MPEP PDFs: [--] removed after indexing (only needed to rebuild the index)",
+            file=sys.stderr,
+        )
+    else:
+        print("  MPEP PDFs: [X] (0 files)", file=sys.stderr)
+    print(_source_line("35 USC:", sources_status["35_usc"]), file=sys.stderr)
+    print(_source_line("37 CFR:", sources_status["37_cfr"]), file=sys.stderr)
+    print(_source_line("Updates:", sources_status["subsequent_pubs"]), file=sys.stderr)
+
+    # PDFs removed after indexing (setup offers this): the index still works,
+    # so don't re-download ~500 MB and rebuild for half an hour unasked.
+    # An index built by an older version with a known defect gets rebuilt
+    # automatically; re-running setup is what a user does to update.
+    index_defects = _index_defects()
+    if index_defects and not args.rebuild:
+        print("\n[!] Your search index needs rebuilding:", file=sys.stderr)
+        for warning in index_defects:
+            print(f"    {warning}", file=sys.stderr)
+        print("    Rebuilding it now (sources are downloaded again if needed).", file=sys.stderr)
+        args.rebuild = True
+
+    pdfs_cleaned_up = (
+        not sources_status["mpep"] and _index_ready() and not getattr(args, "rebuild", False)
     )
 
     # Download missing sources
     downloads_needed = []
-    if not sources_status["mpep"]:
-        downloads_needed.append("MPEP")
-    if not sources_status["35_usc"]:
-        downloads_needed.append("35 USC")
-    if not sources_status["37_cfr"]:
-        downloads_needed.append("37 CFR")
-    if not sources_status["subsequent_pubs"]:
-        downloads_needed.append("Subsequent Publications")
+    if pdfs_cleaned_up:
+        print(
+            "\n[OK] Search index already built; its source PDFs were removed, which is fine."
+            f"\n     Run '{_cli()} setup --rebuild' only if you want to rebuild it.",
+            file=sys.stderr,
+        )
+    else:
+        if not sources_status["mpep"]:
+            downloads_needed.append("MPEP")
+        if not sources_status["35_usc"]:
+            downloads_needed.append("35 USC")
+        if not sources_status["37_cfr"]:
+            downloads_needed.append("37 CFR")
+        if not sources_status["subsequent_pubs"]:
+            downloads_needed.append("Subsequent Publications")
 
     if downloads_needed:
         print(f"\n[3/4] Downloading: {', '.join(downloads_needed)}", file=sys.stderr)
@@ -668,12 +869,12 @@ def setup_command(args):
             download_subsequent_publications()
 
         print("\n[OK] All downloads complete", file=sys.stderr)
-    else:
+    elif not pdfs_cleaned_up:
         print("\n[OK] All sources already present", file=sys.stderr)
 
     # EPO/PCT law corpus (issue #49): best effort, never blocks US setup.
     print("\nChecking EPO/PCT law sources...", file=sys.stderr)
-    epo_sources_added = _setup_epo_pct_sources(MPEP_DIR)
+    epo_sources_added = False if pdfs_cleaned_up else _setup_epo_pct_sources(MPEP_DIR)
 
     # Build index. Newly downloaded EPO/PCT sources require a rebuild —
     # an existing index knows nothing about them.
@@ -686,7 +887,19 @@ def setup_command(args):
 
     if args.rebuild or not index_exists or epo_sources_added:
         print("\n[4/4] Building search index...", file=sys.stderr)
-        print("This will take 5-15 minutes on first run.\n", file=sys.stderr)
+        try:
+            import torch
+
+            on_gpu = torch.cuda.is_available()
+        except Exception:
+            on_gpu = False
+        print(
+            "This takes about 5 minutes with an NVIDIA GPU"
+            if on_gpu
+            else "This takes 25-40 minutes on this computer (it builds on the CPU).",
+            file=sys.stderr,
+        )
+        print("A progress line appears every few percent.\n", file=sys.stderr)
 
         # HyDE only expands search queries; building never uses it.
         mpep_index = MPEPIndex(use_hyde=False)
@@ -696,8 +909,16 @@ def setup_command(args):
     else:
         print("\n[OK] Index already exists (use --rebuild to force rebuild)", file=sys.stderr)
 
-    # Diagram tools: provision system Graphviz (best effort, never blocks setup)
-    _setup_graphviz()
+    # Diagram tools: provision system Graphviz only with the user's yes
+    # (it installs a system program), best effort, never blocks setup.
+    def _ask_graphviz(hint: str) -> bool:
+        answer = input(
+            "\nThe diagram tools need a free program called Graphviz."
+            f"\nInstall it now by running '{hint}'? (Y/n): "
+        )
+        return answer.strip().lower() in ("", "y", "yes")
+
+    _setup_graphviz(consent=None if getattr(args, "non_interactive", False) else _ask_graphviz)
 
     # Setup BigQuery authentication (auto-detect in non-interactive, prompt in interactive)
     if not getattr(args, "non_interactive", False):
@@ -714,26 +935,26 @@ def setup_command(args):
 
     # Final status
     print("\n" + "=" * 60, file=sys.stderr)
-    print("Setup Complete!", file=sys.stderr)
+    print(
+        "Setup Complete!" if mcp_configured else "Setup finished, but Claude Code is NOT connected yet",
+        file=sys.stderr,
+    )
     print("=" * 60, file=sys.stderr)
 
     sources_status = check_all_sources()
     index_exists = (INDEX_DIR / "mpep_index.faiss").exists()
 
     print("\nFinal status:", file=sys.stderr)
-    print(f"  MPEP PDFs: [OK] ({check_mpep_pdfs()} files)", file=sys.stderr)
+    final_pdfs = check_mpep_pdfs()
     print(
-        "  35 USC:    [OK]" if sources_status["35_usc"] else "  35 USC:    [X]",
+        f"  MPEP PDFs: [OK] ({final_pdfs} files)"
+        if final_pdfs
+        else "  MPEP PDFs: [--] removed after indexing (only needed to rebuild the index)",
         file=sys.stderr,
     )
-    print(
-        "  37 CFR:    [OK]" if sources_status["37_cfr"] else "  37 CFR:    [X]",
-        file=sys.stderr,
-    )
-    print(
-        "  Updates:   [OK]" if sources_status["subsequent_pubs"] else "  Updates:   [X]",
-        file=sys.stderr,
-    )
+    print(_source_line("35 USC:", sources_status["35_usc"]), file=sys.stderr)
+    print(_source_line("37 CFR:", sources_status["37_cfr"]), file=sys.stderr)
+    print(_source_line("Updates:", sources_status["subsequent_pubs"]), file=sys.stderr)
     print("  Index:     [OK]" if index_exists else "  Index:     [X]", file=sys.stderr)
     print(
         f"  MCP:       {'[OK]' if mcp_configured else '[WARNING] Manual setup required'}",
@@ -776,6 +997,14 @@ def setup_command(args):
     except Exception:
         pass
 
+    if not mcp_configured:
+        print(
+            f"\nFix the connection problem shown above, then run '{_cli()} setup' again."
+            "\n(The download and index are kept, so it finishes in under a minute.)",
+            file=sys.stderr,
+        )
+        return 1
+
     print("\nReady to use! Restart Claude Code, then try:", file=sys.stderr)
     print('  "Search MPEP for claim definiteness requirements"', file=sys.stderr)
     print('  "Review my patent claims for 35 USC 112(b) compliance"', file=sys.stderr)
@@ -785,17 +1014,70 @@ def setup_command(args):
     return 0
 
 
+def _index_ready() -> bool:
+    """The search index is what the server runs on; the PDFs are only needed to
+    rebuild it. Setup offers to delete them after indexing, so readiness must
+    never depend on them."""
+    return (INDEX_DIR / "mpep_index.faiss").exists() and (
+        INDEX_DIR / "mpep_metadata.json"
+    ).exists()
+
+
+_INDEXED_SOURCES: "set[str] | None" = None
+
+
+def _indexed_sources() -> set[str]:
+    """Source types present in the built index's metadata (cached)."""
+    global _INDEXED_SOURCES
+    if _INDEXED_SOURCES is None:
+        try:
+            with (INDEX_DIR / "mpep_metadata.json").open(encoding="utf-8") as f:
+                _INDEXED_SOURCES = {m.get("source", "MPEP") for m in json.load(f).get("metadata", [])}
+        except Exception:
+            _INDEXED_SOURCES = set()
+    return _INDEXED_SOURCES
+
+
+# Status label -> source type the extractor records in index metadata.
+_LABEL_SOURCE = {"35 USC:": "35_USC", "37 CFR:": "37_CFR", "Updates:": "SUBSEQUENT"}
+
+
+def _source_line(label: str, present: bool) -> str:
+    """One status line for a downloaded source file. A removed file is fine
+    only when the index really holds that source's text; otherwise it is
+    missing and flagged."""
+    if present:
+        mark = "[OK]"
+    elif _index_ready() and _LABEL_SOURCE.get(label) in _indexed_sources():
+        mark = "[--] removed after indexing (its text is in the search index)"
+    else:
+        mark = "[X]"
+    return f"  {label:<10} {mark}"
+
+
+def _index_defects() -> list[str]:
+    """Known defects in an already-built index that only a rebuild fixes
+    (e.g. indexes built before the EPC article/rule split was repaired)."""
+    if not _index_ready():
+        return []
+    try:
+        from mpep_search import get_index_warnings
+
+        with (INDEX_DIR / "mpep_metadata.json").open(encoding="utf-8") as f:
+            metadata = json.load(f).get("metadata", [])
+        return [_render(w) for w in get_index_warnings(metadata)]
+    except Exception:
+        return []
+
+
 def run_server(args):
     """
     Run the MCP server
     """
     # Check if setup has been run
-    sources_status = check_all_sources()
-    index_exists = (INDEX_DIR / "mpep_index.faiss").exists()
-
-    if not sources_status["mpep"] or not index_exists:
+    if not _index_ready():
         print(
-            "\n[X] Setup not complete. Run 'patent-creator setup' first.",
+            f"\n[X] Setup not complete. Run '{_cli()} setup' first.",
             file=sys.stderr,
         )
         return 1
@@ -847,16 +1129,18 @@ def status_command(args):
         print("  GPU:       [X] Not available (using CPU)", file=sys.stderr)
 
     print("\nSources:", file=sys.stderr)
-    print(
-        f"  MPEP PDFs: {'[OK]' if sources_status['mpep'] else '[X]'} ({pdf_count} files)",
-        file=sys.stderr,
-    )
-    print(f"  35 USC:    {'[OK]' if sources_status['35_usc'] else '[X]'}", file=sys.stderr)
-    print(f"  37 CFR:    {'[OK]' if sources_status['37_cfr'] else '[X]'}", file=sys.stderr)
-    print(
-        f"  Updates:   {'[OK]' if sources_status['subsequent_pubs'] else '[X]'}",
-        file=sys.stderr,
-    )
+    if sources_status["mpep"]:
+        print(f"  MPEP PDFs: [OK] ({pdf_count} files)", file=sys.stderr)
+    elif _index_ready():
+        print(
+            "  MPEP PDFs: [--] removed after indexing (only needed to rebuild the index)",
+            file=sys.stderr,
+        )
+    else:
+        print("  MPEP PDFs: [X] (0 files)", file=sys.stderr)
+    print(_source_line("35 USC:", sources_status["35_usc"]), file=sys.stderr)
+    print(_source_line("37 CFR:", sources_status["37_cfr"]), file=sys.stderr)
+    print(_source_line("Updates:", sources_status["subsequent_pubs"]), file=sys.stderr)
 
     print("\nIndex:", file=sys.stderr)
     print(f"  Built:     {'[OK]' if index_exists else '[X]'}", file=sys.stderr)
@@ -873,16 +1157,22 @@ def status_command(args):
                     f"  Sections:  {len({m['section'] for m in data['metadata']}):,}",
                     file=sys.stderr,
                 )
+        for warning in _index_defects():
+            print(f"  [!] {warning}", file=sys.stderr)
 
     print("\nStorage:", file=sys.stderr)
     print(f"  Location:  {MPEP_DIR.absolute()}", file=sys.stderr)
     print(f"  Index dir: {INDEX_DIR.absolute()}", file=sys.stderr)
 
-    ready = sources_status["mpep"] and index_exists
-    print(f"\nStatus: {'Ready' if ready else 'Setup required'}", file=sys.stderr)
+    ready = _index_ready()
+    defects = _index_defects()
+    label = "Setup required" if not ready else ("Ready, but the index needs a rebuild" if defects else "Ready")
+    print(f"\nStatus: {label}", file=sys.stderr)
 
     if not ready:
-        print("\nRun 'patent-creator setup' to complete installation.", file=sys.stderr)
+        print(f"\nRun '{_cli()} setup' to complete installation.", file=sys.stderr)
+    elif defects:
+        print(f"\nRun '{_cli()} setup' to rebuild it (25-40 minutes without an NVIDIA GPU).", file=sys.stderr)
 
     return 0
 
@@ -899,7 +1189,7 @@ def verify_config_command(args):
 
     # Get expected paths
     project_root = Path(__file__).parent.parent.resolve()
-    expected_python = Path(sys.executable).resolve()
+    expected_python = Path(sys.executable).absolute()
     expected_server = (project_root / "mcp_server" / "server.py").resolve()
 
     print("\nExpected Configuration:", file=sys.stderr)
@@ -923,7 +1213,7 @@ def verify_config_command(args):
     print("\nClaude Configuration:", file=sys.stderr)
     if not config_path.exists():
         print(f"  [X] Config file not found: {config_path}", file=sys.stderr)
-        print("\n  Run 'patent-creator setup' or 'python install.py' to create it", file=sys.stderr)
+        print(f"\n  Run '{_cli()} setup' to create it", file=sys.stderr)
         return 1
 
     try:
@@ -936,7 +1226,7 @@ def verify_config_command(args):
 
         if "claude-patent-creator" not in config["mcpServers"]:
             print("  [X] 'claude-patent-creator' server not registered", file=sys.stderr)
-            print("\n  Run: python install.py", file=sys.stderr)
+            print(f"\n  Run: {_cli()} setup", file=sys.stderr)
             return 1
 
         server_config = config["mcpServers"]["claude-patent-creator"]
@@ -953,9 +1243,14 @@ def verify_config_command(args):
         def normalize_path(p):
             return str(Path(p).resolve()).lower() if p else ""
 
-        expected_python_norm = normalize_path(expected_python)
+        def normalize_interpreter(p):
+            # Never resolve an interpreter: a venv python and its base
+            # interpreter resolve to the same file but behave differently.
+            return str(Path(p).absolute()).replace("\\", "/").lower() if p else ""
+
+        expected_python_norm = normalize_interpreter(expected_python)
         expected_server_norm = normalize_path(expected_server)
-        actual_python_norm = normalize_path(actual_python)
+        actual_python_norm = normalize_interpreter(actual_python)
         actual_server_norm = normalize_path(actual_server)
 
         print("\nConfiguration Status:", file=sys.stderr)
@@ -977,6 +1272,10 @@ def verify_config_command(args):
             print(f"    Expected: {expected_server}", file=sys.stderr)
             print(f"    Actual:   {actual_server}", file=sys.stderr)
 
+        if python_match and server_match and not _report_handshake(actual_python, actual_server):
+            print(f"\n[X] The registered server does not start. Re-run: {_cli()} setup", file=sys.stderr)
+            return 1
+
         if python_match and server_match:
             print("\n[OK] Configuration is correct!", file=sys.stderr)
             print("\nIf the server still fails:", file=sys.stderr)
@@ -987,7 +1286,7 @@ def verify_config_command(args):
         else:
             print("\n[X] Configuration needs to be fixed!", file=sys.stderr)
             print("\nTo fix:", file=sys.stderr)
-            print("  Option 1: Run 'python install.py' to re-register", file=sys.stderr)
+            print(f"  Option 1: Run '{_cli()} setup' to re-register", file=sys.stderr)
             print(f"  Option 2: Manually edit {config_path}", file=sys.stderr)
             print("\nCorrect values:", file=sys.stderr)
             print(f'  "command": "{expected_python.as_posix()}"', file=sys.stderr)
@@ -1047,7 +1346,7 @@ def rebuild_index_command(args):
 
     sources_status = check_all_sources()
     if not sources_status["mpep"]:
-        print("\n[X] MPEP PDFs not found. Run 'patent-creator download-mpep' or 'setup' first.", file=sys.stderr)
+        print(f"\n[X] MPEP PDFs not found. Run '{_cli()} download-mpep' or 'setup' first.", file=sys.stderr)
         return 1
 
     # Propagate env var for use_hyde
@@ -1103,8 +1402,8 @@ def download_all_command(args):
     print("\nEPO/PCT law sources:", file=sys.stderr)
     if _setup_epo_pct_sources(MPEP_DIR):
         print(
-            "  New EPO/PCT sources downloaded — run `patent-creator setup --rebuild` "
-            "(or build-index) to make them searchable.",
+            f"  New EPO/PCT sources downloaded. Run '{_cli()} setup --rebuild' "
+            "to make them searchable.",
             file=sys.stderr,
         )
 
@@ -1146,9 +1445,9 @@ def config_list_command(args):
             print(f"      = {shown}   [{source}]")
             print(f"      {opt.description}")
             if opt.note:
-                print(f"      note: {opt.note}")
+                print(f"      note: {_render(opt.note)}")
         print()
-    print("Change a setting:  patent-creator config set <KEY> <VALUE>")
+    print(f"Change a setting:  {_cli()} config set <KEY> <VALUE>")
     return 0
 
 
@@ -1157,7 +1456,7 @@ def config_get_command(args):
 
     if args.key not in OPTIONS_BY_KEY:
         print(f"[X] Unknown setting: {args.key}", file=sys.stderr)
-        print("    Run 'patent-creator config list' to see valid keys.", file=sys.stderr)
+        print(f"    Run '{_cli()} config list' to see valid keys.", file=sys.stderr)
         return 1
     value, source = get_effective(args.key)
     opt = OPTIONS_BY_KEY[args.key]
@@ -1171,7 +1470,7 @@ def config_set_command(args):
 
     if args.key not in OPTIONS_BY_KEY:
         print(f"[X] Unknown setting: {args.key}", file=sys.stderr)
-        print("    Run 'patent-creator config list' to see valid keys.", file=sys.stderr)
+        print(f"    Run '{_cli()} config list' to see valid keys.", file=sys.stderr)
         return 1
     error = validate(args.key, args.value)
     if error:
@@ -1186,7 +1485,7 @@ def config_set_command(args):
     if opt.is_secret:
         print("     Note: stored in plaintext; protect this file.", file=sys.stderr)
     if opt.note:
-        print(f"     {opt.note}")
+        print(f"     {_render(opt.note)}")
     return 0
 
 
@@ -1229,7 +1528,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Claude Patent Creator - Examiner-level patent creation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=_render("""
 Examples:
   patent-creator setup                    # Setup MPEP/USC/CFR sources
   patent-creator status                   # Show MPEP installation status
@@ -1243,7 +1542,7 @@ Examples:
   patent-creator check-bigquery           # Check BigQuery connection
 
 For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
-        """,
+        """),
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
@@ -1348,8 +1647,12 @@ For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
         if detail:
             print("    " + detail.replace("\n", "\n    "), file=sys.stderr)
         print(
-            "    Install them with 'pip install \".[dev]\"' and retry. "
-            "('patent-creator config' works without them.)",
+            _render(
+                "    Reinstall them with: pip install --upgrade "
+                "git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git\n"
+                "    (from a source checkout: pip install -e .), then retry.\n"
+                "    ('patent-creator config' works without them.)"
+            ),
             file=sys.stderr,
         )
         return 1

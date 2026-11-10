@@ -37,6 +37,18 @@ try:
 except ImportError:
     pass  # dotenv not required
 
+# Saved settings (patent-creator config set ...) must be in the environment
+# before anything below reads it: the logger picks its format at import, and
+# data paths (PATENT_DATA_DIR) are computed at import. Applying them later in
+# main() left both on their defaults. Real env vars and .env still win.
+try:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from config import apply_config_to_env as _apply_saved_settings
+
+    _apply_saved_settings()
+except Exception as _e:  # never block startup on a bad config file
+    print(f"[WARN] saved settings not applied: {_e}", file=sys.stderr)
+
 # CRITICAL: Disable user site-packages BEFORE importing third-party packages
 site.ENABLE_USER_SITE = False
 user_site = site.getusersitepackages()
@@ -48,7 +60,11 @@ if user_site in sys.path:
 try:
     from mcp.server.mcpserver import MCPServer
 except ImportError:
-    print('Error: mcp 2.x not found. Install with: pip install "mcp>=2.0.0,<3.0.0"', file=sys.stderr)
+    try:
+        from cli_command import render as _render_cmd
+    except ImportError:
+        _render_cmd = str
+    print(_render_cmd('Error: mcp 2.x not found. Install with: pip install "mcp>=2.0.0,<3.0.0"'), file=sys.stderr)
     sys.exit(1)
 
 from logging_config import get_logger
@@ -632,9 +648,10 @@ def _check_prerequisites(rebuild_index):
 
     if not index_exists and pdf_count == 0:
         print("\n[X] No MPEP PDFs and no existing index found.", file=sys.stderr)
-        print("\nTo get started:", file=sys.stderr)
-        print("  1. python mcp_server/server.py --download-mpep", file=sys.stderr)
-        print("  2. python mcp_server/server.py --rebuild-index", file=sys.stderr)
+        from cli_command import render
+
+        print("\nTo get started, run:", file=sys.stderr)
+        print(render("  patent-creator setup"), file=sys.stderr)
         sys.exit(1)
 
     if pdf_count == 0 and rebuild_index:
@@ -667,7 +684,9 @@ def _run_health_checks():
         for warning in warnings:
             print(f"  - {warning}", file=sys.stderr)
         print("\nServer will start with limited functionality.", file=sys.stderr)
-        print("Run 'patent-creator status --verbose' for details.\n", file=sys.stderr)
+        from cli_command import render
+
+        print(render("Run 'patent-creator health' for details.\n"), file=sys.stderr)
     else:
         print("[OK] All systems operational\n", file=sys.stderr)
 

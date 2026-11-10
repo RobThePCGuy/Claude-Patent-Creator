@@ -5,6 +5,17 @@ Fast, cloud-based patent search using Google's Patents Public Data
 """
 
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import platform
 import re
 import sys
@@ -160,7 +171,7 @@ class BigQueryPatentSearch:
         if not BIGQUERY_AVAILABLE:
             raise ImportError(
                 "google-cloud-bigquery not installed. "
-                "Install with: pip install google-cloud-bigquery db-dtypes"
+                + _render_cmd("Install with: pip install google-cloud-bigquery db-dtypes")
             )
 
         # Determine project for billing — try multiple sources
@@ -298,7 +309,7 @@ class BigQueryPatentSearch:
             return {
                 "available": False,
                 "error": "google-cloud-bigquery not installed",
-                "install_command": "pip install google-cloud-bigquery db-dtypes",
+                "install_command": _render_cmd("pip install google-cloud-bigquery db-dtypes"),
             }
 
         if not self.client:
@@ -1249,7 +1260,7 @@ def check_bigquery_available() -> dict[str, Any]:
         return {
             "available": False,
             "error": "google-cloud-bigquery not installed",
-            "install_command": "pip install google-cloud-bigquery db-dtypes",
+            "install_command": _render_cmd("pip install google-cloud-bigquery db-dtypes"),
         }
 
     try:

@@ -5,6 +5,17 @@ Renders technical diagrams from DOT code with patent-style annotations
 """
 
 import os
+
+try:
+    from cli_command import render as _render_cmd
+except ImportError:
+    try:
+        from mcp_server.cli_command import render as _render_cmd
+    except ImportError:  # pragma: no cover - keep messages even if the helper is missing
+
+        def _render_cmd(message: str) -> str:
+            return message
+
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -55,11 +66,11 @@ class PatentDiagramGenerator:
             else:
                 raise ImportError(
                     "Graphviz not available. Install with:\n"
-                    "1. pip install graphviz\n"
-                    "2. System Graphviz:\n"
-                    "   - Windows: winget install graphviz\n"
-                    "   - macOS: brew install graphviz\n"
-                    "   - Linux: sudo apt install graphviz"
+                    + _render_cmd("1. pip install graphviz\n")
+                    + "2. System Graphviz:\n"
+                    + "   - Windows: winget install graphviz\n"
+                    + "   - macOS: brew install graphviz\n"
+                    + "   - Linux: sudo apt install graphviz"
                 )
 
     def render_dot_diagram(
@@ -428,7 +439,7 @@ def check_graphviz_installed() -> dict[str, Any]:
     }
 
     if not graphviz:
-        status["message"] = "Python graphviz package not installed. Run: pip install graphviz"
+        status["message"] = _render_cmd("Python graphviz package not installed. Run: pip install graphviz")
         return status
 
     # Check if system graphviz is available
@@ -448,6 +459,18 @@ def check_graphviz_installed() -> dict[str, Any]:
     status["ready"] = status["python_package"] and status["system_command"]
 
     if not status["ready"]:
-        status["message"] = "System Graphviz not installed. See installation instructions."
+        import platform as _platform
+
+        system = _platform.system()
+        if system == "Darwin":
+            cmd = "brew install graphviz"
+        elif system == "Windows":
+            cmd = "winget install graphviz"
+        else:
+            cmd = "sudo apt-get install graphviz"
+        status["message"] = (
+            f"The free Graphviz program is missing. Install it by running: {cmd} "
+            "(or see https://graphviz.org/download/), then restart Claude Code."
+        )
 
     return status

@@ -7,9 +7,10 @@ Uses JSON formatting for production observability and log aggregation.
 
 import json
 import logging
+import os
 import sys
 from collections.abc import MutableMapping
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -20,7 +21,7 @@ class StructuredFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -101,6 +102,25 @@ class StructuredLogger(logging.LoggerAdapter):
         return msg, kwargs
 
 
+class _CurrentStderrHandler(logging.StreamHandler):
+    """Writes to whatever sys.stderr is at emit time.
+
+    A plain StreamHandler keeps the stream it was created with. The CLI
+    imports the server stack under contextlib.redirect_stderr (to keep a
+    failed import quiet), so a handler made then kept writing into that
+    throwaway buffer: every progress line of a 35-minute index build vanished
+    and setup looked frozen.
+    """
+
+    @property  # type: ignore[override]
+    def stream(self):
+        return sys.stderr
+
+    @stream.setter
+    def stream(self, value):
+        pass
+
+
 def setup_logging(
     level: str = "INFO", format_type: str = "human", log_file: Optional[Path] = None
 ) -> StructuredLogger:
@@ -126,7 +146,7 @@ def setup_logging(
     formatter = StructuredFormatter() if format_type == "json" else HumanReadableFormatter()
 
     # Create stderr handler (required for MCP protocol)
-    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler = _CurrentStderrHandler()
     stderr_handler.setFormatter(formatter)
     logger.addHandler(stderr_handler)
 
@@ -146,6 +166,22 @@ def setup_logging(
 
 # Global logger instance
 _logger: Optional[StructuredLogger] = None
+# Format used when PATENT_LOG_FORMAT is unset. JSON suits the MCP server; the
+# CLI calls prefer_format("human") before any logger exists.
+_default_format = "json"
+
+
+def prefer_format(format_type: str) -> None:
+    """Change the default log format (PATENT_LOG_FORMAT still wins).
+
+    This module builds its logger at import, so an existing logger is
+    re-formatted in place: setup_logging() swaps the handlers on the shared
+    "claude-patent-creator" logger every adapter already points at."""
+    global _default_format, _logger
+    _default_format = format_type
+    if _logger is not None and not os.environ.get("PATENT_LOG_FORMAT"):
+        level = os.environ.get("PATENT_LOG_LEVEL", "INFO")
+        _logger = setup_logging(level=level, format_type=format_type)
 
 
 def get_logger() -> StructuredLogger:
@@ -156,9 +192,7 @@ def get_logger() -> StructuredLogger:
         import os
 
         log_level = os.environ.get("PATENT_LOG_LEVEL", "INFO")
-        format_type = os.environ.get(
-            "PATENT_LOG_FORMAT", "json"
-        )  # Use JSON by default for MCP compatibility
+        format_type = os.environ.get("PATENT_LOG_FORMAT") or _default_format
 
         _logger = setup_logging(level=log_level, format_type=format_type)
 
