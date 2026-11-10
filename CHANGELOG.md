@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- Paper search spaces its Semantic Scholar requests at least 1.1 s apart
+  across the whole server and retries a refused one once, so back-to-back
+  searches stay under the 1 request/second key limit instead of losing that
+  source's results.
 - Reject invalid explicit BigQuery spending caps before any query instead of
   silently substituting the 350 GiB default (#101).
 - Bind patent family IDs as strings for the BigQuery public-data schema (#97).

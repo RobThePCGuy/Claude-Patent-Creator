@@ -37,6 +37,8 @@ cutoff, puts a date_check on the result.
 import json
 import os
 import re
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -53,6 +55,29 @@ S2_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
 CROSSREF_URL = "https://api.crossref.org/works"
 OPENALEX_KEY_URL = "https://openalex.org/settings/api-key"
 S2_KEY_URL = "https://www.semanticscholar.org/product/api#api-key-form"
+# Semantic Scholar allows one request per second per key, counted across all
+# endpoints (stated in its key-approval email). Searches are spaced a little
+# wider than that, process-wide, and a refused one is retried once after a
+# short wait. Both numbers are placeholder heuristics, not measured.
+S2_MIN_INTERVAL = 1.1
+S2_RETRY_WAIT = 2.0
+_s2_lock = threading.Lock()
+_s2_last = [0.0]
+_s2_sleep = time.sleep
+_s2_clock = time.monotonic
+
+
+def _s2_pace() -> None:
+    """Wait until S2_MIN_INTERVAL has passed since the last Semantic Scholar
+    request from this process. The lock is held while waiting, so concurrent
+    searches queue instead of firing together."""
+    with _s2_lock:
+        wait = _s2_last[0] + S2_MIN_INTERVAL - _s2_clock()
+        if wait > 0:
+            _s2_sleep(wait)
+        _s2_last[0] = _s2_clock()
+
+
 S2_FIELDS = "title,abstract,year,publicationDate,externalIds,url,venue,authors,openAccessPdf,publicationTypes"
 ABSTRACT_CHARS = 1200
 MAX_AUTHORS = 6
@@ -750,7 +775,16 @@ class LiteratureSearch:
             hi = _day_before(before).isoformat() if before else ""
             params["publicationDateOrYear"] = f"{lo}:{hi}"
         headers = {"x-api-key": self.s2_key} if self.s2_key else None
-        body = self._get("semantic_scholar", f"{S2_URL}?{urllib.parse.urlencode(params)}", headers)
+        url = f"{S2_URL}?{urllib.parse.urlencode(params)}"
+        for attempt in (1, 2):
+            _s2_pace()
+            try:
+                body = self._get("semantic_scholar", url, headers)
+                break
+            except SourceError as e:
+                if e.status != "rate_limited" or attempt == 2:
+                    raise
+            _s2_sleep(S2_RETRY_WAIT)
         return self._parse("Semantic Scholar", lambda b: parse_semantic_scholar(json.loads(b)), body)
 
     # -- public ---------------------------------------------------------
