@@ -48,6 +48,7 @@ def searcher():
     ('sensor NOT optical', 'sensor', True),
     ('sensor NOT optical', None, False),
     ('"wireless power" OR implant', 'implant', True),
+    ('"wireless power", sensor', 'wireless power sensor', True),
 ])
 def test_boolean_predicate_matches_query(query, title, expected):
     obj = searcher()

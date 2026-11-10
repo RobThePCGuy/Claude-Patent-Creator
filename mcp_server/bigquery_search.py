@@ -385,7 +385,13 @@ class BigQueryPatentSearch:
         Values remain query parameters; only generated clauses enter the SQL.
         Invalid syntax fails before any dry run or billed query.
         """
-        tokens = re.findall(r'"[^"\n]*"|[()]|[^\s()"]+|"', query)
+        tokens = [
+            token
+            for token in re.findall(r'"[^"\n]*"|[()]|[^\s()"]+|"', query)
+            # Bare punctuation such as the comma in '"wireless power", sensor'
+            # is not a term; the term inventory drops it too.
+            if token in ('"', "(", ")") or token.startswith('"') or token.strip(".,;:'\"-/")
+        ]
         position = 0
 
         def peek():

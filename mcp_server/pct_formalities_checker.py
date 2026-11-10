@@ -37,7 +37,7 @@ class PCTFormalitiesChecker(BaseAnalyzer):
     PCT Rules checked:
     - Rule 5: Content and structure of the description
     - Rule 6: Claims requirements (independent claims, numbering, unity)
-    - Rule 8: Abstract requirements (preferably 50-150 English words, figure indication)
+    - Rule 8: Abstract requirements (preferably 50-150 English words)
     - Rule 10: Terminology and signs (metric, Celsius/Kelvin)
     - Rule 11: Physical requirements (A4, margins, font)
     """
@@ -234,6 +234,12 @@ class PCTFormalitiesChecker(BaseAnalyzer):
 
         if not drawings_present:
             checks_skipped.append({"check": "drawings", "reason": "no drawings supplied"})
+        else:
+            checks_skipped.append({
+                "check": "abstract figure designation",
+                "reason": "the figure to publish with the abstract is chosen on the request form "
+                "(PCT Rules 3.3(a)(iii) and 8.2); check the request names one",
+            })
 
         summary = self._generate_compliance_summary(results, checks_skipped)
         return {
@@ -306,26 +312,11 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             result["compliant"] = False
             result["issues"].append("Too short")
 
-        # Check for figure indication when drawings present (Rules 3.3(a)(iii) and 8.2)
+        # The figure published with the abstract is designated on the request
+        # form (PCT Rules 3.3(a)(iii) and 8.2), not by a phrase in the abstract
+        # text. This tool never sees the request, so it cannot check it.
         if drawings_present:
-            fig_indication = bool(re.search(
-                r"(?i)fig(?:ure)?\.?\s*\d+|drawing\s*\d+", abstract
-            ))
-            result["figure_indicated"] = fig_indication
-
-            if not fig_indication:
-                self.issues.append(
-                    PCTFormalityIssue(
-                        section="abstract",
-                        severity="IMPORTANT",
-                        problem="Abstract does not indicate which figure should accompany it",
-                        current_value="No figure reference found",
-                        required_value="Indication of the figure to accompany the abstract",
-                        fix="Add reference to the figure that best characterizes the invention (e.g., 'Fig. 1')",
-                        legal_ref="PCT Rules 3.3(a)(iii) and 8.2",
-                    )
-                )
-                result["issues"].append("Missing figure indication")
+            result["figure_designation"] = "not checked: verify the request form names a figure"
 
         return result
 
