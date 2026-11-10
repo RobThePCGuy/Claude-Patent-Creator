@@ -37,6 +37,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Spell checking config (`.typos.toml`)
 - CONTRIBUTING.md and SECURITY.md
 
+### Changed
+- MPEP search results now cite the exact section, for example `mpep_section:
+  "2173.02"` with its title, instead of only the chapter ("MPEP 2100"). The
+  section comes from the heading and revision tag the USPTO prints above each
+  section, including headings split across a page break; checked against the
+  section marker on every page of all 29 chapters, it matches on 2,864 of
+  2,912 pages, and the rest are pages whose marker names an empty
+  "[Reserved]" section. Indexes built before this
+  version keep chapter-only labels until `patent-creator setup --rebuild`.
+  `get_mpep_section` now also accepts deeper numbers such as `2106.04(a)(2)`,
+  and finds headings whose titles wrap onto a line starting with a number
+  ("112(f) ...", "2012 [R-...]"), which it used to miss.
+
+### Removed
+- `/setup-patent-creator`, a second name for `/setup-patent-system`. One
+  setup command is easier to find.
+
 ### Fixed
 - Plugin docs no longer promise checks the tools don't run (antecedent basis,
   corresponding structure, description support, best mode, physical page

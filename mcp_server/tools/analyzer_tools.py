@@ -19,6 +19,18 @@ Dependencies:
 from typing import Any, Optional
 
 
+def _cite(meta: dict, whole: bool = True) -> str:
+    """'MPEP § 2173.02' when the index knows the section, else the chapter label.
+
+    A passage can run into the next section ("601.05(b), 602"). When only the
+    start of the passage is shown, cite only the section it starts in: the
+    later one may have been cut off.
+    """
+    section = meta.get("mpep_section")
+    if not section:
+        return meta["section"]
+    return f"MPEP § {section if whole else section.split(', ')[0]}"
+
 def register_analyzer_tools(
     mcp,
     mpep_index,
@@ -79,7 +91,7 @@ def register_analyzer_tools(
                 for r in mpep_results:
                     mpep_refs.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"], whole=len(r["text"]) <= 500),
                             "page": r["metadata"]["page"],
                             "text": r["text"][:500] + "..." if len(r["text"]) > 500 else r["text"],
                         }
@@ -117,7 +129,7 @@ def register_analyzer_tools(
                 for r in results:
                     formatted.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"]),
                             "page": r["metadata"]["page"],
                             "text": r["text"],
                         }
@@ -180,7 +192,7 @@ def register_analyzer_tools(
                 for r in mpep_results:
                     mpep_refs.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"], whole=len(r["text"]) <= 500),
                             "page": r["metadata"]["page"],
                             "text": r["text"][:500] + "..." if len(r["text"]) > 500 else r["text"],
                         }
@@ -217,7 +229,7 @@ def register_analyzer_tools(
                 for r in results:
                     formatted.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"]),
                             "page": r["metadata"]["page"],
                             "text": r["text"],
                         }
@@ -285,7 +297,7 @@ def register_analyzer_tools(
                 for r in mpep_results:
                     mpep_refs.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"], whole=len(r["text"]) <= 500),
                             "page": r["metadata"]["page"],
                             "text": r["text"][:500] + "..." if len(r["text"]) > 500 else r["text"],
                         }
@@ -323,7 +335,7 @@ def register_analyzer_tools(
                 for r in results:
                     formatted.append(
                         {
-                            "section": r["metadata"]["section"],
+                            "section": _cite(r["metadata"]),
                             "page": r["metadata"]["page"],
                             "text": r["text"],
                         }

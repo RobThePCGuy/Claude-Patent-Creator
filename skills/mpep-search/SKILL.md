@@ -42,6 +42,9 @@ Search MPEP corpus through hybrid RAG (FAISS vector + BM25 keyword + HyDE + cros
     "is_update": bool,
     "relevance_score": float,
     "text": str,
+    # MPEP chapter text, when the index was built with v1.1.12 or later:
+    "mpep_section": str,   # e.g. "2173.02"; "2173.01, 2173.02" when a passage spans a heading
+    "section_title": str,  # e.g. "Determining Whether Claim Language is Definite"
     # Optional for SUBSEQUENT:
     "doc_type": str,
     "fr_citation": str,
@@ -73,7 +76,7 @@ Subsection boundaries are approximate and extraction can leave gaps even when
 `truncated` is false; do not describe the result as guaranteed full section text.
 
 **Inputs:**
-- `section_number` (string, required): MPEP section number (e.g., `"2100"`, `"608.01"`)
+- `section_number` (string, required): MPEP section number (e.g., `"2100"`, `"608.01"`, `"2106.04(a)(2)"`)
 - `max_chunks` (int, optional): Maximum chunks to return (default: 50)
 
 **Outputs:**

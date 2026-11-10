@@ -232,9 +232,9 @@ mcp_server/              # Core MCP server and tools
 +-- pct_formalities_checker.py # PCT Rules 5-12 formalities
 +-- diagram_generator.py       # Graphviz diagram tools
 
-commands/                # Slash commands (11)
-skills/                  # Specialized skills (15)
-agents/                  # Autonomous agents (10)
+commands/                # Slash commands (15)
+skills/                  # Specialized skills (17)
+agents/                  # Autonomous agents (13)
 hooks/                   # Event-driven hooks
 scripts/                 # Testing and setup utilities
 data/                    # Index storage (git-ignored)

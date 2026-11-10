@@ -98,6 +98,9 @@ def register_mpep_tools(
                 "rank": i + 1,
                 "source": r["metadata"].get("source", "MPEP"),
                 "section": r["metadata"]["section"],
+                **({"mpep_section": r["metadata"]["mpep_section"],
+                    "section_title": r["metadata"].get("section_title", "")}
+                   if r["metadata"].get("mpep_section") else {}),
                 "file": r["metadata"]["file"],
                 "page": r["metadata"]["page"],
                 "has_statute": r["metadata"].get("has_statute", False),
@@ -137,7 +140,7 @@ def retrieve_mpep_section(index, section_number: str, max_chunks: int = 50) -> d
     import re
 
     section = section_number.strip()
-    if not re.fullmatch(r"\d{3,4}(?:\.\d+)?(?:\([a-z]\))?", section):
+    if not re.fullmatch(r"\d{3,4}(?:\.\d+)?(?:\([a-z0-9]+\))*", section):
         return {"error": "Use an MPEP section such as 608.01(b), or use search_mpep."}
     if max_chunks < 1:
         return {"error": "max_chunks must be at least 1."}
@@ -165,12 +168,11 @@ def retrieve_mpep_section(index, section_number: str, max_chunks: int = 50) -> d
             body += text[overlap:]
             spans.append((start, len(body), text, meta))
             previous_page = meta.get("page")
-        heading = re.compile(
-            r"(?m)^[ \t]*(\d{3,4}(?:\.\d+)?(?:\([a-z]\))?)[ \t]+"
-            r"(?=\S)[^\[\]\n]+(?:\n(?![ \t]*\d{3,4}\b)[^\[\]\n]+){0,3}?"
-            r"[ \t\n]*\[R-[^\]\n]+\]"
-        )
-        headings = list(heading.finditer(body))
+        try:
+            from mpep_search import MPEP_HEADING_RE
+        except ImportError:
+            from mcp_server.mpep_search import MPEP_HEADING_RE
+        headings = list(MPEP_HEADING_RE.finditer(body))
         first = next((h for h in headings if h.group(1) == section), None)
         if first:
             end = len(body)
