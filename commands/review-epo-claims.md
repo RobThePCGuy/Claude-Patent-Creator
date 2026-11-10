@@ -301,7 +301,15 @@ epo-claims-review-[date]/
 
 ## Compliance Score
 
-**90-100**: Excellent - Ready to file at EPO
+A score describes only the automated checks that ran. It is not filing
+clearance, even at 100. Lead with `checks_run` and `checks_skipped` when the
+result supplies them, retaining each skip reason. If coverage fields are
+absent, say coverage is unreported and name known limitations; never infer
+that every check ran from a score or an empty issues list.
+
+Art. 123(2) added-matter review is not implemented; record it as skipped.
+
+**90-100**: Few issues detected by the automated checks that ran
 **75-89**: Good - Minor issues to address
 **60-74**: Fair - Important issues likely to draw Art. 84 objection
 **< 60**: Poor - Significant revision needed before EP filing

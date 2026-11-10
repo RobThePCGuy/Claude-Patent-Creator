@@ -199,10 +199,9 @@ class EPOSpecificationAnalyzer(BaseAnalyzer):
                 }
             )
 
-        # Check each independent claim for Art. 83 sufficiency support
+        # Check every claim, including limitations added by dependent claims
         for claim in claims:
-            if claim["is_independent"]:
-                self._check_claim_support(claim)
+            self._check_claim_support(claim)
 
         return self._generate_report(claims, warnings)
 
@@ -490,21 +489,22 @@ class EPOSpecificationAnalyzer(BaseAnalyzer):
         }
 
     def _calculate_coverage(self, claims: list[dict]) -> dict:
-        """Calculate what percentage of independent claims have specification support"""
-        independent_claims = [c for c in claims if c["is_independent"]]
-        if not independent_claims:
+        """Calculate support coverage across all supplied claims"""
+        claim_numbers = {c["number"] for c in claims}
+        if not claim_numbers:
             return {"percentage": 0, "supported_claims": 0, "total_claims": 0}
 
         claims_with_critical = {
             i.claim_number for i in self.issues
             if isinstance(i, EPOSpecSupportIssue) and i.severity == "CRITICAL" and i.issue_type == "sufficiency"
         }
-        supported_claims = len(independent_claims) - len(claims_with_critical)
+        claims_with_critical &= claim_numbers
+        supported_claims = len(claim_numbers) - len(claims_with_critical)
 
         return {
-            "percentage": int((supported_claims / len(independent_claims)) * 100),
+            "percentage": int((supported_claims / len(claim_numbers)) * 100),
             "supported_claims": supported_claims,
-            "total_claims": len(independent_claims),
+            "total_claims": len(claim_numbers),
             "unsupported_claims": list(claims_with_critical),
         }
 

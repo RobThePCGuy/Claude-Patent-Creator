@@ -38,6 +38,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- Public unmerged code is no longer treated as undisclosed; history mining
+  requires public-access and date evidence, with unknowns preserved.
+- PCT calendars use the priority date, put US/JP entry at 30 months and EP
+  at 31, and state the alternative Chapter II demand deadline, with WIPO sources.
+- Agents that need MCP tools inherit the connected session's tools instead
+  of excluding them through built-in-only allowlists.
+- EPO/PCT formalities now expose checks run/skipped and scoped verdicts like
+  the US checker. Missing inputs, failed checks, and PCT's unverified physical
+  requirements cannot produce readiness; unavailable checkers report no checks.
+- US/EPO specification review checks dependent claims and includes them in
+  support coverage instead of reporting only independent-claim coverage.
+- Claims-review scores no longer authorize filing. Enabling antecedent basis
+  requires a server/Claude Code restart and an actual claims result naming
+  `antecedent_basis` in `checks_run` before the workflow can proceed.
+- EPO drafting uses Article 54(5) purpose-limited product claims for new
+  second-medical-use filings, with the Swiss-type cutoff and EPO sources.
 - Setup registered the wrong Python on venv installs: it followed the venv's
   `python` link back to the system interpreter, which cannot import `mcp`, so
   Claude Code failed to connect while setup, `health` and `verify-config` all

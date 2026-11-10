@@ -1,7 +1,6 @@
 ---
 name: patent-search-specialist
 description: Expert in patent prior art searching using BigQuery (100M+ patents), USPTO API, and local corpus with systematic 7-step methodology
-tools: Read, Bash
 model: sonnet
 ---
 

@@ -199,25 +199,55 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             "physical": None,
         }
 
+        # Missing or blank inputs are skipped checks, never successful checks.
+        abstract = abstract.strip() if abstract else None
+        title = title.strip() if title else None
+        specification = specification.strip() if specification else None
+        checks_run = []
+        checks_skipped = []
+
         if abstract:
             results["abstract"] = self._check_abstract(abstract, drawings_present)
-
+            checks_run.append("abstract")
+        else:
+            checks_skipped.append({"check": "abstract", "reason": "no abstract supplied"})
         if title:
             results["title"] = self._check_title(title)
+            checks_run.append("title")
+        else:
+            checks_skipped.append({"check": "title", "reason": "no title supplied"})
 
         if specification:
             results["description"] = self._check_description(specification)
             results["claims"] = self._check_claims_format(specification)
             results["terminology"] = self._check_terminology(specification)
+            checks_run.extend(["description", "claims", "terminology"])
+        else:
+            for check in ("description", "claims", "terminology"):
+                checks_skipped.append({"check": check, "reason": "no specification supplied"})
 
-        # Physical requirements advisory (cannot verify from text alone)
+        # A checklist is advice, not an inspection of the actual filing documents.
         results["physical"] = self._generate_physical_requirements_advisory()
+        checks_skipped.append({
+            "check": "physical", "reason": "physical requirements cannot be verified from text; manual inspection required"
+        })
 
+        if not drawings_present:
+            checks_skipped.append({"check": "drawings", "reason": "no drawings supplied"})
+
+        summary = self._generate_compliance_summary(results, checks_skipped)
         return {
             "results": results,
             "issues": [self._issue_to_dict(issue) for issue in self.issues],
-            "compliance_summary": self._generate_compliance_summary(results),
-            "overall_compliant": len([i for i in self.issues if i.severity == "CRITICAL"]) == 0,
+            "compliance_summary": summary,
+            "overall_compliant": summary["ready_to_file"],
+            "checks_run": checks_run,
+            "checks_skipped": checks_skipped,
+            "verdict_scope": (
+                "Automated text checks only; drawings_present is a declaration, not inspection "
+                "of drawing files. Physical layout, forms and fee payment require manual review. "
+                "This is not a filing clearance."
+            ),
             "jurisdiction": "PCT",
             "legal_framework": "Patent Cooperation Treaty (PCT)",
         }
@@ -612,7 +642,7 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             },
         }
 
-    def _generate_compliance_summary(self, results: dict) -> dict:
+    def _generate_compliance_summary(self, results: dict, checks_skipped: list[dict]) -> dict:
         """Generate overall compliance summary"""
         critical_issues = 0
         warnings = 0
@@ -626,30 +656,27 @@ class PCTFormalitiesChecker(BaseAnalyzer):
             else:
                 info += 1
 
-        passed_checks = 0
-        if results.get("abstract") and results["abstract"].get("compliant"):
-            passed_checks += 1
-        if results.get("title") and results["title"].get("compliant"):
-            passed_checks += 1
-        if results.get("description") and results["description"].get("compliant"):
-            passed_checks += 1
-        if results.get("claims") and results["claims"].get("compliant"):
-            passed_checks += 1
-        if results.get("terminology") and results["terminology"].get("compliant"):
-            passed_checks += 1
+        # Match the US checker: every component must exist and pass, with no skips.
+        required = ("abstract", "title", "description", "claims", "terminology")
+        all_passed = all(results.get(key) is not None and results[key].get("compliant") for key in required)
+        ready = not checks_skipped and all_passed and critical_issues == 0
+        summary = self._format_summary(critical_issues, warnings, info)
+        if checks_skipped:
+            skipped = "; ".join(f"{check['check']} ({check['reason']})" for check in checks_skipped)
+            summary = f"[INCOMPLETE] Checks skipped: {skipped}. " + summary
 
         return {
             "critical_issues": critical_issues,
             "warnings": warnings,
             "info": info,
-            "ready_to_file": critical_issues == 0,
-            "summary": self._format_summary(critical_issues, warnings, info),
+            "ready_to_file": ready,
+            "summary": summary,
         }
 
     def _format_summary(self, critical: int, warnings: int, info: int) -> str:
         """Format human-readable summary"""
         if critical == 0 and warnings == 0 and info == 0:
-            return "[OK] All PCT formalities requirements met (Rules 5-12)"
+            return "No issues found in the automated checks that ran."
 
         parts = []
         if critical > 0:

@@ -1,7 +1,6 @@
 ---
 name: mpep-expert
 description: Expert in USPTO MPEP, 35 USC statutes, and 37 CFR regulations. Provides legal research, examiner guidance, and compliance interpretation using hybrid RAG search.
-tools: Bash, Read, Write
 model: sonnet
 ---
 

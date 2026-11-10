@@ -149,7 +149,14 @@ For long-running, complex workflows that benefit from context isolation, use spe
 - "Create a patent for my invention, use subagent" -> patent-creator works for 55-80 min independently
 - "Help me create a patent interactively" -> patent-reviewer skill guides you step-by-step
 
-Subagents are located in `agents/` at the repo root and have access to all MCP tools.
+Subagents are located in `agents/` at the repo root. Agents that call MCP tools
+or MCP-backed skills omit `tools:` so they inherit tools available in the
+parent session. The local Python-only drafter, researcher, and development
+agents retain their built-in tool lists. Inheritance does not install or
+connect a missing server; report required tools as unavailable when absent.
+See [Claude Code subagent tool access](https://code.claude.com/docs/en/sub-agents#available-tools).
+An explicit MCP allowlist would require the resolved `mcp__<server>__<tool>`
+names (or `mcp__<server>__*`); bare function names are not MCP tool names.
 
 ---
 

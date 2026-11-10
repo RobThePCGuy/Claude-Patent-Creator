@@ -47,7 +47,7 @@ Provides comprehensive PCT application support:
    - Physical document requirements
 
 4. **National Phase Strategy**:
-   - 30/31 month deadline tracking
+   - Office-specific national phase deadlines measured from priority
    - Country selection guidance
    - Translation requirements per country
    - National phase fee estimates
@@ -176,16 +176,24 @@ Unity: MAINTAINED (single general inventive concept linked by X)
 
 ## PCT Timeline
 
+All month offsets use the earliest claimed priority date. If no priority is
+claimed, the priority date is the PCT international filing date.
+
 ```
-Month 0:  File PCT application at Receiving Office (RO)
-Month 3:  International search begins (ISA)
-Month 16: International Search Report (ISR) issued
-Month 18: International publication (WIPO)
-Month 22: Demand for preliminary examination (optional, Chapter II)
-Month 28: International Preliminary Examination Report (IPER)
-Month 30: National/regional phase entry deadline (most countries)
-Month 31: National phase deadline (some countries: US, JP, etc.)
+Month 0:  Earliest priority filing
+By month 12: Normally file PCT claiming the earlier priority
+Month 16: Priority document deadline (Rule 17.1 alternatives apply)
+After month 18: International publication, normally promptly after expiry
+Month 30: US and Japan national phase entry deadlines
+Month 31: EPO regional phase entry deadline
 ```
+
+Chapter II demand is due by the later of 22 months from priority or 3 months
+from transmittal of the ISR (or Article 17(2)(a) declaration) and written opinion.
+Check the current deadline and exceptions for every selected Office; see the
+[WIPO time-limit table](https://www.wipo.int/en/web/pct-system/texts/time_limits)
+and [Rule 54bis.1](https://www.wipo.int/en/web/pct-system/texts/rules/r54bis).
+Do not treat search or examination report issuance as a guaranteed fixed month.
 
 ## Fee Calculation
 
@@ -282,13 +290,21 @@ International filing: [amount]
 Search: [amount]
 Total: [amount]
 
-DEADLINES:
-[Date] - Priority expires (12 months)
-[Date] - Furnish priority doc (16 months)
-[Date] - International publication (18 months)
-[Date] - Chapter II demand (22 months)
-[Date] - National phase entry (30/31 months)
+DEADLINES (from earliest claimed priority; PCT filing date only if no priority claimed):
+[Date] - Normally file PCT claiming earlier priority by 12 months
+[Date] - Furnish priority document by 16 months (Rule 17.1 alternatives apply)
+[Date] - International publication normally promptly after 18 months
+[Date] - Chapter II demand: later of 22 months or 3 months after transmittal
+         of ISR (or Article 17(2)(a) declaration) and written opinion
+[Date] - US/JP national phase at 30 months; EP regional phase at 31 months
+[Date] - Other Offices: verify the current Office-specific deadline and exceptions
 ```
+
+Deadline sources: [WIPO time limits](https://www.wipo.int/en/web/pct-system/texts/time_limits),
+[Article 2(xi)](https://www.wipo.int/en/web/pct-system/texts/articles/a2),
+[Rule 17.1](https://www.wipo.int/en/web/pct-system/texts/rules/r17),
+[Article 21(2)](https://www.wipo.int/en/web/pct-system/texts/articles/a21),
+and [Rule 54bis.1](https://www.wipo.int/en/web/pct-system/texts/rules/r54bis).
 
 ## Integration
 

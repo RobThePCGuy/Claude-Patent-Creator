@@ -127,22 +127,54 @@ class EPOFormalitiesChecker(BaseAnalyzer):
             "claims_fees": None,
         }
 
+        # Missing or blank inputs are skipped checks, never successful checks.
+        abstract = abstract.strip() if abstract else None
+        title = title.strip() if title else None
+        specification = specification.strip() if specification else None
+        checks_run = []
+        checks_skipped = []
+
         if abstract:
             results["abstract"] = self._check_abstract(abstract)
-
+            checks_run.append("abstract")
+        else:
+            checks_skipped.append({"check": "abstract", "reason": "no abstract supplied"})
         if title:
             results["title"] = self._check_title(title)
+            checks_run.append("title")
+        else:
+            checks_skipped.append({"check": "title", "reason": "no title supplied"})
 
         if specification:
             results["sections"] = self._check_description_sections(specification)
+            checks_run.append("sections")
             results["drawings"] = self._check_drawings(specification, drawings_present)
+            checks_run.append("drawing_references")
             results["claims_fees"] = self._check_claims_fees(specification)
+            if results["claims_fees"]["total_claims_detected"]:
+                checks_run.append("claims_fees")
+            else:
+                checks_skipped.append({"check": "claims_fees", "reason": "no numbered claims in an identifiable claims section; supply a CLAIMS heading and claim text"})
+        else:
+            for check in ("sections", "drawing_references", "claims_fees"):
+                checks_skipped.append({"check": check, "reason": "no specification supplied"})
 
+        if not drawings_present:
+            checks_skipped.append({"check": "drawings", "reason": "no drawings supplied"})
+
+        summary = self._generate_compliance_summary(results, checks_skipped)
         return {
             "results": results,
             "issues": [self._issue_to_dict(issue) for issue in self.issues],
-            "compliance_summary": self._generate_compliance_summary(results),
-            "overall_compliant": len([i for i in self.issues if i.severity == "CRITICAL"]) == 0,
+            "compliance_summary": summary,
+            "overall_compliant": summary["ready_to_file"],
+            "checks_run": checks_run,
+            "checks_skipped": checks_skipped,
+            "verdict_scope": (
+                "Automated text checks only; drawings_present is a declaration, not inspection "
+                "of drawing files. Physical layout, forms and fee payment require manual review. "
+                "This is not a filing clearance."
+            ),
             "jurisdiction": "EPO",
             "legal_framework": "European Patent Convention (EPC)",
         }
@@ -412,9 +444,14 @@ class EPOFormalitiesChecker(BaseAnalyzer):
 
         Additional claims fees apply for each claim beyond 15.
         """
-        # Count claims in specification
+        # Numbered description steps are not evidence that claims were supplied.
+        claims_match = re.search(
+            r"(?:^|\n)[ \t]*(?:CLAIMS?|WHAT\s+IS\s+CLAIMED\s+IS)[ \t]*:?[ \t]*\n(.+)",
+            specification, re.IGNORECASE | re.DOTALL,
+        )
+        claims_section = claims_match.group(1) if claims_match else ""
         claim_pattern = re.compile(r"(?:^|\n)\s*(\d+)\.\s+", re.MULTILINE)
-        claim_matches = claim_pattern.findall(specification)
+        claim_matches = claim_pattern.findall(claims_section)
 
         # Deduplicate and count unique claim numbers
         claim_numbers = sorted({int(n) for n in claim_matches})
@@ -422,6 +459,7 @@ class EPOFormalitiesChecker(BaseAnalyzer):
 
         result = {
             "total_claims_detected": total_claims,
+            "compliant": total_claims > 0,
             "fee_threshold": self.CLAIMS_FEE_THRESHOLD,
             "excess_claims": max(0, total_claims - self.CLAIMS_FEE_THRESHOLD),
             "fees_apply": total_claims > self.CLAIMS_FEE_THRESHOLD,
@@ -449,7 +487,7 @@ class EPOFormalitiesChecker(BaseAnalyzer):
 
         return result
 
-    def _generate_compliance_summary(self, results: dict) -> dict:
+    def _generate_compliance_summary(self, results: dict, checks_skipped: list[dict]) -> dict:
         """Generate overall compliance summary"""
         critical_issues = 0
         warnings = 0
@@ -463,28 +501,27 @@ class EPOFormalitiesChecker(BaseAnalyzer):
             else:
                 info += 1
 
-        passed_checks = 0
-        if results.get("abstract") and results["abstract"].get("compliant"):
-            passed_checks += 1
-        if results.get("title") and results["title"].get("compliant"):
-            passed_checks += 1
-        if results.get("sections") and results["sections"].get("compliant"):
-            passed_checks += 1
-        if results.get("drawings") and results["drawings"].get("compliant"):
-            passed_checks += 1
+        # Match the US checker: every component must exist and pass, with no skips.
+        required = ("abstract", "title", "sections", "drawings", "claims_fees")
+        all_passed = all(results.get(key) is not None and results[key].get("compliant") for key in required)
+        ready = not checks_skipped and all_passed and critical_issues == 0
+        summary = self._format_summary(critical_issues, warnings, info)
+        if checks_skipped:
+            skipped = "; ".join(f"{check['check']} ({check['reason']})" for check in checks_skipped)
+            summary = f"[INCOMPLETE] Checks skipped: {skipped}. " + summary
 
         return {
             "critical_issues": critical_issues,
             "warnings": warnings,
             "info": info,
-            "ready_to_file": critical_issues == 0,
-            "summary": self._format_summary(critical_issues, warnings, info),
+            "ready_to_file": ready,
+            "summary": summary,
         }
 
     def _format_summary(self, critical: int, warnings: int, info: int) -> str:
         """Format human-readable summary"""
         if critical == 0 and warnings == 0 and info == 0:
-            return "[OK] All EPO formalities requirements met (Rules 42-49 EPC)"
+            return "No issues found in the automated checks that ran."
 
         parts = []
         if critical > 0:

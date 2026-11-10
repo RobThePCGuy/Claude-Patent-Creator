@@ -325,7 +325,15 @@ Example:
 
 ## Compliance Score
 
-**90-100**: Excellent - Ready to file
+A score describes only the automated checks that ran. It is not filing
+clearance, even at 100. Lead with `checks_run` and `checks_skipped` when the
+result supplies them, retaining each skip reason. If coverage fields are
+absent, say coverage is unreported and name known limitations; never infer
+that every check ran from a score or an empty issues list.
+
+Antecedent basis ran only if `antecedent_basis` appears in `checks_run`.
+
+**90-100**: Few issues detected by the automated checks that ran
 **75-89**: Good - Minor issues to address
 **60-74**: Fair - Important issues to fix
 **< 60**: Poor - Critical issues must be fixed
@@ -341,11 +349,11 @@ Example:
 
 ## After Analysis
 
-Based on your compliance score:
+Use actual findings and check coverage to decide the next review steps:
 
 **90+**:
-- Claims are USPTO-ready
-- Proceed with filing
+- Review skipped checks and resolve missing coverage
+- Complete specification, formalities, prior-art, and legal review; the score does not authorize filing
 
 **75-89**:
 - Review important issues
