@@ -7,34 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-- Setup registered the wrong Python on venv installs: it followed the venv's
-  `python` link back to the system interpreter, which cannot import `mcp`, so
-  Claude Code failed to connect while setup, `health` and `verify-config` all
-  reported success. Registration keeps the venv path, and setup and
-  `verify-config` now start the server and complete a real MCP handshake
-  before saying it is connected. Found by a fresh-user install walk.
-- `health` and `serve` refused to run after the PDF cleanup that setup itself
-  offers; they now need only the built index, and setup no longer
-  re-downloads and rebuilds when the PDFs were removed on purpose.
-- Setup asks before installing Graphviz with the system package manager and
-  never installs it unattended; the diagram tools' error gives the exact
-  install command.
-- `check_formalities` no longer reports `ready_to_file` when parts were not
-  supplied or a component check failed, and lists checks run and skipped.
-  `review_patent_claims` leads with skipped checks and no longer calls claims
-  "compliant" when the antecedent-basis check did not run.
-- Stale command suggestions (`scripts/setup_bigquery_auth.py`, `install.py`,
-  `status --verbose`) point at commands that exist.
-
-### Changed
-- README Quick Start rewritten for first-time users: prerequisites first, a
-  virtual-environment install with copyable Mac/Linux and Windows lines, the
-  plugin as its own step, and a free SerpApi key for patent search. One
-  supported Python range (3.10-3.13) across the README, setup command and
-  skills. Removed two settings nothing reads (`PATENT_ENABLE_METRICS`,
-  `PATENT_OPERATION_TIMEOUT`).
-
 ### Added
 - `search_non_patent_literature`: papers and preprints as prior art, from
   OpenAlex, arXiv and Semantic Scholar at once, free with no key. Filters by
@@ -66,6 +38,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- Setup registered the wrong Python on venv installs: it followed the venv's
+  `python` link back to the system interpreter, which cannot import `mcp`, so
+  Claude Code failed to connect while setup, `health` and `verify-config` all
+  reported success. Registration keeps the venv path, and setup and
+  `verify-config` now start the server and complete a real MCP handshake
+  before saying it is connected. Found by a fresh-user install walk.
+- `health` and `serve` refused to run after the PDF cleanup that setup itself
+  offers; they now need only the built index, and setup no longer
+  re-downloads and rebuilds when the PDFs were removed on purpose.
+- Setup asks before installing Graphviz with the system package manager and
+  never installs it unattended; the diagram tools' error gives the exact
+  install command.
+- `check_formalities` no longer reports `ready_to_file` when parts were not
+  supplied or a component check failed, and lists checks run and skipped.
+  `review_patent_claims` leads with skipped checks and no longer calls claims
+  "compliant" when the antecedent-basis check did not run.
+- Stale command suggestions (`scripts/setup_bigquery_auth.py`, `install.py`,
+  `status --verbose`) point at commands that exist.
+
 - Paper search spaces its Semantic Scholar requests at least 1.1 s apart
   across the whole server and retries a refused one with exponential
   backoff (1, 2, 4 s plus jitter), as Semantic Scholar requires, so back-to-back
@@ -106,6 +97,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `downloaders`: Partial file cleanup on download failure
 - `patent_corpus`: Safe integer parsing for TSV fields
 - `diagram_generator`: defusedxml for SVG parsing, quoted node IDs, tspan handling
+
+### Changed
+- README Quick Start rewritten for first-time users: prerequisites first, a
+  virtual-environment install with copyable Mac/Linux and Windows lines, the
+  plugin as its own step, and a free SerpApi key for patent search. One
+  supported Python range (3.10-3.13) across the README, setup command and
+  skills. Removed two settings nothing reads (`PATENT_ENABLE_METRICS`,
+  `PATENT_OPERATION_TIMEOUT`).
 
 ## [0.2.0] - 2026-03-22
 
