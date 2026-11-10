@@ -1,5 +1,5 @@
 ---
-description: Analyze patent claims for EPO Art. 84 EPC compliance - clarity, conciseness, support by description
+description: Analyze patent claims for EPO Art. 84 EPC compliance - clarity and conciseness heuristics; description support requires separate review
 argument-hint: "[optional: clarity | conciseness | support] claims-text"
 allowed-tools:
   - review_epo_claims
@@ -31,10 +31,9 @@ Performs comprehensive EPO claims analysis:
    - Validates claim set economy
 
 3. **Support by Description** (Art. 84 EPC):
-   - Verifies all claimed features are disclosed in the description
-   - Checks claim scope does not exceed disclosure
-   - Validates generalizations from specific examples
-   - Identifies unsupported claim breadth
+   - Not checked by this claims-only analyzer, which receives no description
+   - Request the description and use `review_epo_specification` for preliminary support heuristics, followed by manual feature-by-feature review
+   - Without that review, report description support as not assessed
 
 4. **Claim Structure** (Rule 43 EPC):
    - Validates two-part form (preamble + characterizing portion) where appropriate
@@ -95,7 +94,7 @@ I'll run the claims through the EPO compliance analyzer:
 This checks:
 - All terms for clarity (Art. 84 EPC)
 - Claim conciseness and economy
-- Support by description
+- Description support: not assessed by the claims-only tool
 - Two-part form structure (Rule 43(1) EPC)
 - Claim categories and dependencies
 - EPO Guidelines Part F requirements
@@ -165,13 +164,13 @@ Fix Suggestion:
 Issue: Independent claim does not use two-part form
 
 Problem:
-  Under Rule 43(1) EPC, independent claims should normally
+  Under Rule 43(1) EPC, independent claims, where appropriate,
   contain a statement of prior art features (preamble) and
   a characterizing portion introduced by "characterised in that"
   or "characterised by".
 
 EPC Citation: Rule 43(1) EPC
-EPO Guidelines: F-IV, 3.2 - Two-part form
+EPO Guidelines: F-IV, 2.2-2.3 - Two-part form
 
 Fix Suggestion:
   BEFORE: "1. A system comprising: a processor; a memory; ..."
@@ -185,6 +184,7 @@ Fix Suggestion:
 IMPORTANT ISSUES (Should Fix):
 ================================
 
+[Manual review example, only after reading the description]
 [Claim 5] Unsupported Generalization
 --------------------------------------
 Issue: Claim broader than description supports
@@ -229,7 +229,7 @@ EPO-SPECIFIC GUIDANCE:
 ========================
 
 Key Differences from USPTO Practice:
-- Two-part form expected (Rule 43(1) EPC)
+- Two-part form where appropriate (Rule 43(1) EPC)
 - Stricter clarity standard (no "substantially" without definition)
 - Claims must be supported by description (Art. 84)
 - Method of treatment claims excluded (Art. 53(c) EPC)
@@ -291,7 +291,7 @@ epo-claims-review-[date]/
 
 | Aspect | USPTO | EPO |
 |--------|-------|-----|
-| Claim form | Open (comprising) | Two-part form preferred (Rule 43) |
+| Claim form | Open (comprising) | Two-part form where appropriate (Rule 43) |
 | Clarity standard | Reasonable certainty | Strict objective clarity |
 | Terms of degree | Allowed with spec support | Must have objective reference |
 | Functional features | Means-plus-function | Must be clear per se |
@@ -316,7 +316,7 @@ Art. 123(2) added-matter review is not implemented; record it as skipped.
 
 ## Tips
 
-1. **Use two-part form**: Identify closest prior art and structure claims accordingly
+1. **Assess two-part form**: Use it where appropriate; record reasons for a different form
 2. **Be precise**: EPO examiners apply stricter clarity standards than USPTO
 3. **Check support**: Every claim feature must be in the description
 4. **Avoid US-isms**: "Means for", "whereby", broad functional language

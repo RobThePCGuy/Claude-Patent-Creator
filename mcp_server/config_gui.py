@@ -116,8 +116,8 @@ def launch() -> int:
             )
 
             if opt.type == "bool":
-                original = "true" if value.lower() == "true" else "false"
-                var = tk.BooleanVar(value=value.lower() == "true")
+                original = _config.normalize(opt.key, value)
+                var = tk.BooleanVar(value=original == "true")
                 ttk.Checkbutton(frame, variable=var).grid(
                     row=inner_row * 2, column=1, sticky="w", padx=8, pady=(8, 0)
                 )

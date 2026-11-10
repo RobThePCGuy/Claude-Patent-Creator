@@ -66,7 +66,11 @@ search_mpep("fee schedule", source_filter="37_CFR")
 
 ### 2. `get_mpep_section`
 
-Retrieve all content from specific MPEP section.
+Retrieve indexed content from an MPEP chapter or section. Check `truncated`,
+`returned_chunks`, `total_chunks`, `boundary` and `coverage` before presenting it.
+The default returns at most 50 chunks. Increase `max_chunks` if it is truncated.
+Subsection boundaries are approximate and extraction can leave gaps even when
+`truncated` is false; do not describe the result as guaranteed full section text.
 
 **Inputs:**
 - `section_number` (string, required): MPEP section number (e.g., `"2100"`, `"608.01"`)
@@ -128,9 +132,7 @@ get_mpep_section("608.01")
 ## Implementation Notes
 
 **Index Location:**
-- FAISS index: `mcp_server/index/mpep_index.faiss`
-- Metadata: `mcp_server/index/mpep_metadata.json`
-- BM25 index: `mcp_server/index/mpep_bm25.json`
+Use the Storage paths printed by the installed CLI's `health` command. The index directory contains `mpep_index.faiss`, `mpep_metadata.json`, and `mpep_bm25.json`. `mcp_server.data_paths.index_dir()` resolves the actual directory, including `PATENT_DATA_DIR`, platform defaults and existing legacy data. See the **Index Manager** skill for commands on both platforms.
 
 **Search Architecture:**
 1. HyDE Query Expansion (hypothetical documents)

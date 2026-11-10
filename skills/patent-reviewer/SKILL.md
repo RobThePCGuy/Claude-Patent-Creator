@@ -5,7 +5,13 @@ description: Expert system for reviewing utility patent applications against USP
 
 # Patent Creator Skill
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Comprehensive patent creation system with USPTO MPEP, prior art databases, and USPTO API for complete patent application analysis.
+
+## Patent search providers
+
+Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
 
 ## When to Use
 
@@ -26,7 +32,9 @@ Review patent applications for USPTO compliance, analyze claims/specifications/f
 ### MPEP & Regulations
 
 - `search_mpep` - Search MPEP, 35 USC, 37 CFR
-- `get_mpep_section` - Get complete MPEP section by number
+- `get_mpep_section` - Retrieve indexed section content by number. Check `truncated`
+  and `coverage`; the default caps output at 50 chunks and subsection boundaries
+  are approximate. Increase `max_chunks` if needed, and do not claim complete text.
 
 ### Patent Search
 
@@ -69,14 +77,14 @@ Runs all analyzers in **parallel** for comprehensive analysis:
 - Definiteness
 - Claim structure
 - Subjective terms
-- Means-plus-function compliance
+- Means-plus-function: separate manual review with the specification required
 
 ### Specification Review (/review-specification)
 
 **35 USC 112(a) Requirements:**
 - Written description
 - Enablement
-- Best mode
+- Best mode: manual review only; not implemented by the analyzer
 - Claim support
 
 ### Formalities Check (/review-formalities)
@@ -135,7 +143,7 @@ search_patents_google(
     limit=20
 )
 
-# CPC classification search
+# Optional CPC classification search, only after check_bigquery_status succeeds
 search_patents_by_cpc_bigquery(cpc_code="G06N3", limit=50)
 ```
 

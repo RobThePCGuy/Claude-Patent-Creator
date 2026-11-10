@@ -861,27 +861,33 @@ def setup_command(args):
         print(f"\n[3/4] Downloading: {', '.join(downloads_needed)}", file=sys.stderr)
         print("This may take several minutes...\n", file=sys.stderr)
 
-        # Download MPEP if needed
-        if "MPEP" in downloads_needed:
-            if download_mpep_pdfs(MPEP_DOWNLOAD_URL):
-                extract_mpep_pdfs()
-            else:
-                print("\n[X] MPEP download failed. Cannot continue.", file=sys.stderr)
-                return 1
+        operations = {
+            "MPEP": lambda: download_mpep_pdfs(MPEP_DOWNLOAD_URL) and extract_mpep_pdfs(),
+            "35 USC": download_35_usc,
+            "37 CFR": download_37_cfr,
+            "Subsequent Publications": download_subsequent_publications,
+        }
+        missing_optional = []
+        for label in downloads_needed:
+            if operations[label]():
+                continue
+            if label == "Subsequent Publications":
+                # A supplement to the MPEP: search still works without it, and
+                # the coverage report names it as missing.
+                print(
+                    f"\n[!] {label} download failed. Continuing without it; "
+                    "searches won't include those updates.",
+                    file=sys.stderr,
+                )
+                missing_optional.append(label)
+                continue
+            print(f"\n[X] {label} download or extraction failed. Setup stopped.", file=sys.stderr)
+            return 1
 
-        # Download 35 USC if needed
-        if "35 USC" in downloads_needed:
-            download_35_usc()
-
-        # Download 37 CFR if needed
-        if "37 CFR" in downloads_needed:
-            download_37_cfr()
-
-        # Download Subsequent Publications if needed
-        if "Subsequent Publications" in downloads_needed:
-            download_subsequent_publications()
-
-        print("\n[OK] All downloads complete", file=sys.stderr)
+        if missing_optional:
+            print(f"\n[OK] Required downloads complete ({', '.join(missing_optional)} missing)", file=sys.stderr)
+        else:
+            print("\n[OK] All downloads complete", file=sys.stderr)
     elif not pdfs_cleaned_up:
         print("\n[OK] All sources already present", file=sys.stderr)
 
@@ -1380,12 +1386,11 @@ def download_mpep_command(args):
     print("Downloading MPEP PDFs", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
 
-    if download_mpep_pdfs(MPEP_DOWNLOAD_URL):
-        extract_mpep_pdfs()
+    if download_mpep_pdfs(MPEP_DOWNLOAD_URL) and extract_mpep_pdfs():
         print("\n[OK] MPEP download and extraction complete", file=sys.stderr)
         return 0
     else:
-        print("\n[X] MPEP download failed.", file=sys.stderr)
+        print("\n[X] MPEP download or extraction failed.", file=sys.stderr)
         return 1
 
 
@@ -1396,21 +1401,19 @@ def download_all_command(args):
     print("=" * 60, file=sys.stderr)
 
     success = True
-    if download_mpep_pdfs(MPEP_DOWNLOAD_URL):
-        extract_mpep_pdfs()
+    if download_mpep_pdfs(MPEP_DOWNLOAD_URL) and extract_mpep_pdfs():
         print("[OK] MPEP complete", file=sys.stderr)
     else:
         print("[X] MPEP failed", file=sys.stderr)
         success = False
 
-    download_35_usc()
-    print("[OK] 35 USC complete", file=sys.stderr)
-
-    download_37_cfr()
-    print("[OK] 37 CFR complete", file=sys.stderr)
-
-    download_subsequent_publications()
-    print("[OK] Updates complete", file=sys.stderr)
+    for label, download in [("35 USC", download_35_usc), ("37 CFR", download_37_cfr),
+                            ("Updates", download_subsequent_publications)]:
+        if download():
+            print(f"[OK] {label} complete", file=sys.stderr)
+        else:
+            print(f"[X] {label} download failed", file=sys.stderr)
+            success = False
 
     print("\nEPO/PCT law sources:", file=sys.stderr)
     if _setup_epo_pct_sources(MPEP_DIR):
@@ -1421,10 +1424,10 @@ def download_all_command(args):
         )
 
     if success:
-        print("\n[OK] All source downloads completed successfully", file=sys.stderr)
+        print("\n[OK] Required US source downloads completed successfully", file=sys.stderr)
         return 0
     else:
-        print("\n[WARNING] Some downloads may have failed.", file=sys.stderr)
+        print("\n[X] Required US source downloads failed. See the errors above.", file=sys.stderr)
         return 1
 
 

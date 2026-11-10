@@ -40,9 +40,9 @@ Use this agent when:
 
 ### Filtering Options
 - Source: MPEP, 35_USC, 37_CFR, SUBSEQUENT
-- Statute type: procedural, patentability, etc.
-- Regulation type: filing, examination, fees
-- Updates: post-Jan 2024 only
+- `source_filter`: source collection
+- `is_statute`, `is_regulation`, `is_update`: Boolean type flags
+- There are no procedural, patentability, or fees category filters. Put those subjects in `query`; inspect source dates rather than assuming an update cutoff.
 
 ### Coverage
 - Complete MPEP manual (12,543 chunks)
@@ -78,7 +78,7 @@ Via MCP server:
 ## Output Format
 
 Each result includes:
-- Relevance score (0-1)
+- Raw relevance score (not normalized confidence; may be negative or exceed one)
 - Source (MPEP/35_USC/37_CFR)
 - Section number
 - Page numbers

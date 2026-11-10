@@ -61,7 +61,7 @@ def register_epo_analyzer_tools(
     @mcp.tool()
     @track_performance("tool_review_epo_claims")
     def review_epo_claims(claims_text: str) -> dict[str, Any]:
-        """Analyze patent claims for Art. 84 EPC compliance: clarity, conciseness, support, two-part form (Rule 43(1) EPC), and Art. 52(2) excluded subject matter."""
+        """Analyze patent claims for Art. 84 EPC compliance: clarity, conciseness, two-part form (where appropriate under Rule 43(1) EPC), and Art. 52(2) excluded subject matter. Description support is not checked because no description is supplied."""
         try:
             # Validate inputs
             validated = validate_input(ReviewClaimsInput, claims_text=claims_text)
@@ -240,7 +240,7 @@ def register_epo_analyzer_tools(
         specification: Optional[str] = None,
         drawings_present: bool = False,
     ) -> dict[str, Any]:
-        """Check EPO formalities per Rules 42-49 EPC: abstract (Rule 47, <=150 words, reference signs), title (Rule 44), description sections (Rule 42), drawings (Rule 46), and claims fees (Rule 45)."""
+        """Check EPO formalities per Rules 42-49 EPC: abstract (Rule 47, preferably <=150 words, reference signs), title (Rule 44), description sections (Rule 42), drawing-reference heuristics (Rule 49(2) and OJ EPO 2025 A49; physical drawings not inspected), and claims fees (Rule 45)."""
         try:
             # Validate inputs
             validated = validate_input(
@@ -355,7 +355,7 @@ def register_epo_analyzer_tools(
         specification: Optional[str] = None,
         drawings_present: bool = False,
     ) -> dict[str, Any]:
-        """Check PCT formalities per Rules 5-12: abstract (Rule 8, <=150 words), description (Rule 5), claims (Rule 6), terminology (Rule 10, metric/Celsius), and physical requirements (Rule 11, A4/margins)."""
+        """Check PCT formalities per Rules 5-12: abstract (Rule 8, preferably 50-150 English words), description (Rule 5), claims (Rule 6), terminology (Rule 10, metric/Celsius), and a manual physical-requirements checklist (Rule 11). Page layout and drawing quality are not inspected."""
         try:
             # Validate inputs
             validated = validate_input(

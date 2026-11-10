@@ -198,7 +198,7 @@ technically), summary (one paragraph per independent claim), brief
 description of drawings, detailed description covering EVERY embodiment
 with reference numerals, reduction to practice, and a variations paragraph
 (broaden: any model, any similarity metric, thresholds exemplary). The spec
-must contain each claim term VERBATIM — the support checker verifies this.
+should use consistent claim terminology. The support checker uses word-based matching, not literal phrase verification. Build a manual feature-to-passage chart; if exact wording is required for this workflow, check each phrase separately. Matching words alone does not establish legal support.
 
 **Source-verified claims (mandatory).** Every limitation of every claim
 must be verified against the IMPLEMENTATION itself — open the code — not
@@ -220,9 +220,9 @@ ones (mechanical exhaustion, global overrun backstops) — and the figure
 must show every branch with labeled edges.
 
 Figures: `create_block_diagram` for the system (numbered components
-matching the spec), `render_diagram` with hand-written DOT per independent
-claim so decision branches carry Yes/No edge labels (`create_flowchart`
-does not label edges), with reference numerals on every node.
+matching the spec), and `create_flowchart` with labeled destinations, for example
+`"next": [{"id": "success", "label": "Yes"}, {"id": "error", "label": "No"}]`.
+Use `render_diagram` with DOT for custom layouts. Include reference numerals on every node.
 
 ## Phase 4 — Machine verification loop (iterate to clean)
 
@@ -241,7 +241,7 @@ does not label edges), with reference numerals on every node.
    and record the verdicts — that manual pass is part of the workflow, not
    optional.
 3. `review_specification` (claims + spec) — iterate until ZERO critical
-   issues: every flagged claim element gets woven into the spec verbatim.
+   issues, resolving each genuine support gap without inventing disclosure. Then manually verify the feature-to-passage chart. Zero issues does not prove verbatim coverage or legal sufficiency.
 4. `check_formalities` (abstract 50-150 words, title limits, sections).
 
 **Verification stamps carry content hashes, and edits invalidate them.**

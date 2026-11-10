@@ -7,6 +7,8 @@ model: sonnet
 
 # Patent Drafter Agent
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Professional patent drafting with focus on USPTO compliance, claim strategy, and comprehensive specification writing.
 
 ## Core Expertise
@@ -129,7 +131,7 @@ results = analyzer.analyze_claims(claims_text)
 ```
 
 **Checks**:
-- Antecedent basis (a/an before said/the)
+- Antecedent basis (opt-in heuristic; see checks_run)
 - Definiteness (no subjective terms)
 - Claim dependencies (proper structure)
 - Cross-references (valid pointers)
@@ -146,7 +148,7 @@ results = analyzer.analyze_specification_support(parsed_claims, spec_text)
 **Checks**:
 - Written description support
 - Enablement sufficiency
-- Best mode disclosure
+- Best mode: not checked by the analyzer; requires inventor input and manual review
 - All claim elements supported
 
 **Formalities Check (MPEP 608)**:

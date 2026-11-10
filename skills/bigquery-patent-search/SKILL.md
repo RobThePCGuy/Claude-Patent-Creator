@@ -7,7 +7,7 @@ model: sonnet
 
 # BigQuery Patent Search Skill
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+> **Windows PowerShell:** replace a macOS/Linux Python invocation with `& "$HOME\patent-creator-venv\Scripts\python.exe"` and a CLI invocation with `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`. Keep script paths quoted. Python code blocks are Python source, not shell commands.
 
 Fast, cloud-based patent searching across 100 million+ worldwide patents using Google BigQuery.
 
@@ -48,7 +48,7 @@ This skill requires Google Cloud authentication:
 
 **Prerequisites**:
 1. Google Cloud Project (free to create)
-2. BigQuery API enabled (free for reasonable usage)
+2. BigQuery API enabled (queries consume scan quota)
 3. Application Default Credentials configured
 
 **Setup Commands**:
@@ -60,11 +60,15 @@ This skill requires Google Cloud authentication:
 gcloud auth application-default login
 
 # Set project (get ID from console.cloud.google.com)
-export GOOGLE_CLOUD_PROJECT=your-project-id
+"$HOME/patent-creator-venv/bin/patent-creator" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
-**Environment Variable**:
-Set in `.env` file: `GOOGLE_CLOUD_PROJECT=your-project-id`
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set GOOGLE_CLOUD_PROJECT your-project-id
+```
+
+Restart Claude Code after saving the project. BigQuery is optional; the **Patent Search** skill uses SerpApi by default.
 
 ## How to Use
 
@@ -101,9 +105,15 @@ When this skill is invoked:
    ```
 
 4. **Get patent details**:
+   Description retrieval is opt-in and can scan over 1 TiB, exceeding the default
+   350 GiB cap. Use the free dry-run estimate and obtain approval for any cap
+   increase before retrying. Omit `include_description` for a smaller lookup.
    ```python
    patent = searcher.get_patent_details(
-       patent_number="US10123456B2"  # Publication number
+       patent_number="US10123456B2",  # Publication number
+       include_abstract=True,
+       include_claims=True,
+       include_description=True  # Large scan; opt in only when needed
    )
    ```
 
@@ -113,30 +123,31 @@ Uses `patents-public-data.patents` on Google BigQuery:
 - **100M+ worldwide patents**
 - **12M+ US patents** with full text
 - Updated weekly
-- Free to query (no billing for reasonable usage)
+- Each query consumes scan quota. A default keyword search scans hundreds of GiB.
 
 ## Search Result Format
 
-Each result includes:
+Keyword search returns these keys (unavailable dates are null):
 ```python
 {
-    "publication_number": "US10123456B2",
+    "patent_number": "US-10123456-B2",
+    "application_number": "US-201615123456-A",
     "title": "Method and system for...",
     "abstract": "A system for...",
     "filing_date": "2019-01-15",
     "grant_date": "2020-06-30",
+    "publication_date": "2020-06-30",
     "country": "US",
-    "cpc_codes": ["G06F16/245", "H04L29/06"],
-    "inventors": ["John Doe", "Jane Smith"],
-    "assignee": "Example Corp"
+    "family_id": "12345678",
+    "relevance_score": 4
 }
 ```
 
-Full patent details also include:
-- `claims`: Full text of all claims
-- `description`: Complete description section
-- `priority_date`: Earliest priority date
-- `family_id`: Patent family ID
+Detail lookups return the identifiers, title, dates, country and family ID above,
+plus `cpc_codes` and `ipc_codes`, but no `relevance_score`. They include `claims`
+by default. `abstract` and `description` require their respective `include_*`
+flags. Text sections are strings. Inventors, assignees and priority dates are
+not returned by this implementation. Missing requested text may be empty.
 
 ## Presentation Format
 
@@ -177,9 +188,9 @@ Top 5 Most Relevant:
    - "encryption OR cryptography"
    - "(mobile OR wireless) AND security"
 
-2. **Phrase Search**:
-   - "distributed ledger technology"
-   - "public key infrastructure"
+2. **Phrase Search** (include the double quotes in the query string):
+   - `query='"distributed ledger technology"'`
+   - `query='"public key infrastructure"'`
 
 3. **CPC Code Hierarchies**:
    - "G06F" = Computing
@@ -201,14 +212,15 @@ If BigQuery is not configured:
 1. Check if `google-cloud-bigquery` is installed
 2. Verify authentication: `gcloud auth application-default login`
 3. Confirm project ID in environment: `GOOGLE_CLOUD_PROJECT`
-4. Test with: `~/patent-creator-venv/bin/patent-creator check-bigquery`
+4. Test with: `"$HOME/patent-creator-venv/bin/patent-creator" check-bigquery`
 
 ## Cost Considerations
 
 BigQuery pricing:
 - **First 1 TiB/month**: FREE
 - **After 1 TiB**: $6.25 per TiB queried (on-demand)
-- **Typical query**: 10-50 MB per search
+- **Observed default keyword scan**: roughly 325-341 GiB per search, about three searches per 1 TiB allowance. These are historical measurements; use the dry-run estimate for the current query.
+- Selecting fewer text fields reduces scan size. Country, date and keyword filters do not reliably reduce bytes scanned on this unpartitioned table.
 - **Bytes-billed ceiling**: enforced per-query via `PATENT_BIGQUERY_MAX_BYTES_BILLED` (default 350 GiB)
 
 ## Tools Available

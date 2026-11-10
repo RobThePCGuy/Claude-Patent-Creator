@@ -7,6 +7,8 @@ model: sonnet
 
 # PCT Application Skill
 
+The formalities tool receives text and a drawings-present flag, not page or drawing files. Physical layout, margins, paper size, line spacing, drawing quality, request forms, and payments are not inspected. Mark them NOT CHECKED until a separate review of the final documents or records supplies evidence. Report only checks actually run; the checklist below is not a prefilled result.
+
 Preparation and validation of Patent Cooperation Treaty (PCT) international applications under PCT Rules 5-12.
 
 ## When to Use
@@ -31,7 +33,7 @@ Provides comprehensive PCT application support:
    - Abstract requirements (Rule 8 PCT)
    - Drawings standards (Rule 11 PCT)
    - Physical requirements (Rule 11 PCT)
-   - Sequence listings (Rule 12 PCT, WIPO Standard ST.26)
+   - Sequence listings (Rules 5.2 and 13ter PCT, WIPO Standard ST.26)
 
 2. **Unity of Invention** (Rule 13 PCT):
    - Single general inventive concept assessment
@@ -41,7 +43,7 @@ Provides comprehensive PCT application support:
    - Claim grouping strategy
 
 3. **Formalities Validation** (Rules 3-12 PCT):
-   - All formal requirements checking
+   - Text heuristics and a separate manual checklist
    - Fee calculation per Receiving Office
    - Language requirements per RO
    - Physical document requirements
@@ -57,7 +59,7 @@ Provides comprehensive PCT application support:
 
 **MCP Tools Available**:
 - `check_pct_formalities` - PCT Rules 5-12 formalities checking
-- `search_patent_law` - Search PCT rules, regulations, administrative instructions
+- `search_patent_law` - Search indexed PCT treaty, regulations, and examination guidance. Administrative Instructions and full WIPO standards are not downloaded; consult WIPO directly
 - `search_patents_google` - Prior art search for unity assessment (fallback: `search_patents_bigquery`)
 
 ## How to Use
@@ -125,7 +127,7 @@ Structure requirements:
 
 ### Abstract (Rule 8 PCT)
 
-- Maximum 150 words
+- Preferably 50-150 words in English
 - Indicate technical field
 - Clear summary of technical problem, solution, and principal use
 - Designate most illustrative figure
@@ -137,7 +139,7 @@ Structure requirements:
 - Usable area: 26.2cm x 17cm
 - Margins: top 2.5cm, left 2.5cm, right 1.5cm, bottom 1cm
 - Black, dense, well-defined lines
-- No text except single words
+- Use only indispensable short keywords in drawings; explain other details in the description
 - Reference signs matching description
 
 ## Unity of Invention (Rule 13 PCT)
@@ -197,29 +199,13 @@ Do not treat search or examination report issuance as a guaranteed fixed month.
 
 ## Fee Calculation
 
-### Base Fees (2025 estimates)
+Retrieve amounts and due dates from the official schedules for the selected route, Office, currency, entity status, and payment date. Record the source URL and date checked with every estimate. Do not reuse a static total.
 
-| Fee | Amount | Notes |
-|-----|--------|-------|
-| Transmittal fee | Varies by RO | RO/US: USD 280 |
-| International filing fee | CHF 1,330 | Electronic reduction: -CHF 200 |
-| Search fee | Varies by ISA | ISA/EP: EUR 1,775; ISA/US: USD 2,680 |
-| Additional page fee | CHF 16/page | Beyond 30 pages |
-| Additional claim fee | Varies | Beyond limits set by ISA |
+- [EPO fee schedule](https://www.epo.org/en/applying/fees)
+- [WIPO PCT fee schedule](https://www.wipo.int/en/web/pct-system/texts/rules/rtax)
+- [USPTO fee schedule](https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule)
 
-### Electronic Filing Reduction
-
-Filing via ePCT: CHF 200 reduction on international filing fee
-
-### National Phase Fees (Estimates)
-
-| Country | Entry Fee | Notes |
-|---------|-----------|-------|
-| US (371) | ~USD 1,600 | Basic filing + search + examination |
-| EP (Euro-PCT) | ~EUR 2,595 | Filing + search + designation |
-| JP | ~JPY 195,000 | National fee + translation |
-| CN | ~CNY 3,500 | National fee + translation |
-| KR | ~KRW 460,000 | National fee + translation |
+The PCT international filing-fee supplement is based on sheets beyond 30, not claims beyond 15. Electronic reductions depend on the filing format and applicable conditions; using ePCT alone does not fix the reduction. Additional search fees for lack of unity and national-phase claims fees are separate.
 
 ## National Phase Strategy
 
@@ -274,15 +260,15 @@ Special technical feature: [identified feature]
 Risk of unity objection: LOW/MEDIUM/HIGH
 
 ABSTRACT (Rule 8 PCT):
-[PASS/FAIL] Word count within 150
+[ADVISORY] Word count; preferably 50-150 words in English
 [PASS/FAIL] Figure designated
 [PASS/FAIL] Technical field indicated
 
 PHYSICAL REQUIREMENTS (Rule 11 PCT):
-[PASS/FAIL] A4 format
-[PASS/FAIL] Margins
-[PASS/FAIL] Page numbering
-[PASS/FAIL] Line spacing
+[NOT CHECKED] A4 format; manual inspection required
+[NOT CHECKED] Margins; manual inspection required
+[NOT CHECKED] Page numbering; manual inspection required
+[NOT CHECKED] Line spacing; manual inspection required
 
 FEES:
 Transmittal: [amount]
@@ -319,3 +305,5 @@ Works with other skills/agents:
 - **Read**: To load application documents
 - **Bash**: To run PCT compliance checks
 - **Write**: To save compliance reports and application drafts
+
+Legal references: [PCT Rule 8.1(b)](https://www.wipo.int/en/web/pct-system/texts/rules/r8) gives a preferred English abstract length, not a hard maximum; [Rule 11.11](https://www.wipo.int/en/web/pct-system/texts/rules/r11) permits indispensable short catchwords, including in flow diagrams.

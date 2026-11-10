@@ -6,6 +6,8 @@ model: sonnet
 
 # EPO Patent Analyzer
 
+The formalities tool receives text and a drawings-present flag, not page or drawing files. Physical layout, margins, paper size, line spacing, drawing quality, request forms, and payments are not inspected. Mark them NOT CHECKED until a separate review of the final documents or records supplies evidence. Report only checks actually run; the checklist below is not a prefilled result.
+
 Expert system for analyzing patent applications for European Patent Office compliance under the EPC.
 
 Report `checks_run`, `checks_skipped`, and skip reasons when supplied. If a
@@ -61,8 +63,8 @@ Use this agent when:
 
 - Description sections (Rule 42): correct order and content
 - Claims form (Rule 43): two-part, numbering, categories
-- Drawings (Rule 46): margins, no text, reference signs
-- Abstract (Rule 47): max 150 words, figure designation
+- Drawings (Rule 49(2) and the President's decision): manual inspection of margins, indispensable keywords, and reference signs
+- Abstract (Rule 47): preferably no more than 150 words, figure designation
 - Physical requirements: A4, margins, fonts
 - Fee calculations: claims > 15, pages > 35
 
@@ -106,7 +108,7 @@ For each issue:
 
 ### Two-Part Form (Rule 43(1) EPC)
 
-Independent claims should normally contain:
+Where two-part form is appropriate, independent claims contain:
 - **Preamble**: designation of subject-matter + known features
 - **Characterizing portion**: "characterised in that" + novel features
 
@@ -140,3 +142,5 @@ Works with other skills/agents:
 - Coordinates with **EPO Patent Search** skill for prior art context
 - Invokes **PCT Application** skill for Euro-PCT applications
 - Compares with **Patent Analyzer** agent for US/EPO differences
+
+Legal references: [EPC Rule 47](https://www.epo.org/en/legal/epc/2020/r47.html), [two-part form where appropriate](https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_2_3.html), [Rule 49(2)](https://www.epo.org/en/legal/epc/2020/r49.html), and [President's presentation decision, OJ EPO 2025 A49](https://www.epo.org/en/legal/official-journal/2025/07/a49). Rule 46 was deleted effective 1 February 2023.

@@ -174,6 +174,9 @@ class BigQueryPatentSearch:
                 + _render_cmd("Install with: pip install google-cloud-bigquery db-dtypes")
             )
 
+        if _config is not None:
+            _config.apply_config_to_env()
+
         # Determine project for billing — try multiple sources
         self.billing_project = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
 
@@ -344,9 +347,8 @@ class BigQueryPatentSearch:
         (AND across terms) rather than as one verbatim phrase. Rules:
 
         * ``"quoted substrings"`` are kept together as exact phrases.
-        * Standalone boolean operators (and/or/not) and parentheses are dropped,
-          so Boolean-style input degrades gracefully into an all-terms match
-          instead of being matched literally (which found nothing).
+        * Operators and parentheses are excluded from this term inventory.
+          The predicate parser preserves their Boolean meaning.
         * Surrounding punctuation is stripped and duplicate terms removed.
 
         Returns an ordered, de-duplicated list of lowercase terms.
@@ -376,27 +378,92 @@ class BigQueryPatentSearch:
                 terms.append(term)
         return terms
 
+    @staticmethod
+    def _boolean_predicate(query: str, clauses: dict[str, str]) -> str:
+        """Parse NOT, AND (including adjacent terms), OR and parentheses.
+
+        Values remain query parameters; only generated clauses enter the SQL.
+        Invalid syntax fails before any dry run or billed query.
+        """
+        tokens = [
+            token
+            for token in re.findall(r'"[^"\n]*"|[()]|[^\s()"]+|"', query)
+            # Bare punctuation such as the comma in '"wireless power", sensor'
+            # is not a term; the term inventory drops it too.
+            if token in ('"', "(", ")") or token.startswith('"') or token.strip(".,;:'\"-/")
+        ]
+        position = 0
+
+        def peek():
+            return tokens[position].upper() if position < len(tokens) else None
+
+        def atom():
+            nonlocal position
+            token = peek()
+            if token == "NOT":
+                position += 1
+                return f"(NOT {atom()})"
+            if token == "(":
+                position += 1
+                result = union()
+                if peek() != ")":
+                    raise ValueError("Unclosed parenthesis in search query")
+                position += 1
+                return f"({result})"
+            if token in (None, "AND", "OR", ")", '"'):
+                raise ValueError("Expected a search term in Boolean query")
+            raw = tokens[position]
+            position += 1
+            term = raw[1:-1].strip().lower() if raw.startswith('"') else raw.lower().strip(".,;:'\"-/")
+            if term not in clauses:
+                raise ValueError("Empty or invalid search term")
+            return clauses[term]
+
+        def intersection():
+            nonlocal position
+            result = atom()
+            while peek() not in (None, "OR", ")"):
+                if peek() == "AND":
+                    position += 1
+                result = f"({result} AND {atom()})"
+            return result
+
+        def union():
+            nonlocal position
+            result = intersection()
+            while peek() == "OR":
+                position += 1
+                result = f"({result} OR {intersection()})"
+            return result
+
+        result = union()
+        if position != len(tokens):
+            raise ValueError("Unexpected closing parenthesis in search query")
+        return result
+
     def search_by_keywords(
         self,
         query: str,
-        country: str = "US",
+        country: Optional[str] = "US",
         limit: int = 20,
         offset: int = 0,
         start_year: Optional[int] = None,
         end_year: Optional[int] = None,
         search_fields: Optional[list[str]] = None,
+        cpc_filter: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """
         Search patents by keyword matching in abstract, title, or claims
 
         Args:
             query: Search query string
-            country: Country code (US, EP, JP, CN, etc.)
+            country: Country code (US, EP, JP, CN, etc.), or None for worldwide
             limit: Maximum number of results
             offset: Number of results to skip
             start_year: Filter by filing year >= start_year
             end_year: Filter by filing year <= end_year
             search_fields: Which fields to search in
+            cpc_filter: Match any of these CPC prefixes, combined with all other filters
 
         Returns:
             List of patent dictionaries
@@ -422,12 +489,21 @@ class BigQueryPatentSearch:
         if LOGGING_AVAILABLE and logger:
             logger.info("bigquery_search_started", extra=log_extra)
 
-        conditions = ["country_code = @country"]
+        conditions = []
         parameters = [
-            bigquery.ScalarQueryParameter("country", "STRING", country),  # type: ignore[union-attr]
             bigquery.ScalarQueryParameter("limit", "INT64", limit),  # type: ignore[union-attr]
             bigquery.ScalarQueryParameter("offset", "INT64", offset),  # type: ignore[union-attr]
         ]
+
+        if country is not None:
+            conditions.append("country_code = @country")
+            parameters.append(bigquery.ScalarQueryParameter("country", "STRING", country))
+        if cpc_filter:
+            conditions.append(
+                "EXISTS (SELECT 1 FROM UNNEST(cpc) AS c, "
+                "UNNEST(@cpc_prefixes) AS prefix WHERE STARTS_WITH(c.code, prefix))"
+            )
+            parameters.append(bigquery.ArrayQueryParameter("cpc_prefixes", "STRING", cpc_filter))
 
         # Map requested fields to (SQL expression, relevance weight). A title hit
         # is a stronger relevance signal than an abstract/claims hit.
@@ -438,7 +514,7 @@ class BigQueryPatentSearch:
             field_exprs.append(("LOWER(title_localized[SAFE_OFFSET(0)].text)", 3))
         if "abstract" in search_fields:
             field_exprs.append(("LOWER(abstract_localized[SAFE_OFFSET(0)].text)", 1))
-        if "claims" in search_fields and country == "US":
+        if "claims" in search_fields and country in ("US", None):
             field_exprs.append(("LOWER(claims_localized[SAFE_OFFSET(0)].text)", 1))
 
         # Split the query into terms. Each term must appear in at least one
@@ -458,6 +534,7 @@ class BigQueryPatentSearch:
             return []
 
         relevance_parts: list[str] = []
+        term_clauses = {}
         for i, term in enumerate(terms):
             pname = f"term{i}"
             # Escape LIKE metacharacters so a term containing % or _ (or the
@@ -468,12 +545,13 @@ class BigQueryPatentSearch:
                 bigquery.ScalarQueryParameter(pname, "STRING", f"%{escaped}%")  # type: ignore[union-attr]
             )
             term_clause = " OR ".join(f"{expr} LIKE @{pname}" for expr, _ in field_exprs)
-            conditions.append(f"({term_clause})")
+            term_clauses[term] = f"(COALESCE(({term_clause}), FALSE))"
             for expr, weight in field_exprs:
                 relevance_parts.append(
                     f"CASE WHEN {expr} LIKE @{pname} THEN {weight} ELSE 0 END"
                 )
 
+        conditions.append(self._boolean_predicate(query, term_clauses))
         relevance_expr = " + ".join(relevance_parts) if relevance_parts else "0"
 
         if start_year:

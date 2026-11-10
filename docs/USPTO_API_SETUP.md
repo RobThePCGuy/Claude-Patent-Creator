@@ -6,12 +6,12 @@ Complete guide for setting up the USPTO Open Data Portal API to access 11M+ pate
 
 ## Overview
 
-The USPTO API provides live access to the patent database, allowing you to search recent patents and retrieve specific patents by number without downloading the full corpus.
+The USPTO API provides live access to the patent database, allowing you to search recent patents and retrieve specific patents by number through a network connection.
 
 ## Why Use the USPTO API?
 
 - **Real-time data**: Access patents granted in the last few days
-- **No download**: Search 11M+ patents without the 15GB local corpus
+- **No patent-corpus download**: Patent searching uses remote services.
 - **Specific lookups**: Get patents by number (e.g., US11234567)
 - **Always current**: Live connection to USPTO's database
 
@@ -51,11 +51,19 @@ Quick reference:
 [System.Environment]::SetEnvironmentVariable('USPTO_API_KEY', 'your_key_here', 'User')
 ```
 
-**Linux/macOS:**
-```bash
-echo 'export USPTO_API_KEY="your_key_here"' >> ~/.bashrc
-source ~/.bashrc
+**macOS (default zsh):**
+```zsh
+echo 'export USPTO_API_KEY="your_key_here"' >> "$HOME/.zshrc"
+source "$HOME/.zshrc"
 ```
+
+**Linux (Bash):**
+```bash
+echo 'export USPTO_API_KEY="your_key_here"' >> "$HOME/.bashrc"
+source "$HOME/.bashrc"
+```
+
+Use the startup file for the shell you actually run. Alternatively, save the key with the installed CLI's `config set USPTO_API_KEY` command described above.
 
 ### 5. Verify Connection
 
@@ -72,16 +80,14 @@ Once configured, the USPTO API is used automatically for:
 
 - **~100 requests per minute** (USPTO enforced)
 - Spread out large batch operations
-- Local corpus has no rate limits (alternative for bulk searches)
+- The local index contains legal references, not a patent corpus. It cannot replace remote patent search.
 
-## Comparison with Other Options
+## Other Search Options
 
-| Feature | USPTO API | PatentsView API | Local Corpus |
-|---------|-----------|-----------------|--------------|
-| Patents | 11M+ (live) | US patents (current) | 9.2M (1976-present) |
-| Setup | 5 min (ID.me) | 2 min | ~27 hrs (indexing) |
-| Storage | None | None | 15-20GB |
-| Best For | Recent patents | Advanced filtering | Semantic search |
+Google Patents through SerpApi and Google BigQuery are separate remote patent
+search backends. They require their own configuration and have their own quotas.
+This package does not implement offline bulk-patent search. Its local index
+searches legal references such as the MPEP, statutes and regulations.
 
 ## Troubleshooting
 

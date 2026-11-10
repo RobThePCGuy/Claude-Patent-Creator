@@ -7,7 +7,7 @@ model: sonnet
 
 # Patent Diagram Generator Skill
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+> **Windows PowerShell:** replace a macOS/Linux Python invocation with `& "$HOME\patent-creator-venv\Scripts\python.exe"` and a CLI invocation with `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe"`. Keep script paths quoted. Python code blocks are Python source, not shell commands.
 
 Create patent-style technical diagrams including flowcharts, block diagrams, and system architectures using Graphviz.
 
@@ -66,7 +66,7 @@ brew install graphviz
 
 **Python Package**:
 ```bash
-~/patent-creator-venv/bin/python -m pip install graphviz   # normally already installed
+"$HOME/patent-creator-venv/bin/python" -m pip install graphviz   # normally already installed
 ```
 
 ## How to Use
@@ -132,9 +132,9 @@ When this skill is invoked:
        rankdir=LR;
        node [shape=box, style=rounded];
 
-       Input [label="User Input\\n(10)"];
-       Processor [label="Processing Unit\\n(20)"];
-       Output [label="Display\\n(30)"];
+       Input [label="User Input"];
+       Processor [label="Processing Unit"];
+       Output [label="Display"];
 
        Input -> Processor [label="data"];
        Processor -> Output [label="result"];
@@ -153,16 +153,17 @@ When this skill is invoked:
    ```python
    # After creating a diagram, add patent-style reference numbers
    reference_map = {
-       "Input Sensor": 10,
-       "Central Processor": 20,
-       "Memory Storage": 30,
-       "Output Display": 40
+       "User Input": 10,
+       "Processing Unit": 20,
+       "Display": 30
    }
 
-   annotated_path = generator.add_reference_numbers(
+   report = generator.add_reference_numbers(
        svg_path=diagram_path,
-       reference_map=reference_map
+       reference_map=reference_map,
+       return_report=True
    )
+   print(report)  # Check num_references and unmatched_labels before reporting success.
    ```
 
 ## Diagram Templates
@@ -237,7 +238,8 @@ When creating diagrams:
    Run Python code to create SVG/PNG/PDF
 
 3. **Show file location**:
-   "Diagram created: ${CLAUDE_PLUGIN_ROOT}/python\diagrams\method_flowchart.svg"
+   "Diagram created: <absolute path returned by the generator>"
+   Use the MCP result's `path` field or the Python method's returned `Path`; never construct a path from the plugin folder.
 
 4. **List reference numbers** (if added):
    ```
@@ -269,7 +271,7 @@ When creating diagrams:
 If Graphviz is not installed:
 1. Check installation: `dot -V`
 2. Install for your OS (see above)
-3. Verify Python package: `~/patent-creator-venv/bin/python -m pip show graphviz`
+3. Verify Python package: `"$HOME/patent-creator-venv/bin/python" -m pip show graphviz`
 4. Test generation: call the `check_diagram_tools_status` tool, then render a two-node diagram with `render_diagram`
 
 ## Tools Available

@@ -6,6 +6,8 @@ model: sonnet
 
 # Patent Analyzer
 
+Antecedent checking is disabled by default. Report it as skipped unless `checks_run` includes `antecedent_basis`; retain the reason in `checks_skipped`. Enabling `PATENT_ENABLE_ANTECEDENT_CHECK=1` requires a server restart. Even when enabled, this is a low-confidence pattern check requiring manual review.
+
 Expert system for analyzing patent applications for USPTO compliance.
 
 Report `checks_run`, `checks_skipped`, and skip reasons when supplied. If a
@@ -46,7 +48,7 @@ Use this agent when:
 ### Specification Analysis (35 USC 112a)
 - Written description support
 - Enablement assessment
-- Best mode evaluation
+- Best mode: not checked by the analyzer; requires inventor input and manual review
 - Claim element tracking
 - Missing support identification
 - Completeness validation

@@ -7,7 +7,7 @@ Checks:
 - Rule 47 EPC: Form and content of the abstract
 - Rule 42 EPC: Content of the description
 - Rule 43 EPC: Form and content of claims
-- Rule 46 EPC: Form of drawings
+- Rule 49(2) EPC and OJ EPO 2025 A49: Form of drawings
 - Rule 45 EPC: Claims fees (claims in excess of 15)
 """
 
@@ -182,15 +182,15 @@ class EPOFormalitiesChecker(BaseAnalyzer):
     def _check_abstract(self, abstract: str) -> dict:
         """Check abstract compliance with Rule 47 EPC.
 
-        Rule 47(1) EPC: The abstract shall contain a concise summary of the
+        Rule 47(2) EPC: The abstract shall contain a concise summary of the
         disclosure as contained in the description, claims and drawings.
         It shall indicate the technical field and include the principal
         technical solution and principal use(s) of the invention.
 
-        Rule 47(2) EPC: The abstract shall preferably not contain more than
+        Rule 47(3) EPC: The abstract shall preferably not contain more than
         150 words.
 
-        Rule 47(3) EPC: The abstract shall contain reference signs in
+        Rule 47(4) EPC: Features illustrated in drawings require reference signs in
         parentheses referring to the features of the drawings.
 
         Note: Unlike USPTO (MPEP 608.01(b)), EPO does NOT prohibit claim
@@ -206,7 +206,7 @@ class EPOFormalitiesChecker(BaseAnalyzer):
             "issues": [],
         }
 
-        # Check word count (Rule 47(2) - preferably <=150 words)
+        # Check word count (Rule 47(3) - preferably <=150 words)
         if word_count > self.ABSTRACT_PREFERRED_MAX_WORDS:
             self.issues.append(
                 EPOFormalityIssue(
@@ -215,14 +215,13 @@ class EPOFormalitiesChecker(BaseAnalyzer):
                     problem="Abstract exceeds preferred maximum length",
                     current_value=f"{word_count} words",
                     required_value=f"Preferably <= {self.ABSTRACT_PREFERRED_MAX_WORDS} words",
-                    fix=f"Reduce abstract to {self.ABSTRACT_PREFERRED_MAX_WORDS} words or less",
-                    legal_ref="Rule 47(2) EPC",
+                    fix="Consider shortening while preserving a concise summary of the disclosure",
+                    legal_ref="Rule 47(3) EPC",
                 )
             )
-            result["compliant"] = False
-            result["issues"].append("Too long")
+            result["issues"].append("Exceeds preferred word count (advisory)")
 
-        # Check for reference signs in parentheses (Rule 47(3) EPC)
+        # Check for reference signs in parentheses (Rule 47(4) EPC)
         ref_sign_pattern = re.compile(r"\(\d+[a-z]?\)")
         has_ref_signs = bool(ref_sign_pattern.search(abstract))
         result["has_reference_signs"] = has_ref_signs
@@ -236,7 +235,7 @@ class EPOFormalitiesChecker(BaseAnalyzer):
                     current_value="No reference signs found",
                     required_value="Reference signs corresponding to drawings, in parentheses",
                     fix="Add reference numerals from drawings in parentheses, e.g., 'processor (10)'",
-                    legal_ref="Rule 47(3) EPC",
+                    legal_ref="Rule 47(4) EPC",
                 )
             )
             result["issues"].append("Missing reference signs")
@@ -376,11 +375,13 @@ class EPOFormalitiesChecker(BaseAnalyzer):
         return result
 
     def _check_drawings(self, specification: str, drawings_present: bool) -> dict:
-        """Check drawing compliance with Rule 46 EPC.
+        """Compare text references with the supplied drawings-present flag.
 
-        Rule 46 EPC requirements:
+        Page layout and drawing quality are not inspected here.
+
+        Rule 49(2) EPC and OJ EPO 2025 A49 requirements:
         - Drawings on A4 paper
-        - Durable, black, sufficiently dense lines
+        - Reproducible lines; electronic colour/greyscale permitted under A49
         - Cross-sections shown by hatching
         - Reference signs used in drawings must correspond to description
         """
@@ -411,8 +412,8 @@ class EPOFormalitiesChecker(BaseAnalyzer):
                         ),
                         current_value="No drawings",
                         required_value=f'Must include figures: {", ".join(sorted(referenced_figures))}',
-                        fix="Create and include all referenced figures per Rule 46 EPC",
-                        legal_ref="Rule 46 EPC",
+                        fix="Create and include all referenced figures per Rule 49(2) EPC and OJ EPO 2025 A49",
+                        legal_ref="Rule 49(2) EPC and OJ EPO 2025 A49",
                     )
                 )
                 result["compliant"] = False

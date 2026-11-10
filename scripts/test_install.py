@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
-"""Verify installation - Run this after install.py completes"""
+"""Verify installation - Run this after patent-creator setup completes"""
 import sys
+from importlib.metadata import version as distribution_version
+
+from packaging.specifiers import SpecifierSet
 
 print("=" * 60)
 print("Claude Patent Creator - Installation Verification")
@@ -12,17 +15,14 @@ try:
     import faiss
     import mcp
     import numpy
+    import pymupdf  # noqa: F401
     import sentence_transformers
     import torch
     import transformers
+    from mcp.server.mcpserver import MCPServer  # noqa: F401
 
-    # PyMuPDF check - just verify it's available
-    try:
-        import pymupdf  # noqa: F401
-    except ImportError:
-        print("[WARNING] PyMuPDF not installed (optional for PDF processing)")
     print("[OK] All core packages imported successfully")
-except ImportError as e:
+except Exception as e:
     print(f"[X] Import failed: {e}")
     sys.exit(1)
 
@@ -34,32 +34,26 @@ print(f"[OK] Sentence Transformers: {sentence_transformers.__version__}")
 print(f"[OK] FAISS: {faiss.__version__}")
 print(f"[OK] NumPy: {numpy.__version__}")
 # MCP version check with proper error handling
-mcp_version = getattr(mcp, "__version__", "installed")
+mcp_version = getattr(mcp, "__version__", None) or distribution_version("mcp")
 print(f"[OK] MCP: {mcp_version}")
 
-# Check version compatibility
+# Match the runtime dependency bounds in pyproject.toml.
+
 versions_ok = True
-torch_major_minor = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
-if torch_major_minor < (2, 0):
-    print(f"[WARNING] PyTorch version {torch.__version__} is too old (need >=2.0)")
-    versions_ok = False
-
-transformers_major = int(transformers.__version__.split(".")[0])
-if transformers_major < 4:
-    print(
-        f"[WARNING] Transformers version {transformers.__version__} is too old (need >=4.41.0)"
-    )
-    versions_ok = False
-
-st_major = int(sentence_transformers.__version__.split(".")[0])
-if st_major < 5:
-    print(
-        f"[WARNING] Sentence Transformers version {sentence_transformers.__version__} is too old (need >=5.1.2)"
-    )
-    versions_ok = False
-
-if versions_ok:
-    print("[OK] Package versions are compatible")
+for label, version, required in [
+    ("MCP", mcp_version, ">=2.0.0,<3.0.0"),
+    ("PyTorch", torch.__version__, ">=2.0"),
+    ("Transformers", transformers.__version__, ">=4.57.6,<6.0.0"),
+    ("Sentence Transformers", sentence_transformers.__version__, ">=5.1.2,<7.0.0"),
+    ("FAISS", faiss.__version__, ">=1.13.2"),
+    ("NumPy", numpy.__version__, ">=1.26.0,<3.0.0"),
+]:
+    if version not in SpecifierSet(required):
+        print(f"[X] {label} {version} is incompatible (requires {required})")
+        versions_ok = False
+if not versions_ok:
+    sys.exit(1)
+print("[OK] Package versions are compatible")
 
 # Test GPU
 print("\n[3/4] Checking GPU availability...")

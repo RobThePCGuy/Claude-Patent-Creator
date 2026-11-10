@@ -37,7 +37,7 @@ I'll interview you about your invention:
 
 I'll use the **Patent Researcher** agent to:
 - Conduct systematic 7-step search
-- Search BigQuery (100M+ patents)
+- Search Google Patents through SerpApi, or BigQuery if configured
 - Identify top 10 most relevant prior art
 - Assess patentability (novelty + obviousness)
 - Recommend claim strategy
@@ -89,7 +89,7 @@ I'll validate the application:
 
 ### Step 7: Assemble and Validate Draft Package
 
-**IMPORTANT:** Read `skills/setup-assistant/filing-reference.md` before generating any filing instructions. Do NOT estimate fee amounts from memory -- direct the user to the live USPTO fee schedule. All filing is through Patent Center (not EFS-Web). Spec/claims/abstract must be DOCX format for filing (this workflow outputs markdown; conversion is a manual post-step).
+**IMPORTANT:** Read `${CLAUDE_PLUGIN_ROOT}/skills/setup-assistant/filing-reference.md` before generating any filing instructions. Do NOT estimate fee amounts from memory -- direct the user to the live USPTO fee schedule. All filing is through Patent Center (not EFS-Web). Spec/claims/abstract must be DOCX format for filing (this workflow outputs markdown; conversion is a manual post-step).
 
 I'll create the draft package:
 - Specification document (markdown -- requires DOCX conversion before filing)
@@ -159,13 +159,12 @@ Before running this command:
 
 1. **MPEP Index Built**:
    - Run `/setup-patent-system` first (one-time)
-   - Or manually: `~/patent-creator-venv/bin/patent-creator setup` (Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe setup`)
+   - Or manually: `"$HOME/patent-creator-venv/bin/patent-creator" setup` (Windows: `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup`)
 
-2. **BigQuery Configured** (for patent search):
-   - Google Cloud project created
-   - BigQuery API enabled
-   - Authenticated: `gcloud auth application-default login`
-   - Environment variable: `GOOGLE_CLOUD_PROJECT=your-project-id`
+2. **Patent Search Configured**:
+   - SerpApi is the default. Save `SERPAPI_API_KEY` with the installed CLI's `config set` command as shown in `/setup-patent-system`.
+   - BigQuery is an optional alternative, configured through `/configure-bigquery`.
+   - Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
 
 3. **Graphviz Installed** (for diagrams):
    - Windows: `choco install graphviz`

@@ -57,7 +57,7 @@ def register_analyzer_tools(
     @mcp.tool()
     @track_performance("tool_review_claims")
     def review_patent_claims(claims_text: str) -> dict[str, Any]:
-        """Analyze patent claims for 35 USC 112(b) compliance: antecedent basis, definiteness, subjective terms, cross-references, and structure."""
+        """Run claims-text heuristics for definiteness, subjective terms, cross-references, and structure. Antecedent checking is opt-in; inspect checks_run and checks_skipped. Corresponding specification structure is not checked."""
         try:
             # Validate inputs
             validated = validate_input(ReviewClaimsInput, claims_text=claims_text)
@@ -144,7 +144,7 @@ def register_analyzer_tools(
     @mcp.tool()
     @track_performance("tool_review_specification")
     def review_specification(claims_text: str, specification: str) -> dict[str, Any]:
-        """Analyze specification support for claims per 35 USC 112(a): written description, enablement, and best mode."""
+        """Run written-description and enablement heuristics under 35 USC 112(a). Best mode is not checked; manual review with inventor input is required."""
         try:
             # Validate inputs
             validated = validate_input(

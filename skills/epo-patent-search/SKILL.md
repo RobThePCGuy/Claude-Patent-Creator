@@ -1,20 +1,25 @@
 ---
 name: epo-patent-search
-description: Search European patents using EPO OPS API (full-text, legal status, families) and BigQuery (100M+ patents, EP filter) for prior art, competitive intelligence, and freedom-to-operate analysis
+description: Search European patents using EPO OPS API (bibliographic data, available full text, families) and BigQuery (100M+ patents, EP filter) for prior art, competitive intelligence, and freedom-to-operate analysis
 tools: Bash, Read, Write
 model: sonnet
 ---
 
 # EPO Patent Search Skill
 
-Search European patents using the EPO Open Patent Services (OPS) API and Google BigQuery with EP country filtering.
+`search_epo_patents` searches the worldwide OPS collection. Plain keywords do not restrict results to EP publications. For EP-only discovery, use `search_patents_google` or `search_patents_bigquery` with `country="EP"`, and verify the returned country/publication numbers. Do not label unrestricted OPS results as EP-only.
+
+This integration does not retrieve register events, in-force status, designated states, or national validation. Those fields remain unknown until checked separately in the [European Patent Register](https://register.epo.org/) and relevant national registers. A B publication or family record alone does not establish current rights.
+
+
+Search European patents with Google Patents through SerpApi by default. EPO OPS and BigQuery are optional providers for additional coverage.
 
 ## When to Use
 
 Invoke this skill when users ask to:
 - Search for European patents
 - Find EP prior art for a technology
-- Check legal status of EP patents
+- Find publications for a separate legal-status review
 - Explore patent families across jurisdictions
 - Conduct EP freedom-to-operate analysis
 - Research the EP patent landscape for a technology area
@@ -24,13 +29,13 @@ Invoke this skill when users ask to:
 
 Provides access to European patent data through two methods:
 
-1. **EPO OPS API** (European Patent Data):
+1. **EPO OPS API** (Worldwide Patent Data):
    - Full-text EP patent retrieval (claims, description)
-   - Legal status and procedural history
+   - Legal status and procedural history are not returned by this integration; review official registers separately
    - INPADOC patent family linking
    - Applicant and inventor search
    - EP publication types (A1, A2, A3, B1, B2)
-   - Designated contracting states
+   - Designation and validation status are not returned by this integration
 
 2. **BigQuery** (Worldwide Patents, EP Filter):
    - Fast keyword search across 100M+ patents with country="EP"
@@ -40,7 +45,7 @@ Provides access to European patent data through two methods:
 
 ## Required Setup
 
-### BigQuery (Primary)
+### BigQuery (Optional)
 
 **Prerequisites**:
 1. Google Cloud Project (free to create)
@@ -50,20 +55,28 @@ Provides access to European patent data through two methods:
 **Setup**:
 ```bash
 gcloud auth application-default login
-export GOOGLE_CLOUD_PROJECT=your-project-id
+"$HOME/patent-creator-venv/bin/patent-creator" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
-### EPO OPS API (Optional, for full-text/legal status)
+### EPO OPS API (Optional, for full text and families)
 
 **Prerequisites**:
 1. Register at https://developers.epo.org/
 2. Create an application to get Consumer Key and Secret
-3. Save them (Windows: `$HOME\patent-creator-venv\Scripts\patent-creator.exe` in place of the Mac/Linux path)
+3. Save them with the installed CLI:
 
 **Setup**:
 ```bash
-~/patent-creator-venv/bin/patent-creator config set EPO_OPS_KEY "your-consumer-key"
-~/patent-creator-venv/bin/patent-creator config set EPO_OPS_SECRET "your-consumer-secret"
+"$HOME/patent-creator-venv/bin/patent-creator" config set EPO_OPS_KEY "your-consumer-key"
+"$HOME/patent-creator-venv/bin/patent-creator" config set EPO_OPS_SECRET "your-consumer-secret"
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set EPO_OPS_KEY "your-consumer-key"
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set EPO_OPS_SECRET "your-consumer-secret"
+# Only if using BigQuery:
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
 Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
@@ -73,16 +86,16 @@ Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
 When this skill is invoked:
 
 1. **Determine search type**:
-   - Keyword search: use BigQuery with country="EP" for speed
+   - Keyword search: check `check_google_patents_status`, then use Google Patents with `country="EP"`; use BigQuery only after `check_bigquery_status` succeeds
    - Full-text retrieval: use EPO OPS for complete claims/description
-   - Legal status: use EPO OPS for procedural data
+   - Legal status: review the European Patent Register and relevant national registers separately
    - Family search: use EPO OPS INPADOC family service
-   - CPC search: use BigQuery for broad classification browsing
+   - CPC search: use a full CPC group in a Google Patents query, or BigQuery when configured; report any missing coverage
 
 2. **Execute search**:
 
    **Full-text keyword search (EP patents)**, falling back to
-   `search_patents_bigquery` with the same arguments if not configured:
+   `search_patents_bigquery` with the same arguments only if BigQuery is configured:
    ```python
    results = search_patents_google(
        query="blockchain authentication",
@@ -92,7 +105,7 @@ When this skill is invoked:
    )
    ```
 
-   **BigQuery CPC search (EP patents)**:
+   **Optional BigQuery CPC search (EP patents, only after its status check succeeds)**:
    ```python
    results = search_patents_by_cpc_bigquery(
        cpc_code="H04L9/32",
@@ -114,7 +127,7 @@ When this skill is invoked:
 3. **Present results**:
    - Rank by relevance
    - Show key metadata (title, applicant, dates, IPC/CPC)
-   - Highlight legal status (in force, expired, opposed)
+   - Mark legal status and national validation as unknown unless separately verified in official registers, with source and date
    - Provide links to Espacenet for full documents
    - Note patent family members in other jurisdictions
 
@@ -132,10 +145,8 @@ When this skill is invoked:
     "grant_date": null,
     "ipc_codes": ["H04L9/32", "G06F21/31"],
     "cpc_codes": ["H04L9/32", "G06F21/31"],
-    "designated_states": ["DE", "FR", "GB", "NL", "IT"],
     "priority_claims": ["US16/234567 (2018-12-28)"],
     "family_id": "67890123",
-    "legal_status": "Examination in progress",
     "publication_type": "A1"
 }
 ```
@@ -185,7 +196,7 @@ Date Range: 2020-2025
     Applicant: Example GmbH (DE)
     Filed: 2019-03-15 | Granted: 2022-08-10
     IPC: H04L9/32, G06F21/31
-    Status: Patent in force (validated in DE, FR, GB)
+    Status and national validation: Not retrieved; verify separately
     Family: US10123456B2, CN112345678B, WO2019/123456A1
     Espacenet: https://worldwide.espacenet.com/patent/search?q=EP3456789
 
@@ -193,7 +204,7 @@ Date Range: 2020-2025
     Applicant: Tech Corp (US)
     Filed: 2020-01-10 | Published: 2021-06-16
     IPC: H04L9/00, G06Q20/38
-    Status: Examination in progress
+    Status: Not retrieved; verify in official registers
     Family: US20210203456A1, WO2020/234567A1
 
 ---
@@ -218,13 +229,13 @@ Top CPC Codes in Results:
 2. Get family_id
 3. Search for family members worldwide
 4. Map filing strategy across jurisdictions
-5. Check legal status in each country
+5. Check legal status in each country using the relevant official register
 
 ### EP Freedom-to-Operate
 1. Search EP patents in relevant technology
 2. Filter for granted patents (B1/B2)
-3. Check legal status (in force vs expired)
-4. Identify validated countries
+3. Separately check current legal status in official registers; record URL and date
+4. Separately verify national validation and current rights in each relevant country
 5. Assess infringement risk
 
 ### EP Opposition Research
@@ -238,10 +249,13 @@ Top CPC Codes in Results:
 
 | Method | Patents | Coverage | Speed | Cost |
 |--------|---------|----------|-------|------|
-| BigQuery (EP) | ~5M EP | EP applications + grants | 3-4s | Free* |
-| EPO OPS | All EP | Full text + legal status | 1-3s | Free** |
+| BigQuery (EP) | ~5M EP | EP applications + grants | 3-4s | Scan quota* |
+| EPO OPS | Worldwide collection | Available full text + bibliographic data | 1-3s | Free** |
 
-*BigQuery free tier: 1TB queries/month (~20,000 searches)
+*BigQuery allowance: 1 TiB of scans per month. Searches can scan hundreds of GiB;
+roughly 325-341 GiB was observed for default US keyword searches (about three
+per allowance). EP queries select different fields. Use each query's dry-run
+estimate; do not budget thousands of searches.
 **EPO OPS: Fair use (2.5GB data traffic per week)
 
 ## Tools Available

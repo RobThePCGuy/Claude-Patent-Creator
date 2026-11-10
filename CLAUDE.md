@@ -69,7 +69,7 @@ pip install git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git && pate
 | **Patent Family Search** | Find related patents across jurisdictions | Ready |
 | **US Claims Review** | Automated 35 USC 112(b) compliance checking | Ready |
 | **EPO Claims Review** | Art. 84 EPC compliance checking (Art. 123(2) added-matter not implemented) | Partial |
-| **US Specification Review** | Written description, enablement, best mode analysis | Ready |
+| **US Specification Review** | Written description and enablement heuristics; best mode requires manual review | Ready |
 | **EPO Specification Review** | Art. 83 EPC sufficiency of disclosure (Art. 123(2) added-matter not implemented) | Partial |
 | **US Formalities Check** | MPEP 608 compliance (abstract, title, drawings) | Ready |
 | **EPO Formalities Check** | Rules 42-49 EPC compliance | Ready |
@@ -151,7 +151,7 @@ For long-running, complex workflows that benefit from context isolation, use spe
 
 Subagents are located in `agents/` at the repo root. Agents that call MCP tools
 or MCP-backed skills omit `tools:` so they inherit tools available in the
-parent session. The local Python-only drafter, researcher, and development
+parent session. The local Python-only drafter and development
 agents retain their built-in tool lists. Inheritance does not install or
 connect a missing server; report required tools as unavailable when absent.
 See [Claude Code subagent tool access](https://code.claude.com/docs/en/sub-agents#available-tools).
@@ -253,20 +253,7 @@ pdfs/                    # MPEP/USC/CFR PDFs (git-ignored)
 
 ### PyTorch Installation Order (CRITICAL)
 
-**Problem:** Installing `sentence-transformers` before PyTorch results in CPU-only PyTorch, even on GPU systems.
-
-**Solution:**
-```bash
-# CORRECT ORDER:
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-pip install sentence-transformers  # Now uses existing GPU torch
-
-# WRONG ORDER (results in CPU-only):
-pip install sentence-transformers  # Installs CPU torch as dependency
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128  # Won't upgrade
-```
-
-**The `install.py` script handles this correctly.** If manually installing, ALWAYS install PyTorch first.
+Use the README pip installation and `patent-creator setup` in that venv. Setup selects PyTorch using the detected GPU architecture. See `docs/GPU_SETUP.md` for installed-path commands and a CUDA execution check; a generic CUDA 12.8 wheel does not support every NVIDIA card.
 
 ### Windows Path Handling in MCP Config
 
@@ -281,7 +268,7 @@ claude mcp add ... -- "C:/Users/<YOUR_USER>/venv/Scripts/python.exe" "C:/Users/<
 claude mcp add ... -- "C:\Users\<YOUR_USER>\venv\Scripts\python.exe" "C:\Users\<YOUR_USER>\server.py"
 ```
 
-**The `install.py` script handles this via `path_utils.py`.** Always use `PathFormatter.format_for_claude_mcp()` when constructing paths programmatically.
+**The supported CLI setup handles this via `mcp_server/path_utils.py`.** Always use `PathFormatter.format_for_claude_mcp()` when constructing paths programmatically.
 
 ### Virtual Environment Activation
 
@@ -483,11 +470,11 @@ CLAUDE_CODE_GIT_BASH_PATH=C:\dev\Git\bin\bash.exe
 **Add MCP Tool:**
 ```python
 @mcp.tool()
-@validate_input(YourInputModel)
-@track_performance
+@track_performance("your_tool")
 def your_tool(param: str) -> dict:
-    """Tool description for Claude."""
-    return {"result": "data"}
+    """Tool description for Claude. Define YourInputModel with a param field first."""
+    validated = validate_input(YourInputModel, param=param)
+    return {"result": validated.param}
 ```
 
 **Search MPEP:**
@@ -526,7 +513,7 @@ Each skill contains comprehensive reference documentation and step-by-step workf
 1. **Always activate venv for manual operations** (Claude Code handles automatically)
 2. **Use `patent-creator` CLI for system operations** (health, rebuild, verify)
 3. **Test with `patent-creator health` after changes**
-4. **Add performance monitoring to expensive operations** (`@track_performance`)
+4. **Add performance monitoring to expensive operations** (`@track_performance("operation_name")`)
 5. **Use Pydantic validation for all new MCP tools** (type safety + errors)
 6. **Include MPEP citations in error messages** when relevant
 7. **Maintain backward compatibility** with graceful fallbacks

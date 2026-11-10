@@ -94,7 +94,8 @@ def test_epo_complete_checks_can_pass(sample_good_abstract, sample_epo_specifica
 
 def test_epo_failed_noncritical_component_blocks_ready(sample_good_abstract, sample_epo_specification):
     inputs = complete_inputs(sample_good_abstract, sample_epo_specification)
-    inputs["abstract"] = " ".join(["word"] * 160)
+    # Excess length is advisory under Rule 47(3), not a failed component.
+    inputs["abstract"] = "A sensor (10)."
     result = make_tools()["check_epo_formalities"](**inputs)
     assert result["critical_issues"] == 0
     assert result["abstract"]["compliant"] is False

@@ -12,7 +12,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
+    from mcp_server.cli_command import render
     from mcp_server.mpep_search import MPEPIndex
+    from mcp_server.tools.mpep_tools import retrieve_mpep_section
 except ImportError as e:
     raise ImportError(
         f"Could not import MPEPIndex from mcp_server: {e}\n"
@@ -28,17 +30,20 @@ def _get_mpep_index() -> MPEPIndex:
     """Get or initialize the MPEP index singleton."""
     global _mpep_index
     if _mpep_index is None:
-        _mpep_index = MPEPIndex()  # HyDE follows PATENT_MPEP_USE_HYDE (default off)
+        candidate = MPEPIndex()  # HyDE follows PATENT_MPEP_USE_HYDE (default off)
 
         # Load the index (should already be built)
-        if not _mpep_index.index_file.exists():
+        if not candidate.index_file.exists():
             raise RuntimeError(
                 "MPEP index not found. Run setup first (see the README Quick Start):\n"
-                "  ~/patent-creator-venv/bin/patent-creator setup\n"
-                "This downloads and indexes the MPEP, 35 USC, 37 CFR and the EPO/PCT rules."
+                + render("  patent-creator setup\n")
+                + "This downloads and indexes the MPEP, 35 USC, 37 CFR and the EPO/PCT rules."
             )
 
-        _mpep_index.build_index(force_rebuild=False)
+        candidate.build_index(force_rebuild=False)
+        if not candidate.chunks:
+            raise RuntimeError("MPEP index contains no searchable chunks. Run setup to rebuild it.")
+        _mpep_index = candidate
 
     return _mpep_index
 
@@ -181,49 +186,11 @@ def get_mpep_section(
           - success: False
           - error: Error message
     """
-    # Input validation
-    if not section_number or not section_number.strip():
-        return {"success": False, "error": "Section number cannot be empty"}
-
-    section_number = section_number.strip()
-
-    # Validate that it looks like a section number (digits with optional dots)
-    if not all(c.isdigit() or c == "." for c in section_number):
-        return {
-            "success": False,
-            "error": f"Invalid section number format: '{section_number}'. Use numeric format like '2100' or '608.01'",
-        }
-
     try:
-        # Get the index
-        index = _get_mpep_index()
-
-        # Search for matching chunks
-        section_pattern = f"MPEP {section_number}"
-        matching_chunks = []
-
-        for chunk, meta in zip(index.chunks, index.metadata):
-            if section_pattern in meta["section"]:
-                matching_chunks.append({"text": chunk, "metadata": meta})
-
-        if not matching_chunks:
-            return {
-                "success": False,
-                "error": f"No content found for MPEP section {section_number}. The section may not exist or the index may be incomplete.",
-            }
-
-        return {
-            "success": True,
-            "section": section_number,
-            "total_chunks": len(matching_chunks),
-            "chunks": matching_chunks[:max_chunks],
-            "truncated": len(matching_chunks) > max_chunks,
-        }
-
-    except RuntimeError as e:
-        return {"success": False, "error": str(e)}
+        result = retrieve_mpep_section(_get_mpep_index(), section_number, max_chunks)
+        return {"success": "error" not in result, **result}
     except Exception as e:
-        return {"success": False, "error": f"Section retrieval failed: {str(e)}"}
+        return {"success": False, "error": f"Section retrieval failed: {e}"}
 
 
 def check_index_status() -> dict[str, Any]:

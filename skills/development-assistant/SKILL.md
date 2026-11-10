@@ -1,204 +1,96 @@
 ---
 name: development-assistant
-description: Guides through adding new features, MCP tools, analyzers, and extending the patent creator system.
+description: Extend MCP tools, analyzers, configuration and plugin commands using the current repository APIs.
 ---
 
-# Development Assistant Skill
+# Development Assistant
 
-Expert system for developing and extending the Claude Patent Creator. Guides through adding new MCP tools, analyzers, configuration options, and features while following best practices and existing patterns.
+Work in a source checkout. Use the **Testing Assistant** skill for development installation, pytest and lint commands. Beginner installs use pip from GitHub and the home-folder venv instead.
 
-## When to Use This Skill
+## MCP tools
 
-Activate when adding MCP tools, analyzers, configuration options, BigQuery queries, slash commands, or implementing performance optimizations.
+Tool groups live in `mcp_server/tools/` and are registered by `mcp_server/server.py`. Follow `register_analyzer_tools` in `mcp_server/tools/analyzer_tools.py` for dependency injection and registration. Add inputs to `mcp_server/validation.py` when appropriate.
 
-## Development Workflow
+`validate_input` is a function called inside the tool body. `track_performance` is a decorator factory that takes an operation name. This complete registration example uses both:
 
-```
-Feature Request -> Planning -> Implementation (Code + Validation + Monitoring + Tests) -> Testing -> Documentation -> Integration
-```
-
-## Adding New MCP Tools
-
-**Quick Start:**
-1. Define inputs, outputs, dependencies
-2. Create Pydantic model in `mcp_server/validation.py`
-3. Add tool function in `mcp_server/server.py` with decorators
-4. Create test script in `scripts/`
-5. Update CLAUDE.md
-
-**Key Decorators:**
 ```python
-@mcp.tool()                    # Register as MCP tool
-@validate_input(YourInput)     # Pydantic validation
-@track_performance             # Performance monitoring
+from mcp_server.monitoring import track_performance
+from mcp_server.validation import ReviewClaimsInput, validate_input
+
+
+def register_example_tools(mcp):
+    @mcp.tool()
+    @track_performance("example_claim_length")
+    def example_claim_length(claims_text: str) -> dict:
+        """Count characters in validated claims text; this is not a legal review."""
+        validated = validate_input(ReviewClaimsInput, claims_text=claims_text)
+        return {"characters": len(validated.claims_text)}
 ```
 
-**Template:**
+Register a new group from the server alongside existing groups. Avoid duplicate tool names. Use named operations such as `@track_performance("example_claim_length")` for other monitored functions too; `OperationTimer` in `mcp_server/monitoring.py` measures individual steps.
+
+## Analyzers
+
+`BaseAnalyzer` requires both `analyze` and `_issue_to_dict`. This small example checks only whether content is empty:
+
 ```python
-def your_tool(param: str, optional: int = 10) -> dict:
-    """Comprehensive docstring (Claude sees this).
+from dataclasses import asdict
 
-    Args:
-        param: Description
-        optional: Description with default
+from mcp_server.analyzer_base import BaseAnalyzer, BaseIssue
 
-    Returns:
-        Dictionary containing: key1, key2, key3
-    """
-    # Implementation
-    return {"result": "data"}
-```
 
-## Adding New Analyzers
-
-**Overview:** Analyzers inherit from `BaseAnalyzer` and check USPTO compliance.
-
-**Minimal Example:**
-```python
-from mcp_server.analyzer_base import BaseAnalyzer
-
-class YourAnalyzer(BaseAnalyzer):
-    def __init__(self):
-        super().__init__()
-        self.mpep_sections = ["608", "2173"]
-
+class EmptyContentAnalyzer(BaseAnalyzer):
     def analyze(self, content: str) -> dict:
-        issues = []
-        if violation:
-            issues.append({
-                "type": "violation_name",
-                "severity": "critical",
-                "mpep_citation": "MPEP 608",
-                "recommendation": "Fix description"
-            })
-        return {"compliant": len(issues) == 0, "issues": issues}
-```
-
-## Adding Configuration Options
-
-Use Pydantic settings in `mcp_server/config.py`:
-
-```python
-# In config.py
-class AppSettings(BaseSettings):
-    enable_feature_x: bool = Field(default=False, description="Enable X")
-
-# In your code
-from mcp_server.config import get_settings
-if get_settings().enable_feature_x:
-    # Feature enabled
-```
-
-## Adding Performance Monitoring
-
-```python
-@track_performance
-def your_function(data):
-    with OperationTimer("step1"):
-        result1 = step1(data)
-    with OperationTimer("step2"):
-        result2 = step2(result1)
-    return result2
-```
-
-## Modifying RAG Search Pipeline
-
-Pipeline: `Query -> HyDE -> Vector+BM25 -> RRF -> Reranking -> Results`
-
-**Customization Points:** Query expansion, custom scoring, filtering, reranking strategies
-
-## Adding New Slash Commands
-
-1. Create `.claude/commands/your-command.md`
-2. Add frontmatter: `description`, `model`
-3. Write workflow instructions
-4. Restart Claude Code
-
-**Template:**
-```markdown
----
-description: Brief command description
-model: claude-sonnet-4-5-20250929
----
-
-# Command Name
-
-## When to Use
-- Use case 1
-
-## How It Works
-Step 1: ...
-```
-
-## Development Best Practices
-
-1. Follow existing patterns
-2. Use type hints
-3. Write docstrings (Google style)
-4. Handle errors gracefully
-5. Validate inputs (Pydantic)
-6. Log operations
-7. Monitor performance
-
-## Common Development Tasks
-
-**Add BigQuery Query:** Add method in `mcp_server/bigquery_search.py`
-
-**Add Validation Rule:**
-```python
-class YourInput(BaseModel):
-    field: str
-
-    @field_validator("field")
-    @classmethod
-    def validate_field(cls, v):
-        if not meets_requirement(v):
-            raise ValueError("Error message")
-        return v
-```
-
-**Add Logging:**
-```python
-from mcp_server.logging_config import get_logger
-logger = get_logger()
-logger.info("event_name", extra={"context": "data"})
-```
-
-## Quick Reference: File Locations
-
-| Task | Primary File | Related Files |
-|------|-------------|---------------|
-| Add MCP tool | `mcp_server/server.py` | `mcp_server/validation.py` |
-| Add analyzer | `mcp_server/your_analyzer.py` | `mcp_server/analyzer_base.py` |
-| Add config | `mcp_server/config.py` | `.env`, `CLAUDE.md` |
-| Add BigQuery query | `mcp_server/bigquery_search.py` | - |
-| Add test | `scripts/test_your_feature.py` | - |
-
-## Key Patterns
-
-**MCP Tool Pattern:**
-```python
-@mcp.tool()
-@validate_input(InputModel)
-@track_performance
-def tool_name(param: type) -> dict:
-    """Docstring visible to Claude."""
-    from module import Component
-    if invalid:
-        return {"error": "message"}
-    result = process(param)
-    return {"key": "value"}
-```
-
-**Analyzer Pattern:**
-```python
-class YourAnalyzer(BaseAnalyzer):
-    def analyze(self, content: str) -> dict:
-        issues = []
-        issues.extend(self._check_x(content))
+        self.issues = []
+        if not content.strip():
+            self.issues.append(BaseIssue(
+                severity="IMPORTANT",
+                problem="Content is empty",
+                fix="Supply the content to review",
+                legal_ref="Not a legal assessment",
+            ))
         return {
-            "compliant": len(issues) == 0,
-            "issues": issues,
-            "recommendations": self._generate_recommendations(issues)
+            "issues": [self._issue_to_dict(issue) for issue in self.issues],
+            "checks_performed": ["nonempty content"],
         }
+
+    def _issue_to_dict(self, issue: BaseIssue) -> dict:
+        return asdict(issue)
 ```
+
+Reset issues on each invocation, serialize actual findings, and report only checks performed. There is no `_generate_recommendations` helper on `BaseAnalyzer`; produce recommendations from issue fixes if your report needs them.
+
+## Configuration
+
+`mcp_server/config.py` defines `Option` entries in `OPTIONS`, validates values and stores settings in a JSON config file. It does not expose `AppSettings` or `get_settings`.
+
+To read an existing option:
+
+```python
+from mcp_server.config import get_effective
+
+log_level, source = get_effective("PATENT_LOG_LEVEL")
+```
+
+For a new option, add an `Option` to `OPTIONS`, read it with `get_effective`, and test validation plus environment/file/default precedence. For code that reads environment variables at import time, call `apply_config_to_env()` first, as the CLI and server do. Never log secret values.
+
+Python code printing user-facing commands must use `mcp_server.cli_command.render`, `installed_cli` or `python_command` so instructions target the active installation and platform.
+
+## Plugin commands and repository map
+
+Create new command Markdown files under the root `commands/` directory. For example, a new `commands/your-command.md` should have `description` frontmatter followed by workflow instructions. A `.claude/commands/` file would be local to a project rather than part of this plugin.
+
+| Work | Existing implementation |
+|---|---|
+| Tool registration | `mcp_server/server.py`, `mcp_server/tools/analyzer_tools.py` |
+| Claims analysis | `mcp_server/claims_analyzer.py`, `mcp_server/analyzer_base.py` |
+| Legal-reference retrieval | `mcp_server/mpep_search.py` |
+| BigQuery | `mcp_server/bigquery_search.py` |
+| Configuration and storage | `mcp_server/config.py`, `mcp_server/data_paths.py` |
+| GPU selection | `mcp_server/hardware_detect.py` |
+| Monitoring and logging | `mcp_server/monitoring.py`, `mcp_server/logging_config.py` |
+| Automated regression tests | `tests/` |
+| Manual diagnostics | `scripts/` |
+| Plugin packaging | `.claude-plugin/plugin.json`, `commands/`, `skills/`, `agents/` |
+
+Read the current implementation before extending it, write tests for observable behavior, run pytest and Ruff, and document limitations alongside results.

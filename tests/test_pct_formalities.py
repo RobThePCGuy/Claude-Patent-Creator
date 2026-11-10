@@ -67,3 +67,16 @@ class TestOutputFormat:
         result = checker.check_all_formalities(abstract="Short.")
         for issue in result["issues"]:
             assert "legal_ref" in issue
+
+
+def test_abstract_figure_is_a_manual_check_not_a_defect():
+    """The abstract figure is designated on the request form (PCT Rules
+    3.3(a)(iii) and 8.2), which the checker never sees."""
+    result = PCTFormalitiesChecker().check_all_formalities(
+        abstract="A charger couples power through a coil 12 to a receiver 14 in an implant. " * 3,
+        drawings_present=True,
+    )
+    flat = str(result)
+    assert "Abstract does not indicate which figure" not in flat
+    skipped = [c["check"] for c in result["checks_skipped"]]
+    assert "abstract figure designation" in skipped

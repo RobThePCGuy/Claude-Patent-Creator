@@ -117,11 +117,11 @@ def register_epo_tools(
     @mcp.tool()
     @track_performance("tool_search_epo_patents")
     async def search_epo_patents(query: str, limit: int = 25) -> list[dict[str, Any]]:
-        """Search European patents via EPO OPS API using CQL query syntax.
+        """Search worldwide patent records via EPO OPS using CQL query syntax.
 
-        Returns bibliographic data and abstracts for matching patents.
-        Use this for EP patent searches when you need claims/description text
-        (not available in BigQuery for EP patents).
+        Returns bibliographic data and abstracts, without an implicit EP filter.
+        Use get_epo_patent for available claims/description text and
+        get_epo_patent_family for families. Legal status is not retrieved.
 
         Supports CQL operators:
             - Simple keywords: searched in title + abstract

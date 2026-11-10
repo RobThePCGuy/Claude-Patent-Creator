@@ -283,7 +283,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | Tool | What it does |
 |---|---|
 | `review_patent_claims` | 35 USC 112(b) compliance check (definiteness, antecedent basis, structure) |
-| `review_specification` | 35 USC 112(a) adequacy check (written description, enablement, best mode) |
+| `review_specification` | 35 USC 112(a) written-description and enablement heuristics; best mode requires manual review |
 | `check_formalities` | MPEP 608 compliance (abstract, title, drawings, required sections) |
 | `review_epo_claims` | Art. 84 EPC claim check (clarity, support, two-part form) |
 | `review_epo_specification` | Art. 83 EPC sufficiency and Rule 42 sections |
@@ -392,7 +392,7 @@ patent-creator config list
 | `SEMANTIC_SCHOLAR_API_KEY` | Steadier Semantic Scholar paper search (works without it) | Free, by request: [semanticscholar.org](https://www.semanticscholar.org/product/api#api-key-form) |
 | `EPO_OPS_KEY`, `EPO_OPS_SECRET` | European patent full text | Free registration: [developers.epo.org](https://developers.epo.org) |
 | `USPTO_API_KEY` | USPTO Open Data Portal search | [data.uspto.gov](https://data.uspto.gov/myodp) |
-| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api`. HyDE is off by default and has local backends that need no key | Your API account |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api` and `PATENT_MPEP_USE_HYDE=true`. Install the optional `llm` extra or run your environment's Python with `-m pip install anthropic openai` first. HyDE is off by default | Your API account |
 | `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO`; format `json` for the server and readable lines for the `patent-creator` command unless you set it |
 | `PATENT_MPEP_DEVICE` | Force `cpu` or `gpu` for the index build | Detected automatically |
 | `PATENT_EMBED_BATCH_SIZE` | Lower it (16 or 8) if the GPU runs out of memory while building the index | 256 on an NVIDIA GPU, 32 otherwise |

@@ -1,117 +1,80 @@
 ---
 name: index-manager
-description: Manages MPEP index lifecycle including downloads, building, maintenance, and optimization.
+description: Manage legal-source downloads, index builds, diagnostics and maintenance.
 ---
 
-# Index Manager Skill
+# Index Manager
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+## Find the active data
 
-Expert system for managing MPEP search index lifecycle: PDF downloads, index building, maintenance, updates, optimization.
-
-**FOR CLAUDE:** All dependencies installed, system operational.
-- Go directly to appropriate phase
-- Scripts/tools in mcp_server/
-- Use patent-creator CLI when available
-- Only run diagnostics if operations fail
-
-## When to Use
-
-Building/rebuilding MPEP index, corruption/missing files, optimization, adding content, troubleshooting.
-
-## Index Lifecycle
-
-```
-PDFs Not Present -> Download (2-5 min, 500MB)
-  -> Extract & Parse (500MB data)
-  -> Generate Embeddings (5-10 min GPU, 35-65 min CPU)
-  -> Build FAISS + BM25 Indexes
-  -> Index Ready (~/.local/share/claude-patent-creator/data/index/)
-  -> Maintenance (Verify -> Optimize -> Update)
-```
-
-Paths below assume the README install (`~/patent-creator-venv`) and default data folder. `~/patent-creator-venv/bin/patent-creator health` prints the actual locations under "Storage" (Windows: `%APPDATA%\claude-patent-creator\data`; `PATENT_DATA_DIR` moves it). In PowerShell, run each command as `& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health` and so on.
-
-## Phase 1: Source PDFs
-
-**Check status:** `~/patent-creator-venv/bin/patent-creator health` (lists each source; `[--] removed after indexing` is fine: the PDFs are only needed to rebuild).
-
+macOS/Linux:
 ```bash
-ls "$HOME/.local/share/claude-patent-creator/data/pdfs"   # mpep-*.pdf, consolidated_laws.pdf, consolidated_rules.pdf, EPO/PCT files
-~/patent-creator-venv/bin/patent-creator download-all  # fetch any missing US sources
+"$HOME/patent-creator-venv/bin/patent-creator" health
 ```
 
-**Verify integrity:**
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health
+```
+
+Read the Storage paths. Defaults are under `$HOME/.local/share/claude-patent-creator/data` on macOS/Linux and `$env:APPDATA\claude-patent-creator\data` on Windows. `PATENT_DATA_DIR` or existing legacy data can change these locations.
+
+For a directory listing that resolves saved configuration on either platform:
+
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/python -c "
-import fitz, os
-from pathlib import Path
-for pdf in Path(os.path.expanduser('~/.local/share/claude-patent-creator/data/pdfs')).glob('*.pdf'):
-    try:
-        doc = fitz.open(pdf); print(f'[OK] {pdf.name}: {len(doc)} pages'); doc.close()
-    except Exception as e:
-        print(f'[X] {pdf.name}: ERROR - {e}')
-"
+"$HOME/patent-creator-venv/bin/python" -c "from mcp_server.config import apply_config_to_env; apply_config_to_env(); from mcp_server.data_paths import mpep_dir, index_dir; print('PDFs:', mpep_dir()); print(*mpep_dir().glob('*.pdf'), sep='\n'); print('Index:', index_dir()); print(*index_dir().glob('*'), sep='\n')"
 ```
 
-## Phase 2: Index Building
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" -c "from mcp_server.config import apply_config_to_env; apply_config_to_env(); from mcp_server.data_paths import mpep_dir, index_dir; print('PDFs:', mpep_dir()); print(*mpep_dir().glob('*.pdf'), sep='\n'); print('Index:', index_dir()); print(*index_dir().glob('*'), sep='\n')"
+```
 
+## Download and build
+
+macOS/Linux:
 ```bash
-~/patent-creator-venv/bin/patent-creator setup --rebuild   # downloads anything missing, then rebuilds
+"$HOME/patent-creator-venv/bin/patent-creator" setup --rebuild
 ```
 
-Takes about 5 minutes with an NVIDIA GPU and 25-40 minutes otherwise (Apple Silicon builds on the CPU). A progress line with time left appears every few percent. `PATENT_MPEP_DEVICE=cpu` forces the CPU if the GPU runs out of memory. Chunking and batch size are fixed in code; `build_index()` takes only `force_rebuild`.
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" setup --rebuild
+```
 
-## Phase 3: Verification
+Setup downloads missing sources and reprocesses the current files. It does not replace existing PDFs with newer legal editions. For an edition change, obtain the intended official files, verify their editions, replace the relevant files in the reported PDF directory and rebuild. Back up source and index directories before replacing them. A missing PDF can coexist with a usable index after source cleanup, but it must be restored before rebuilding.
 
+## Memory and speed
+
+Build time varies with the machine and corpus. Batch size is configurable:
+
+macOS/Linux:
 ```bash
-ls -lh "$HOME/.local/share/claude-patent-creator/data/index"   # mpep_index.faiss, mpep_metadata.json, mpep_bm25.json
-~/patent-creator-venv/bin/patent-creator health             # Index: Built [OK], chunk count, and any "needs a rebuild" warning
+"$HOME/patent-creator-venv/bin/patent-creator" config set PATENT_EMBED_BATCH_SIZE 16
 ```
 
-Then ask Claude: "Search MPEP for claim definiteness". Results show the chapter, PDF file and page.
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set PATENT_EMBED_BATCH_SIZE 16
+```
 
-## Phase 4: Maintenance
+Use 8 if 16 still runs out of memory. Remove the override with `config unset PATENT_EMBED_BATCH_SIZE` to restore the automatic default (256 on CUDA, 32 otherwise). To use CPU, save `PATENT_MPEP_DEVICE` as `cpu` with `config set`; remove it with `config unset PATENT_MPEP_DEVICE` when finished. Restart the build after changing settings.
 
-Rebuild after an MPEP revision, if health reports a problem, or when health says the index needs a rebuild (setup also does this automatically when it detects a known defect).
+## Verify
 
+Run `health` with the installed CLI as above. It should report an index and chunk count; resolve any rebuild warnings. Then ask Claude Code to search MPEP for claim definiteness and inspect the source/page references. A successful rebuild is not evidence that the legal text is the latest edition.
+
+For an optional backup without shell-specific date or copy commands:
+
+macOS/Linux:
 ```bash
-cp -r "$HOME/.local/share/claude-patent-creator/data/index" "$HOME/.local/share/claude-patent-creator/data/index_backup_$(date +%Y%m%d)"   # optional backup
-~/patent-creator-venv/bin/patent-creator setup --rebuild
-~/patent-creator-venv/bin/patent-creator health
+"$HOME/patent-creator-venv/bin/python" -c "from datetime import datetime; import shutil; from mcp_server.config import apply_config_to_env; apply_config_to_env(); from mcp_server.data_paths import index_dir; src=index_dir(); dst=src.with_name('index_backup_'+datetime.now().strftime('%Y%m%d_%H%M%S_%f')); shutil.copytree(src, dst); print(dst)"
 ```
 
-## Phase 5: Content Updates
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" -c "from datetime import datetime; import shutil; from mcp_server.config import apply_config_to_env; apply_config_to_env(); from mcp_server.data_paths import index_dir; src=index_dir(); dst=src.with_name('index_backup_'+datetime.now().strftime('%Y%m%d_%H%M%S_%f')); shutil.copytree(src, dst); print(dst)"
+```
 
-Re-running `~/patent-creator-venv/bin/patent-creator setup` downloads any source that is missing; `~/patent-creator-venv/bin/patent-creator setup --rebuild` re-indexes everything. Incremental updates are not supported.
-
-## Troubleshooting
-
-- OOM errors during build
-- Build taking too long
-- Corrupted index files
-- Search returning no results
-
-## Performance Tuning
-
-- Embedding generation speed (GPU vs CPU)
-- Search latency optimization
-- Index size reduction
-- Batch size tuning
-
-## Quick Reference
-
-| Command | Purpose |
-|---------|---------|
-| `~/patent-creator-venv/bin/patent-creator download-mpep` | Download MPEP PDFs |
-| `~/patent-creator-venv/bin/patent-creator rebuild-index` | Build/rebuild search index |
-| `~/patent-creator-venv/bin/patent-creator health` | Check index health |
-| `ls -lh ~/.local/share/claude-patent-creator/data/index/` | View index files (location shown by `health`) |
-
-**Best Practices:**
-1. Backup before rebuild
-2. Verify PDFs before building
-3. Use GPU for 10x faster builds
-4. Test after rebuild
-5. Keep PDFs until verified
-6. Weekly health checks
+Keep the backup until searches work against the rebuilt index.

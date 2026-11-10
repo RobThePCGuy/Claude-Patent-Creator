@@ -10,7 +10,9 @@ model: claude-sonnet-4-5-20250929
 
 # EPO Formalities Check
 
-Verify all formal requirements for a European patent application under EPC Rules 42-49.
+The formalities tool receives text and a drawings-present flag, not page or drawing files. Physical layout, margins, paper size, line spacing, drawing quality, request forms, and payments are not inspected. Mark them NOT CHECKED until a separate review of the final documents or records supplies evidence. Report only checks actually run; the checklist below is not a prefilled result.
+
+Review supplied text and identify manual checks for formal requirements for a European patent application under EPC Rules 42-49.
 
 **Check Type:** $ARGUMENTS
 
@@ -18,13 +20,13 @@ Verify all formal requirements for a European patent application under EPC Rules
 
 1. **Description** (Rule 42 EPC) - Required sections, disclosure sufficiency, unity
 2. **Claims** (Rule 43 EPC) - Two-part form, numbering, fees for excess claims
-3. **Abstract** (Rule 47 EPC) - Max 150 words, single figure designation, content
-4. **Drawings** (Rule 46 EPC) - Technical quality, reference signs, margins
+3. **Abstract** (Rule 47 EPC) - Preferably no more than 150 words, single figure designation, content
+4. **Drawings** (Rule 49(2) EPC and the President's presentation decision) - Technical quality, reference signs, margins
 5. **Request for Grant** (Rule 41 EPC) - Form 1001, designation of states, priorities
 6. **Translation Requirements** - Language of proceedings (Rule 6 EPC)
 7. **Fees** - Filing fee, search fee, designation fee, claims fee (> 15 claims)
 
-Specified check type focuses on that requirement; otherwise checks everything.
+Specified check type focuses on that requirement; otherwise reviews the supplied text and lists outstanding manual checks.
 
 ## Process
 
@@ -52,7 +54,7 @@ Required sections in order:
 
 ### Claims (Rule 43 EPC)
 
-- Two-part form for independent claims (preamble + "characterised in that")
+- Two-part form for independent claims where appropriate (preamble + "characterised in that")
 - Clear reference to description and drawings
 - No drawings or graphs in claims
 - Numbered consecutively in Arabic numerals
@@ -61,21 +63,21 @@ Required sections in order:
 
 ### Abstract (Rule 47 EPC)
 
-- Maximum 150 words
+- Preferably no more than 150 words
 - Must indicate technical field
 - Must include concise summary of disclosure
 - Must designate most illustrative figure (if drawings exist)
 - No commercial statements
 - Single paragraph preferred
 
-### Drawings (Rule 46 EPC)
+### Drawings (Rule 49(2) EPC and the President's presentation decision)
 
 - Minimum margins: top 2.5cm, left 2.5cm, right 1.5cm, bottom 1cm
-- No text in drawings (except single words like "water", "steam")
+- Use only indispensable short keywords in drawings; explain other details in the description
 - Reference signs in description must match drawings
 - Figures numbered consecutively (Fig. 1, Fig. 2, ...)
 - A4 paper size (21cm x 29.7cm)
-- Black, sufficiently dense lines
+- Clear, reproducible lines; electronic drawings may also use colour or greyscale under OJ EPO 2025 A49
 
 ### Request for Grant (Rule 41 EPC)
 
@@ -88,6 +90,8 @@ Required sections in order:
 - Representative details (if applicable)
 
 ## Report Structure
+
+Illustrative format only. Replace all counts and findings with observed results. Use NOT CHECKED whenever the evidence is unavailable. Never copy example passes into a real report.
 
 ```
 EPO FORMALITIES COMPLIANCE REPORT
@@ -125,12 +129,9 @@ CLAIMS (Rule 43 EPC):
 ======================
 
 [PASS] Claims numbered consecutively
-[FAIL] Independent claim 1 not in two-part form
-  -> Rule 43(1): "shall contain a statement indicating the
-     designation of the subject-matter, a statement of features
-     which are necessary for the definition... and a characterising
-     portion preceded by 'characterised in that'"
-  -> Fix: Restructure with preamble + characterised in that
+[REVIEW] Independent claim 1 not in two-part form
+  -> Rule 43(1): two-part form applies where appropriate
+  -> Determine whether the invention and prior art suit this form before rewriting
 [PASS] Dependent claims properly reference parent claims
 [PASS] 15 or fewer claims (no excess claims fee)
 [PASS] No drawings or graphs in claims
@@ -138,41 +139,37 @@ CLAIMS (Rule 43 EPC):
 ABSTRACT (Rule 47 EPC):
 =========================
 
-[PASS] Word count: 127 (max 150)
+[PASS] Word count: 127 (preferably no more than 150 words)
 [FAIL] No figure designated as most illustrative
-  -> Rule 47(2)(b): "shall indicate the figure of the drawings
-     which should accompany the abstract"
+  -> Rule 47(4): indicate the figure, or exceptionally figures,
+     to publish with the abstract when drawings are present
   -> Fix: Add "Figure to accompany abstract: Fig. 1"
 [PASS] Technical field indicated
 [PASS] No commercial statements
 
-DRAWINGS (Rule 46 EPC):
+DRAWINGS (Rule 49(2) EPC and the President's presentation decision):
 =========================
 
-[PASS] Margins within specification
-[PASS] Reference signs consistent
-[WARN] Fig. 3 contains text label "Processing Unit"
-  -> Rule 46(2)(j): Drawings shall not contain text,
-     except single words like "water", "steam"
-  -> Fix: Replace text with reference number, add to description
+[NOT CHECKED] Margins within specification; inspect final pages/drawings manually
+[NOT CHECKED] Reference signs consistent; inspect final pages/drawings manually
+[NOT CHECKED] Drawing labels
+  -> Inspect whether each short keyword is indispensable under Article 1(2)(j)
+     of the President's presentation decision (OJ EPO 2025 A49).
+  -> A short label is not automatically prohibited.
 
 REQUEST FOR GRANT (Rule 41 EPC):
 ==================================
 
-[PASS] Applicant details complete
-[PASS] Title matches description
-[PASS] Priority claim within 12 months
-[PASS] Inventor designation filed
+[NOT CHECKED] Applicant details complete; verify the actual request and records
+[NOT CHECKED] Title matches description; verify the actual request and records
+[NOT CHECKED] Priority claim within 12 months; verify the actual request and records
+[NOT CHECKED] Inventor designation filed; verify the actual request and records
 
 FEES CALCULATION:
 ==================
 
-Filing fee (online): EUR 135
-Search fee: EUR 1,775
-Designation fee: EUR 685 (all states)
-Claims fee: EUR 0 (15 or fewer claims)
----
-Total at filing: EUR 2,595
+[NOT CALCULATED] Verify current schedules before estimating or paying.
+Record fee code, amount, currency, due date, source URL, and date checked.
 
 FILING CHECKLIST:
 ==================
@@ -181,7 +178,7 @@ FILING CHECKLIST:
 [x] Description with all required sections
 [x] Claims (numbered, proper form)
 [ ] Abstract with designated figure (NEEDS FIX)
-[x] Drawings (A4, proper margins)
+[ ] Drawings (A4 and margins require final-file inspection)
 [x] Priority document (if claiming priority)
 [x] Power of attorney (if using representative)
 [ ] Filing fee payment
@@ -192,8 +189,8 @@ NEXT STEPS:
 
 1. Fix 5 non-compliance items listed above
 2. Address 2 warnings (recommended)
-3. Prepare fee payment (EUR 2,595)
-4. File via EPO Online Filing or eOLF
+3. Verify fees and prepare payment
+4. File via EPO Online Filing 2.0
 5. Note: Examination request due within 6 months of search report
 ```
 
@@ -210,11 +207,11 @@ NEXT STEPS:
 
 | Requirement | USPTO | EPO |
 |-------------|-------|-----|
-| Abstract length | 150 words max | 150 words max |
+| Abstract length | 150 words max | Preferably no more than 150 words |
 | Claims fee threshold | > 3 independent / > 20 total | > 15 total / > 50 total |
 | Description format | MPEP 608 sections | Rule 42 EPC sections |
-| Claim form | Open format | Two-part form (Rule 43) |
-| Drawings text | Limited text allowed | No text except single words |
+| Claim form | Open format | Two-part form where appropriate (Rule 43) |
+| Drawings text | Limited text allowed | Use only indispensable short keywords in drawings; explain other details in the description |
 | Paper size | Letter or A4 | A4 only |
 | Filing language | English | English, French, or German |
 | Priority period | 12 months | 12 months |
@@ -222,3 +219,13 @@ NEXT STEPS:
 ---
 
 **DISCLAIMER:** This tool assists with patent application preparation but does NOT replace legal advice from a registered European Patent Attorney. Always consult with legal counsel before filing. Not affiliated with or endorsed by the EPO.
+
+Legal references: [EPC Rule 47](https://www.epo.org/en/legal/epc/2020/r47.html), [two-part form where appropriate](https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_2_3.html), [Rule 49(2)](https://www.epo.org/en/legal/epc/2020/r49.html), and [President's presentation decision, OJ EPO 2025 A49](https://www.epo.org/en/legal/official-journal/2025/07/a49). Rule 46 was deleted effective 1 February 2023.
+
+Retrieve amounts and due dates from the official schedules for the selected route, Office, currency, entity status, and payment date. Record the source URL and date checked with every estimate. Do not reuse a static total.
+
+- [EPO fee schedule](https://www.epo.org/en/applying/fees)
+- [WIPO PCT fee schedule](https://www.wipo.int/en/web/pct-system/texts/rules/rtax)
+- [USPTO fee schedule](https://www.uspto.gov/learning-and-resources/fees-and-payment/uspto-fee-schedule)
+
+The PCT international filing-fee supplement is based on sheets beyond 30, not claims beyond 15. Electronic reductions depend on the filing format and applicable conditions; using ePCT alone does not fix the reduction. Additional search fees for lack of unity and national-phase claims fees are separate.

@@ -38,6 +38,11 @@ def _default_base() -> Path:
 
 
 def _resolve(name: str, legacy: Path, has_data) -> Path:
+    try:
+        from config import apply_config_to_env
+    except ImportError:
+        from mcp_server.config import apply_config_to_env
+    apply_config_to_env()
     override = os.environ.get("PATENT_DATA_DIR")
     if override:
         return Path(override) / name

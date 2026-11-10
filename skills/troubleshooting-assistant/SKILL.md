@@ -1,161 +1,103 @@
 ---
 name: troubleshooting-assistant
-description: Diagnoses and resolves MCP server registration failures, GPU detection, BigQuery authentication, index build failures, import errors, search quality issues, and performance problems.
+description: Diagnose MCP registration, dependency, search, GPU and index failures.
 ---
 
-# Troubleshooting Assistant Skill
+# Troubleshooting Assistant
 
-> **Windows:** use `$HOME\patent-creator-venv\Scripts\python.exe` and `$HOME\patent-creator-venv\Scripts\patent-creator.exe` wherever this page says `~/patent-creator-venv/bin/python` or `~/patent-creator-venv/bin/patent-creator`.
+Record the exact error and reproduce the smallest failing operation. Check the installed environment before changing configuration.
 
-Expert diagnostic system for identifying and resolving Claude Patent Creator issues.
-
-## When to Use
-
-System not working, error messages, slow performance, MCP server not loading, search returns no results/errors, GPU not detected, BigQuery auth fails, index build fails, tests failing, unexpected behavior.
-
-## Troubleshooting Methodology
-
-```
-Problem Reported
-  |
-[1] Gather Information (errors, recent changes, system state)
-  |
-[2] Reproduce Issue (minimal test case, consistent?)
-  |
-[3] Isolate Component (which part failing? dependencies?)
-  |
-[4] Diagnose Root Cause (check logs, test components, verify config)
-  |
-[5] Apply Fix (targeted solution, verify works)
-  |
-[6] Prevent Recurrence (document, add monitoring, update checks)
-```
-
-## Common Issues & Quick Fixes
-
-| Issue | Quick Fix |
-|-------|-----------|
-| MCP server not loading | `claude mcp list` -> Re-register if missing |
-| GPU not detected | Reinstall PyTorch with CUDA |
-| BigQuery auth fails | `gcloud auth application-default login` |
-| Index not found | `~/patent-creator-venv/bin/patent-creator setup --rebuild` |
-| Import errors | Use the venv's own commands (`~/patent-creator-venv/bin/...`); nothing needs activating. Reinstall: `~/patent-creator-venv/bin/python -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git` |
-| Slow searches | Check GPU usage, reduce top_k, disable HyDE |
-| Irrelevant results | Rephrase query with MPEP terminology |
-
-## Detailed Issue Guides
-
-### MCP Server Issues
-
-**Problems:** Server not loading, tools don't work/return errors
-
-- 5-step diagnostic workflow
-- Path verification and correction
-- Dependency troubleshooting
-- Server restart procedures
-
-### GPU & BigQuery Issues
-
-**Problems:** GPU not detected, slow performance, BigQuery auth fails, query timeouts
-
-- CUDA detection and PyTorch reinstallation
-- Performance diagnostics and optimization
-- BigQuery authentication and permissions
-- Timeout configuration
-
-### Index, Dependencies & Configuration
-
-**Problems:** Index not found, build fails, ModuleNotFoundError, import errors, env vars not loading, irrelevant search results
-
-- Index rebuild procedures
-- OOM (Out of Memory) solutions
-- Virtual environment activation
-- Pydantic validation errors
-- Configuration troubleshooting
-- Search quality tuning
-
-## Diagnostic Tools
-
-### Health Check Suite
-
+macOS/Linux:
 ```bash
-# Full system health
-~/patent-creator-venv/bin/patent-creator health
-
-# Individual components
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_analyzers.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
+"$HOME/patent-creator-venv/bin/patent-creator" health
 ```
 
-### Component Isolation
-
-```python
-# Test MPEP search
-~/patent-creator-venv/bin/python -c "from mcp_server.mpep_search import MPEPIndex; \
-           index = MPEPIndex(); index.build_index(); \
-           print('OK' if index.search('test', top_k=1) else 'FAILED')"
-
-# Test BigQuery
-~/patent-creator-venv/bin/python -c "from mcp_server.bigquery_search import BigQueryPatentSearch; \
-           search = BigQueryPatentSearch(); \
-           print('OK' if search.search_by_keywords('neural network', limit=1) else 'FAILED')"
-
-# Test analyzers
-~/patent-creator-venv/bin/python -c "from mcp_server.claims_analyzer import ClaimsAnalyzer; \
-           analyzer = ClaimsAnalyzer(); \
-           print('OK' if analyzer.analyze('1. A test claim.') else 'FAILED')"
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" health
 ```
 
-- Log analysis (debug mode)
-- MCP communication debugging
-- Performance profiling
-- Memory profiling
-- Issue escalation procedures
-
-## Best Practices for Prevention
-
-1. Regular health checks (weekly `~/patent-creator-venv/bin/patent-creator health`)
-2. Monitor logs for warnings/errors
-3. Keep dependencies updated (test before deploying)
-4. Backup before changes (especially index rebuilds)
-5. Document modifications
-6. Test after changes (run test suite)
-7. Version control (use git)
-8. Environment consistency (same Python/CUDA versions)
-
-## Quick Reference
-
-### Most Common Errors
-
-| Error | Category | Solution |
-|-------|----------|----------|
-| "Tool not found" | MCP | `claude mcp list` |
-| "ModuleNotFoundError" | Dependencies | Activate venv, reinstall |
-| "CUDA not available" | GPU | Reinstall PyTorch with CUDA |
-| "Permission denied" (BigQuery) | Auth | `gcloud auth application-default login` |
-| "Index not found" | Index | `~/patent-creator-venv/bin/patent-creator rebuild-index` |
-| "Out of memory" | Index Build | Reduce batch size |
-| "Validation error" | Input | Check Pydantic model parameters |
-
-### Diagnostic Commands
-
+macOS/Linux:
 ```bash
-# System health
-~/patent-creator-venv/bin/patent-creator health
-
-# Test components
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_gpu.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_bigquery.py
-~/patent-creator-venv/bin/python ${CLAUDE_PLUGIN_ROOT}/scripts/test_install.py
-
-# Check registration
-claude mcp list
-
-# Check paths
-~/patent-creator-venv/bin/patent-creator verify-config
-
-# Enable debug logging
-export PATENT_LOG_LEVEL=DEBUG
+"$HOME/patent-creator-venv/bin/patent-creator" verify-config
 ```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" verify-config
+```
+
+Check registration with `claude mcp list`. After repairs, restart Claude Code and exercise the failing MCP operation again.
+
+## Component diagnostics
+
+The diagnostic scripts live in the plugin source, not in the pip package. Resolve `${CLAUDE_PLUGIN_ROOT}` to the actual plugin folder first. For a source checkout, use its absolute path. Set `PLUGIN_ROOT` below to that location; the example deliberately includes a space. Keep paths quoted.
+
+macOS/Linux:
+```bash
+PLUGIN_ROOT="/absolute/path/Patent Plugin"
+```
+
+Windows PowerShell:
+```powershell
+$PLUGIN_ROOT = "C:\absolute\path\Patent Plugin"
+```
+
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_install.py"
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_install.py"
+```
+
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/python" "$PLUGIN_ROOT/scripts/test_analyzers.py"
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" "$PLUGIN_ROOT/scripts/test_analyzers.py"
+```
+
+Use `scripts/test_gpu.py` for an intended CUDA installation, `scripts/test_google_patents.py` for configured SerpApi, or `scripts/test_bigquery.py` only for configured BigQuery. Use the quoted invocation pattern above and report skipped optional components. Live search tests consume service quota.
+
+For credentials saved only with `config set`, prefer the corresponding MCP status/search tools after restarting Claude Code. These standalone diagnostics do not all load saved settings; an unset-key result from a script does not prove that the saved configuration is broken.
+
+## Repairs
+
+- Import failure: reinstall the package in the same venv:
+
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/python" -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\python.exe" -m pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
+```
+
+- Missing or damaged index: follow the **Index Manager** skill. Check the actual Storage paths, then use `setup --rebuild`; rebuilding does not update source editions.
+- GPU failure: follow `docs/GPU_SETUP.md` under the plugin root. Avoid choosing a CUDA wheel without checking the GPU architecture.
+- Build OOM: save `PATENT_EMBED_BATCH_SIZE` as 16 or 8 with `config set`, then retry. CPU mode is available through `PATENT_MPEP_DEVICE=cpu` saved with `config set`.
+- SerpApi failure: call `check_google_patents_status`; check saved key configuration and quota without printing the key.
+- BigQuery failure: only if this provider is wanted, follow `/configure-bigquery`.
+- Search quality: inspect retrieved source text and metadata, vary the query, and distinguish no matches from a service failure.
+
+Enable debug logging if needed:
+
+macOS/Linux:
+```bash
+"$HOME/patent-creator-venv/bin/patent-creator" config set PATENT_LOG_LEVEL DEBUG
+```
+
+Windows PowerShell:
+```powershell
+& "$HOME\patent-creator-venv\Scripts\patent-creator.exe" config set PATENT_LOG_LEVEL DEBUG
+```
+
+Restart Claude Code to apply settings. Restore normal logging with `config unset PATENT_LOG_LEVEL`. Keep credentials out of diagnostic reports.

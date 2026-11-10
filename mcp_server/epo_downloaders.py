@@ -81,7 +81,13 @@ PCT_GUIDELINES_FILE = "pct_guidelines.pdf"
 EPO_GUIDELINES_FILE = "epo_guidelines.txt"
 
 
-def _download_file(url: str, dest_path: Path, description: str, timeout: int = 120) -> bool:
+def _download_file(
+    url: str,
+    dest_path: Path,
+    description: str,
+    timeout: int = 120,
+    fallback_available: bool = False,
+) -> bool:
     """Download a file with progress reporting.
 
     Args:
@@ -89,6 +95,8 @@ def _download_file(url: str, dest_path: Path, description: str, timeout: int = 1
         dest_path: Destination file path
         description: Human-readable description for logging
         timeout: Download timeout in seconds
+        fallback_available: The caller has another way to get this content,
+            so a failure is logged as information rather than an error.
 
     Returns:
         True if download succeeded
@@ -124,7 +132,7 @@ def _download_file(url: str, dest_path: Path, description: str, timeout: int = 1
         # or blocked documents with HTML error/landing pages, and saving one
         # as .pdf poisons the index build downstream.
         if dest_path.suffix.lower() == ".pdf" and not first_bytes.startswith(b"%PDF-"):
-            _log_error(
+            (_log_info if fallback_available else _log_error)(
                 f"{description}: server returned non-PDF content "
                 f"(starts with {first_bytes!r}); discarding"
             )
@@ -136,7 +144,7 @@ def _download_file(url: str, dest_path: Path, description: str, timeout: int = 1
         return True
 
     except Exception as e:
-        _log_error(f"Failed to download {description}: {e}")
+        (_log_info if fallback_available else _log_error)(f"Failed to download {description}: {e}")
         # Clean up partial download
         if dest_path.exists():
             dest_path.unlink()
@@ -223,7 +231,7 @@ def scrape_epo_guidelines(dest_dir: Path, year: Optional[int] = None) -> bool:
     # The official link service can cache an HTML error under the PDF URL.
     # A stable edition query avoids that cached response; validate both attempts.
     for candidate in (pdf_url, f"{pdf_url}?v={year}"):
-        if _download_file(candidate, pdf_dest, f"EPO Guidelines {year} PDF"):
+        if _download_file(candidate, pdf_dest, f"EPO Guidelines {year} PDF", fallback_available=True):
             if _pdf_to_guidelines_text(pdf_dest, dest_path):
                 _log_info(f"EPO Guidelines published PDF obtained and extracted for {year}")
                 return True
@@ -231,7 +239,10 @@ def scrape_epo_guidelines(dest_dir: Path, year: Optional[int] = None) -> bool:
             break
 
     # Fall back to HTML scraping
-    _log_info("PDF not available, scraping HTML version...")
+    _log_info(
+        "The Guidelines PDF isn't available right now. Downloading the same text "
+        "from the EPO website instead (about 5 minutes)."
+    )
     return _scrape_epo_guidelines_html(dest_path, year=year)
 
 

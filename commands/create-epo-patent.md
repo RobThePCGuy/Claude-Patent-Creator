@@ -1,5 +1,5 @@
 ---
-description: Create a complete EPO-compliant patent application from invention disclosure through filing-ready package
+description: Draft a European patent application from invention disclosure through draft package for conversion and review
 allowed-tools: Bash, Read, Write
 ---
 
@@ -35,8 +35,8 @@ I'll interview you about your invention:
 ### Step 2: Prior Art Search
 
 I'll search for relevant prior art using:
-- **BigQuery** (100M+ worldwide patents, filter country="EP" for EP patents)
-- **EPO OPS API** (European patent register, full-text EP documents)
+- **Google Patents via SerpApi** (default, use `country="EP"`); BigQuery is optional
+- **EPO OPS API** (bibliographic data and available full-text documents; no register status retrieval)
 - **CPC classification** search focused on EPO-heavy technology areas
 
 **Deliverable**: Prior art search report with novelty/inventive step assessment
@@ -46,7 +46,7 @@ I'll search for relevant prior art using:
 I'll draft claims following EPO requirements:
 
 **Independent Claims** (Rule 43(1) EPC):
-- Two-part form: preamble + "characterised in that" + characterizing portion
+- Two-part form where appropriate: preamble + "characterised in that" + characterizing portion
 - Based on closest prior art identified in Step 2
 - Clear, concise, supported by description (Art. 84 EPC)
 
@@ -61,7 +61,7 @@ I'll draft claims following EPO requirements:
 - Use claims (where appropriate)
 - No method-of-treatment claims (Art. 53(c) EPC)
 
-**Deliverable**: Complete claims section (15-25 claims, EPO two-part form)
+**Deliverable**: Complete claims section (15-25 claims, two-part form where appropriate)
 
 ### Step 4: Write Specification (Rule 42 EPC)
 
@@ -87,11 +87,11 @@ I'll write the description following EPO section order:
 
 ### Step 5: Generate Diagrams
 
-I'll create patent figures following Rule 46 EPC:
-- No text in drawings (except single words like "water", "steam")
+I'll create patent figures following Rule 49(2) EPC and the President's presentation decision:
+- Use only indispensable short keywords in drawings; explain other details in the description
 - Reference numbers matching description
 - A4 format with EPO margin requirements
-- Black lines, sufficiently dense
+- Use clear black lines as the drafting default; electronic colour or greyscale is also permitted under OJ EPO 2025 A49
 
 **Deliverable**: 3-10 patent figures (SVG/PNG)
 
@@ -108,16 +108,18 @@ I'll validate the complete application:
 
 ### Step 7: Assemble Filing Package
 
-I'll create the final EP filing package:
+I'll create the EP draft package:
 - Description (Rule 42 format)
-- Claims (Rule 43 two-part form)
-- Abstract (Rule 47, max 150 words)
-- Drawings (Rule 46 compliant)
+- Claims (Rule 43, two-part form where appropriate)
+- Abstract (Rule 47, preferably no more than 150 words)
+- Draft drawings requiring presentation review
 - Request for Grant (Form 1001 guidance)
 - Priority document references
 - Fee calculation
 
-**Deliverable**: EPO-ready filing package
+**Deliverable**: Draft package requiring conversion and final review
+
+Convert Markdown application text to PDF or an accepted DOCX submission, and render SVG figures into the accepted application documents. Inspect the converted pages for clipping, legibility, margins, numbering, and consistency. The tools do not perform this conversion or certify the result. See [Online Filing 2.0 formats](https://www.epo.org/en/service-support/faq/myepo-services/online-filing-20/documents/what-document-formats-can-i-file) and [current filing services](https://www.epo.org/en/applying/myepo-services/file-with-us). Legacy eOLF was retired on 1 January 2026.
 
 ## Output Structure
 
@@ -166,11 +168,10 @@ Before running this command:
 1. **MPEP/EPC Index Built**:
    - Run `/setup-patent-system` first (one-time)
 
-2. **BigQuery Configured** (for patent search):
-   - Google Cloud project created
-   - BigQuery API enabled
-   - Authenticated: `gcloud auth application-default login`
-   - Environment variable: `GOOGLE_CLOUD_PROJECT=your-project-id`
+2. **Patent Search Configured**:
+   - SerpApi is the default. Save `SERPAPI_API_KEY` with the installed CLI's `config set` command as shown in `/setup-patent-system`.
+   - BigQuery is an optional alternative, configured through `/configure-bigquery`.
+   - Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, explain that patent search needs setup; do not report an empty search as evidence of no prior art.
 
 3. **Graphviz Installed** (for diagrams):
    - Windows: `choco install graphviz`
@@ -216,21 +217,21 @@ You can customize the process:
 
 ## What You'll Have at the End
 
-A complete, EPO-ready patent application package including:
+An EP patent application draft package including:
 - Prior art search with EP-focused results
 - Novelty and inventive step assessment (EPO problem-solution approach)
-- 15-25 claims in two-part form (validated for Art. 84 EPC)
+- 15-25 draft claims, using two-part form where appropriate, with heuristic review results
 - 20-50 page specification in Rule 42 EPC format
-- 3-10 figures compliant with Rule 46 EPC
-- Abstract (max 150 words, Rule 47 EPC)
+- 3-10 draft figures for manual review under Rule 49(2) EPC and the President's presentation decision
+- Abstract (preferably no more than 150 words, Rule 47 EPC)
 - Form 1001 guidance and fee calculation
-- Compliance reports (all EPO checks passed)
-- Complete filing package ready to submit
+- Review reports listing checks run, skipped checks, and manual work remaining
+- Markdown and SVG source files requiring conversion and final review before submission
 
 ## Next Steps After Command
 
 1. **Review** complete application with European Patent Attorney
-2. **File** via EPO Online Filing (eOLF) or postal
+2. **File** via EPO Online Filing 2.0 using the reviewed, converted documents
 3. **Pay** filing and search fees (within 1 month)
 4. **Receive** European search report (typically 6-12 months)
 5. **Request examination** (within 6 months of search report publication)
@@ -239,7 +240,7 @@ A complete, EPO-ready patent application package including:
 ## Tips
 
 - **Problem-solution approach**: Central to EPO prosecution - frame everything around the technical problem and its solution
-- **Two-part form**: Identify closest prior art early and structure claims accordingly
+- **Two-part form**: Assess whether it is appropriate before restructuring claims
 - **No method-of-treatment**: Unlike USPTO, EPO excludes methods of treatment (Art. 53(c))
 - **Technical effect for software**: Computer-implemented inventions must show "further technical effect"
 - **Cite prior art in description**: EPO requires prior art references in the background section
@@ -247,3 +248,5 @@ A complete, EPO-ready patent application package including:
 ---
 
 **DISCLAIMER:** This tool assists with patent application preparation but does NOT replace legal advice from a registered European Patent Attorney. Always consult with legal counsel before filing. Not affiliated with or endorsed by the EPO.
+
+Legal references: [EPC Rule 47](https://www.epo.org/en/legal/epc/2020/r47.html), [two-part form where appropriate](https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_2_3.html), [Rule 49(2)](https://www.epo.org/en/legal/epc/2020/r49.html), and [President's presentation decision, OJ EPO 2025 A49](https://www.epo.org/en/legal/official-journal/2025/07/a49). Rule 46 was deleted effective 1 February 2023.

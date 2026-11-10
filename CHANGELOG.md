@@ -38,6 +38,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - CONTRIBUTING.md and SECURITY.md
 
 ### Fixed
+- Plugin docs no longer promise checks the tools don't run (antecedent basis,
+  corresponding structure, description support, best mode, physical page
+  checks), and analyzer result fields are documented as returned.
+- EPO and PCT guidance corrected against the EPC, EPO Guidelines and PCT
+  Regulations: abstract length is a preference, two-part claims are "where
+  appropriate", deleted EPC Rule 46 is no longer cited, the PCT abstract figure
+  is chosen on the request form, and legal-reference maps point to the right
+  rules. Static fee tables now point to the official fee schedules.
+- European patent search docs say what the integration returns: OPS results
+  are worldwide unless filtered, and register and in-force status must be
+  checked in the European Patent Register.
+- BigQuery searches keep OR as OR, honour every prior-art filter, and read
+  saved settings; cost guidance reflects real scan sizes.
+- Setup and the download commands report a failed required download as a
+  failure. An optional supplement that fails is named as missing.
+- Diagnostic scripts test what they claim; diagram labels that don't match are
+  reported; the settings window reads yes/on/1 and an empty batch size
+  correctly; health-check commands work in PowerShell and with spaces in paths.
+- Workflows use SerpApi first and treat BigQuery as optional; Windows commands
+  are valid PowerShell; docs name files and commands that exist.
+- The old installers (`install.py`, `scripts/install-gpu.*`) are removed; the
+  pip install and `patent-creator setup` replace them.
+- Mac output no longer starts with PyTorch's "Redirects" note, and an
+  unavailable EPO Guidelines PDF is no longer shown as an error when the
+  website copy downloads instead.
+
 - Public unmerged code is no longer treated as undisclosed; history mining
   requires public-access and date evidence, with unknowns preserved.
 - PCT calendars use the priority date, put US/JP entry at 30 months and EP

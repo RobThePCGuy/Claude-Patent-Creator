@@ -7,6 +7,8 @@ model: sonnet
 
 # EPO Patent Analyzer Skill
 
+The formalities tool receives text and a drawings-present flag, not page or drawing files. Physical layout, margins, paper size, line spacing, drawing quality, request forms, and payments are not inspected. Mark them NOT CHECKED until a separate review of the final documents or records supplies evidence. Report only checks actually run; the checklist below is not a prefilled result.
+
 Automated analysis of patent applications for European Patent Office compliance under the European Patent Convention (EPC).
 
 ## When to Use
@@ -26,7 +28,7 @@ Performs comprehensive EPO-focused analysis:
 1. **Claims Analysis** (Art. 84 EPC):
    - Clarity: identifies unclear or ambiguous terms
    - Conciseness: detects redundant or overlapping claims
-   - Support: verifies all claims are supported by description
+   - Support: not assessed by the claims-only analyzer; obtain the description, run `review_epo_specification` for preliminary heuristics, and review each feature manually
    - Two-part form (Rule 43(1) EPC): checks preamble + "characterised in that"
    - Claim categories: product, process, apparatus, use
    - Excluded subject matter: Art. 52(2) and Art. 53 EPC
@@ -40,8 +42,8 @@ Performs comprehensive EPO-focused analysis:
 3. **Formalities** (Rules 42-49 EPC):
    - Description format (Rule 42): required sections in correct order
    - Claims form (Rule 43): two-part form, numbering, references
-   - Drawings (Rule 46): margins, no text, reference signs
-   - Abstract (Rule 47): max 150 words, figure designation
+   - Drawings (Rule 49(2) and the President's decision): manual inspection of margins, indispensable keywords, and reference signs
+   - Abstract (Rule 47): preferably no more than 150 words, figure designation
    - Physical requirements: A4, margins, fonts
 
 4. **Issue Categorization**:
@@ -70,9 +72,9 @@ When this skill is invoked:
    - Formalities-only review (Rules 42-49 EPC)
 
 2. **Run appropriate analyzers**:
-   - For claims: check clarity, conciseness, support, two-part form
+   - For claims: check clarity, conciseness, and two-part form; description support requires separate review
    - For sufficiency: check reproducibility, scope vs disclosure, examples
-   - For formalities: check all Rules 42-49 requirements
+   - For formalities: run the available text heuristics and list manual checks
 
 3. **Present analysis**:
    - Show compliance score (0-100)
@@ -84,39 +86,23 @@ When this skill is invoked:
 ## Analysis Output Structure
 
 ```python
+# Issue objects in results["issues"] (illustrative values):
 {
-    "jurisdiction": "EPO",
-    "claim_count": 15,
-    "independent_count": 2,
-    "dependent_count": 13,
-    "compliance_score": 72,
-    "total_issues": 8,
-    "critical_issues": 2,
-    "important_issues": 4,
-    "minor_issues": 2,
-    "issues": [
-        {
-            "category": "clarity",
-            "severity": "critical",
-            "claim_number": 1,
-            "term": "substantially",
-            "description": "Term 'substantially' lacks objective definition under Art. 84 EPC",
-            "epc_cite": "Art. 84 EPC",
-            "guidelines_cite": "EPO Guidelines F-IV, 4.6",
-            "suggestion": "Replace with objective criterion or remove"
-        },
-        {
-            "category": "two_part_form",
-            "severity": "important",
-            "claim_number": 1,
-            "description": "Independent claim not in two-part form per Rule 43(1) EPC",
-            "epc_cite": "Rule 43(1) EPC",
-            "guidelines_cite": "EPO Guidelines F-IV, 3.2",
-            "suggestion": "Restructure: preamble + 'characterised in that' + novel features"
-        }
-    ]
+    "severity": "IMPORTANT",  # CRITICAL, IMPORTANT, MINOR, or WARNING
+    "type": "clarity",
+    "claim": 1,
+    "location": "body",
+    "term": "approximately",
+    "problem": "Potentially unclear term; review in context",
+    "fix": "Consider an objective criterion where needed",
+    "legal_ref": "Art. 84 EPC",
+    "confidence": "MEDIUM"
 }
 ```
+
+The report also includes `claim_count`, `independent_count`, `dependent_count`,
+`compliance_score`, issue counts, `issues_by_type`, and `summary`.
+
 
 ## Common EPO Issues Detected
 
@@ -126,7 +112,7 @@ When this skill is invoked:
    - Functional features not clearly defined
    - "Means for" language without clear structural support
 
-2. **Support Issues (Art. 84 EPC)**:
+2. **Support Issues (Art. 84 EPC), separate description review required**:
    - Claims broader than description discloses
    - Unsupported generalizations from specific examples
    - Missing essential technical features
@@ -140,9 +126,9 @@ When this skill is invoked:
 
 4. **Formality Issues (Rules 42-49 EPC)**:
    - Missing required description sections
-   - Abstract exceeding 150 words
-   - Text in drawings
-   - Claims not in two-part form
+   - Abstract exceeding the preferred 150 words (advisory)
+   - Non-indispensable text in drawings (manual inspection)
+   - Claims not in two-part form where appropriate
 
 ## Presentation Format
 
@@ -167,15 +153,15 @@ CLAIMS ANALYSIS (Art. 84 EPC):
     Art. 84 EPC / EPO Guidelines F-IV, 4.6
     Fix: Define with measurable criterion (e.g., "within 5% deviation")
 
-  Support:
+  Support (manual review with description, not claims-tool output):
   [Claim 3] IMPORTANT - "any wireless protocol" exceeds disclosure
     Art. 84 EPC / EPO Guidelines F-IV, 6.2
     Fix: Limit to disclosed protocols (Bluetooth, Wi-Fi, NFC)
 
   Two-Part Form:
-  [Claim 1] IMPORTANT - Not in two-part form
-    Rule 43(1) EPC / EPO Guidelines F-IV, 3.2
-    Fix: Identify closest prior art, split into known + novel features
+  [Claim 1] REVIEW - Not in two-part form; assess appropriateness before rewriting
+    Rule 43(1) EPC / EPO Guidelines F-IV, 2.2-2.3
+    If appropriate: identify closest prior art and split known and distinguishing features
 
 SUFFICIENCY ANALYSIS (Art. 83 EPC):
 
@@ -187,9 +173,9 @@ SUFFICIENCY ANALYSIS (Art. 83 EPC):
 FORMALITIES (Rules 42-49 EPC):
 
   [PASS] Description sections in correct order (Rule 42)
-  [FAIL] Abstract: 167 words (max 150) (Rule 47)
-  [PASS] Drawings: no text, proper margins (Rule 46)
-  [FAIL] No figure designated for abstract (Rule 47(2)(b))
+  [WARN] Abstract: 167 words (preferably no more than 150 words) (Rule 47)
+  [NOT CHECKED] Drawings: indispensable keywords and proper margins (Rule 49(2) and the President's decision); inspect final pages/drawings manually
+  [FAIL] No figure designated for abstract (Rule 47(4))
 ```
 
 ## Key EPO vs USPTO Differences
@@ -197,7 +183,7 @@ FORMALITIES (Rules 42-49 EPC):
 | Aspect | USPTO (35 USC) | EPO (EPC) |
 |--------|----------------|-----------|
 | Claim clarity | Reasonable certainty (112(b)) | Strict objective clarity (Art. 84) |
-| Claim form | Open format | Two-part form preferred (Rule 43) |
+| Claim form | Open format | Two-part form where appropriate (Rule 43) |
 | Support | Written description (112(a)) | Supported by description (Art. 84) |
 | Enablement | Enable POSITA (112(a)) | Sufficiency of disclosure (Art. 83) |
 | Best mode | Required (112(a)) | Not required |
@@ -220,3 +206,5 @@ For each issue, the skill can:
 - **Read**: To load application from files
 - **Bash**: To run EPO compliance analyzers
 - **Write**: To save analysis reports
+
+Legal references: [EPC Rule 47](https://www.epo.org/en/legal/epc/2020/r47.html), [two-part form where appropriate](https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_2_3.html), [Rule 49(2)](https://www.epo.org/en/legal/epc/2020/r49.html), and [President's presentation decision, OJ EPO 2025 A49](https://www.epo.org/en/legal/official-journal/2025/07/a49). Rule 46 was deleted effective 1 February 2023.

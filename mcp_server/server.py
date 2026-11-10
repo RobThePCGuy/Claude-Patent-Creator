@@ -657,8 +657,10 @@ def _check_prerequisites(rebuild_index):
     if pdf_count == 0 and rebuild_index:
         print("\n[X] No MPEP PDFs found.", file=sys.stderr)
         print("\nOptions:", file=sys.stderr)
-        print("1. Run with --download-mpep to download automatically", file=sys.stderr)
-        print("2. Manually download PDFs and place in project root", file=sys.stderr)
+        from cli_command import render
+
+        print(render("1. Run patent-creator download-mpep to download automatically"), file=sys.stderr)
+        print(f"2. Manually download MPEP PDFs into {MPEP_DIR}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -673,7 +675,7 @@ def _run_health_checks():
 
     warnings = []
     if not health_status["uspto_api"].get("available", False):
-        warnings.append("USPTO API not configured - live patent search disabled")
+        warnings.append("USPTO API unavailable. USPTO searches are disabled; Google Patents and BigQuery have separate configuration.")
     if health_status["gpu_status"].get("status") != "available":
         warnings.append(
             f"GPU not available: {health_status['gpu_status'].get('details', 'Using CPU mode')}"

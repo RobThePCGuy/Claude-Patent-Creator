@@ -60,7 +60,7 @@ jobs:
         run: ruff check .
 
       - name: Compile-check the package
-        run: python -m compileall -q mcp_server skills install.py setup.py
+        run: python -m compileall -q mcp_server skills setup.py
 
       - name: Run tests
         env:
