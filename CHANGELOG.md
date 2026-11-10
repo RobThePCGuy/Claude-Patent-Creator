@@ -39,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - Paper search spaces its Semantic Scholar requests at least 1.1 s apart
-  across the whole server and retries a refused one once, so back-to-back
+  across the whole server and retries a refused one with exponential
+  backoff (1, 2, 4 s plus jitter), as Semantic Scholar requires, so back-to-back
   searches stay under the 1 request/second key limit instead of losing that
   source's results.
 - Reject invalid explicit BigQuery spending caps before any query instead of
