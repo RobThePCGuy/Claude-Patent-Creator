@@ -1023,12 +1023,32 @@ def _index_ready() -> bool:
     ).exists()
 
 
+_INDEXED_SOURCES: "set[str] | None" = None
+
+
+def _indexed_sources() -> set[str]:
+    """Source types present in the built index's metadata (cached)."""
+    global _INDEXED_SOURCES
+    if _INDEXED_SOURCES is None:
+        try:
+            with (INDEX_DIR / "mpep_metadata.json").open(encoding="utf-8") as f:
+                _INDEXED_SOURCES = {m.get("source", "MPEP") for m in json.load(f).get("metadata", [])}
+        except Exception:
+            _INDEXED_SOURCES = set()
+    return _INDEXED_SOURCES
+
+
+# Status label -> source type the extractor records in index metadata.
+_LABEL_SOURCE = {"35 USC:": "35_USC", "37 CFR:": "37_CFR", "Updates:": "SUBSEQUENT"}
+
+
 def _source_line(label: str, present: bool) -> str:
-    """One status line for a downloaded source file. Once indexed, its text
-    lives in the index, so a removed file is not a problem to flag."""
+    """One status line for a downloaded source file. A removed file is fine
+    only when the index really holds that source's text; otherwise it is
+    missing and flagged."""
     if present:
         mark = "[OK]"
-    elif _index_ready():
+    elif _index_ready() and _LABEL_SOURCE.get(label) in _indexed_sources():
         mark = "[--] removed after indexing (its text is in the search index)"
     else:
         mark = "[X]"

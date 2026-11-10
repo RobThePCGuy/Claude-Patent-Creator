@@ -177,11 +177,18 @@ def test_index_build_prints_plain_progress_lines(monkeypatch):
 
 def test_removed_source_files_are_not_flagged_once_indexed(tmp_path, monkeypatch):
     monkeypatch.setattr(cli, "INDEX_DIR", tmp_path)
+    monkeypatch.setattr(cli, "_INDEXED_SOURCES", None)
     assert "[X]" in cli._source_line("35 USC:", False)
+    import json
+
     (tmp_path / "mpep_index.faiss").write_bytes(b"x")
-    (tmp_path / "mpep_metadata.json").write_text("{}", encoding="utf-8")
+    meta = {"metadata": [{"source": "MPEP"}, {"source": "35_USC"}]}
+    (tmp_path / "mpep_metadata.json").write_text(json.dumps(meta), encoding="utf-8")
+    monkeypatch.setattr(cli, "_INDEXED_SOURCES", None)
     line = cli._source_line("35 USC:", False)
     assert "[X]" not in line and "removed after indexing" in line
+    # 37 CFR was never indexed: a missing file is a real gap, not a cleanup
+    assert "[X]" in cli._source_line("37 CFR:", False)
     assert "[OK]" in cli._source_line("35 USC:", True)
 
 

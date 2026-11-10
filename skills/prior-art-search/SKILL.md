@@ -152,13 +152,9 @@ search_non_patent_literature(query="blockchain authentication", published_before
 4. Document closest prior art
 5. Note key differences from invention
 
-**Code**:
-```python
-results = searcher.search_by_cpc(
-    cpc_code="G06F21/",  # Security arrangements
-    limit=100,
-    country="US"
-)
+**Tool call** (needs BigQuery; without it, run `search_patents_google` with keywords from the CPC titles and note "CPC step keyword-only" in the report):
+```
+search_patents_by_cpc_bigquery(cpc_code="G06F21/", limit=100, country="US")
 ```
 
 **Output**: Comprehensive list of potentially blocking patents
@@ -176,11 +172,10 @@ results = searcher.search_by_cpc(
 4. Check priority dates
 5. Note technology progression
 
-**Code**:
-```python
-# Search by year ranges
-recent = searcher.search_by_keywords(query, start_year=2022, end_year=2024)
-older = searcher.search_by_keywords(query, start_year=2015, end_year=2021)
+**Tool calls** (whichever patent search is set up, as in Step 3):
+```
+search_patents_google(query=QUERY, start_year=2022, end_year=2024)
+search_patents_google(query=QUERY, start_year=2015, end_year=2021)
 ```
 
 **Output**: Timeline showing technology development
