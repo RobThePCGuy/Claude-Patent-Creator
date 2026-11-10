@@ -31,7 +31,6 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from pathlib import Path
 from typing import Any, Optional
 
 ENDPOINT = "https://serpapi.com/search.json"
@@ -54,21 +53,11 @@ def _date_bound(year: int, end: bool) -> str:
 
 
 def _config_command() -> str:
-    """The exact patent-creator executable for this install.
-
-    The server runs on the venv's python, so the console script sits next to
-    it. A beginner who installed into a venv has no bare ``patent-creator``
-    on PATH, so a bare name in this message would fail with "command not found".
-    """
-    import sys
-
-    folder = Path(sys.executable).absolute().parent
-    for name in ("patent-creator", "patent-creator.exe"):
-        candidate = folder / name
-        if candidate.exists():
-            text = str(candidate)
-            return f'"{text}"' if " " in text else text
-    return "patent-creator"
+    try:
+        from cli_command import installed_cli
+    except ImportError:  # imported as mcp_server.google_patents_search
+        from mcp_server.cli_command import installed_cli
+    return installed_cli()
 
 
 class GooglePatentsSearch:

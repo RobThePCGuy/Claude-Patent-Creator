@@ -108,6 +108,7 @@ def register_mpep_tools(
                 "is_update": r["metadata"].get("is_update", False),
                 "relevance_score": round(r["relevance_score"], 3),
                 "text": r["text"],
+                **({"source_url": r["metadata"]["source_url"]} if r["metadata"].get("source_url") else {}),
             }
 
             # Add source-specific fields if present

@@ -121,22 +121,17 @@ except ImportError:
         PathFormatter = None
 
 
-def _cli() -> str:
-    """The exact patent-creator command for this install.
+def _render(message: str) -> str:
+    from cli_command import render
 
-    Installed into a virtual environment, the command is not on PATH, so a
-    printed bare 'patent-creator ...' fails with "command not found". The
-    console script sits next to the running interpreter.
-    """
-    folder = Path(sys.executable).absolute().parent
-    for name in ("patent-creator", "patent-creator.exe"):
-        candidate = folder / name
-        if candidate.exists():
-            text = str(candidate)
-            if shutil.which("patent-creator") == text:
-                return "patent-creator"
-            return f'"{text}"' if " " in text else text
-    return "patent-creator"
+    return render(message)
+
+
+def _cli() -> str:
+    """The exact patent-creator command for this install (see cli_command)."""
+    from cli_command import installed_cli
+
+    return installed_cli()
 
 
 def install_pytorch():
@@ -653,7 +648,6 @@ def _graphviz_install_hint() -> str:
 
 
 def _graphviz_ready() -> bool:
-    import shutil
 
     return shutil.which("dot") is not None
 
@@ -1039,10 +1033,7 @@ def _index_defects() -> list[str]:
 
         with (INDEX_DIR / "mpep_metadata.json").open(encoding="utf-8") as f:
             metadata = json.load(f).get("metadata", [])
-        return [
-            w.replace("patent-creator setup --rebuild", f"{_cli()} setup --rebuild")
-            for w in get_index_warnings(metadata)
-        ]
+        return [_render(w) for w in get_index_warnings(metadata)]
     except Exception:
         return []
 
@@ -1422,7 +1413,7 @@ def config_list_command(args):
             print(f"      = {shown}   [{source}]")
             print(f"      {opt.description}")
             if opt.note:
-                print(f"      note: {opt.note}")
+                print(f"      note: {_render(opt.note)}")
         print()
     print(f"Change a setting:  {_cli()} config set <KEY> <VALUE>")
     return 0
@@ -1462,7 +1453,7 @@ def config_set_command(args):
     if opt.is_secret:
         print("     Note: stored in plaintext; protect this file.", file=sys.stderr)
     if opt.note:
-        print(f"     {opt.note}")
+        print(f"     {_render(opt.note)}")
     return 0
 
 

@@ -18,6 +18,14 @@ JURISDICTION_SOURCES = {
 }
 
 
+def _render_command(message: str) -> str:
+    try:
+        from cli_command import render
+    except ImportError:
+        from mcp_server.cli_command import render
+    return render(message)
+
+
 def register_patent_law_tools(
     mcp,
     mpep_index,
@@ -148,7 +156,7 @@ def register_patent_law_tools(
                 from mcp_server.mpep_search import get_index_warnings
             index_warnings = get_index_warnings(metadata or []) if "EPC" in expected else []
             coverage = {
-                "index_warnings": index_warnings,
+                "index_warnings": [_render_command(w) for w in index_warnings],
                 "searched_sources": searched,
                 "missing_sources": missing,
                 "failed_sources": failed,
@@ -162,10 +170,12 @@ def register_patent_law_tools(
                     + "; search failed: " + (", ".join(failed) or "none")
                     + ". Run patent-creator setup --rebuild for missing sources."
                 )
+                coverage["warning"] = _render_command(coverage["warning"])
             if not all_results:
-                return [{"error": f"No {jurisdiction or 'patent-law'} passages returned. "
-                         "Sources may be missing from the installed index or searches failed. "
-                         "Check coverage; run patent-creator setup --rebuild for missing sources.",
+                return [{"error": _render_command(
+                             f"No {jurisdiction or 'patent-law'} passages returned. "
+                             "Sources may be missing from the installed index or searches failed. "
+                             "Check coverage; run patent-creator setup --rebuild for missing sources."),
                          "coverage": coverage}]
             for result in all_results:
                 result["coverage"] = coverage

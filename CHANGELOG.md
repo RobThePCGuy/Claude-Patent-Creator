@@ -87,6 +87,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   saved `GOOGLE_CLOUD_PROJECT`, `PATENT_DATA_DIR` or `PATENT_LOG_FORMAT`
   takes effect (real environment variables and `.env` still win), and
   `config list` reports saved values as saved.
+- EPO Guidelines results from the HTML download keep their official page link
+  (`source_url`) and Part/Chapter/section locator on every chunk, not only the
+  first one of each page.
+- The Guidelines HTML download reports progress at least every 20 seconds
+  instead of going silent for minutes during a large batch.
+- Every recovery message (settings notes, law-search coverage warnings,
+  index warnings) names the installed `patent-creator` command, so it runs
+  from an unactivated virtual environment.
 - Stale command suggestions (`scripts/setup_bigquery_auth.py`, `install.py`,
   `status --verbose`) point at commands that exist.
 

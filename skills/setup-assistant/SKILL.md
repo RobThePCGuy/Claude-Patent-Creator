@@ -88,7 +88,7 @@ Setup registers the server and tests the connection itself. To recheck: `~/paten
 **Manual:**
 ```bash
 # Get paths
-patent-creator verify-config
+~/patent-creator-venv/bin/patent-creator verify-config
 
 # Register (use forward slashes!)
 claude mcp add --transport stdio claude-patent-creator --scope user -- \
@@ -116,7 +116,7 @@ ANTHROPIC_API_KEY / OPENAI_API_KEY are only for HyDE with HYDE_BACKEND=api, whic
 ### Phase 7: Health Check
 
 ```bash
-patent-creator health
+~/patent-creator-venv/bin/patent-creator health      # Windows: .\patent-creator-venv\Scripts\patent-creator health
 ```
 
 ### Phase 8: Present Results
@@ -148,19 +148,19 @@ Patent search needs a free SerpApi key (recommended) or BigQuery. If one is conf
 | MCP not loading | Restart Claude Code, verify with `claude mcp list` |
 | Path errors | Use forward slashes (/) not backslashes (\\) |
 | BigQuery fails | Re-auth: `gcloud auth application-default login` |
-| Index not found | Build: `patent-creator rebuild-index` |
-| Import errors | Activate venv |
+| Index not found | Build: `~/patent-creator-venv/bin/patent-creator setup --rebuild` |
+| Import errors | Run the venv's own commands (`~/patent-creator-venv/bin/...`); nothing needs activating |
 
 ## Platform-Specific Notes
 
 ### Windows
-- PowerShell: Use `venv\Scripts\activate`
+- PowerShell: call `.\patent-creator-venv\Scripts\patent-creator` from `cd ~`; no activation needed
 - Git Bash required for MCP commands
 - Paths: Always forward slashes in MCP config
 - CUDA: Install NVIDIA drivers + toolkit
 
 ### Linux
-- venv: `source venv/bin/activate`
+- venv: call `~/patent-creator-venv/bin/patent-creator`; no activation needed
 - FAISS-GPU: Available on Linux only
 - Permissions: May need sudo
 
@@ -173,10 +173,11 @@ Patent search needs a free SerpApi key (recommended) or BigQuery. If one is conf
 
 ### Updating Dependencies
 ```bash
-venv\Scripts\activate
-pip install -e . --upgrade
-python scripts/test_install.py
+~/patent-creator-venv/bin/pip install --upgrade git+https://github.com/RobThePCGuy/Claude-Patent-Creator.git
+~/patent-creator-venv/bin/patent-creator setup     # re-checks, rebuilds only if needed
 ```
+
+From a source checkout: `git pull`, then `venv/bin/pip install -e . --upgrade` and `venv/bin/python -m pytest -q`.
 
 ### Rebuilding Index
 ```bash
@@ -199,18 +200,16 @@ python scripts/test_install.py
 ~/patent-creator-venv/bin/patent-creator health
 claude mcp list
 
-# Testing
-python scripts/test_install.py
-python scripts/test_gpu.py
-python scripts/test_bigquery.py
-
 # Maintenance
-patent-creator rebuild-index
-patent-creator verify-config
+~/patent-creator-venv/bin/patent-creator setup --rebuild
+~/patent-creator-venv/bin/patent-creator verify-config
+
+# Source checkout only
+venv/bin/python -m pytest -q
 ```
 
 ### Critical Files
-- `.env` - Environment variables
-- `requirements.txt` - Dependencies
-- `mcp_server/index/` - MPEP search index
+- `~/.config/claude-patent-creator/config.json` - saved settings and keys (`patent-creator config path`)
+- `~/.local/share/claude-patent-creator/data/` - downloaded sources and the search index (`PATENT_DATA_DIR` moves it)
+- `.env` - environment variables, source checkout only
 - `pdfs/` - MPEP PDF files

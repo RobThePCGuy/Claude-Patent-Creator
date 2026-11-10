@@ -209,7 +209,9 @@ def test_printed_commands_name_the_installed_executable(tmp_path, monkeypatch):
     exe = bin_dir / "patent-creator"
     exe.write_text("", encoding="utf-8")
     monkeypatch.setattr(cli.sys, "executable", str(bin_dir / "python"))
-    monkeypatch.setattr(cli.shutil, "which", lambda name: None)
+    import cli_command
+
+    monkeypatch.setattr(cli_command.shutil, "which", lambda name: None)
     assert cli._cli() == str(exe)
 
 
@@ -318,3 +320,49 @@ def test_saved_settings_reach_the_server_claude_code_starts(tmp_path):
     out = _run_isolated(tmp_path, code)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip().splitlines()[-1].startswith(str(moved))
+
+
+# --- Fourth fresh-user walk -------------------------------------------------
+
+
+def test_every_guidelines_chunk_cites_its_official_page(tmp_path):
+    import importlib
+
+    mpep_search = importlib.import_module("mpep_search")
+    body = " ".join(f"Claims must be clear and supported by the description, point {i}." for i in range(120))
+    text = (
+        "EPO GUIDELINES FOR EXAMINATION — 2026\nCoverage: test\n"
+        "### 5. Clarity of claims and support by the description\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/d_v_5.html\n" + body + "\n\n"
+        "### 4.1 Form and content\n"
+        "Source: https://www.epo.org/en/legal/guidelines-epc/2026/f_iv_4_1.html\n" + body + "\n"
+    )
+    path = tmp_path / "epo_guidelines.txt"
+    path.write_text(text, encoding="utf-8")
+    idx = mpep_search.MPEPIndex.__new__(mpep_search.MPEPIndex)
+    chunks = idx.extract_text_from_epo_guidelines(path)
+    metas = [mpep_search.MPEPIndex._chunk_to_metadata(c) for c in chunks]
+
+    d = [m for m in metas if m.get("source_url", "").endswith("d_v_5.html")]
+    f = [m for m in metas if m.get("source_url", "").endswith("f_iv_4_1.html")]
+    assert len(d) > 1 and len(f) > 1  # continuation chunks keep the link
+    assert all("Part D, Chapter V, 5" in m["section"] for m in d)
+    assert all("Part F, Chapter IV, 4.1" in m["section"] for m in f)
+    assert all(m["part"] == "Part D" for m in d)
+    assert not any("Source:" in c["text"] for c in chunks)
+
+
+def test_recovery_messages_name_the_installed_command(tmp_path, monkeypatch):
+    import cli_command
+
+    bin_dir = tmp_path / "venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "patent-creator").write_text("", encoding="utf-8")
+    monkeypatch.setattr(cli_command.sys, "executable", str(bin_dir / "python"))
+    monkeypatch.setattr(cli_command.shutil, "which", lambda name: None)
+    exe = str(bin_dir / "patent-creator")
+
+    out = cli_command.render("Run patent-creator setup --rebuild, or 'patent-creator config list'.")
+    assert out == f"Run {exe} setup --rebuild, or '{exe} config list'."
+    # names that merely contain the word are left alone
+    assert cli_command.render("claude-patent-creator stays") == "claude-patent-creator stays"

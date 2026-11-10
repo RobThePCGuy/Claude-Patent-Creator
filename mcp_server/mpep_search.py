@@ -324,7 +324,7 @@ class MPEPIndex:
             meta["supersedes_mpep"] = c.get("supersedes_mpep", False)
         else:
             # EPO/PCT structural fields, when the extractor recorded them
-            for key in ("part", "article", "rule"):
+            for key in ("part", "article", "rule", "source_url"):
                 if key in c:
                     meta[key] = c[key]
         return meta
@@ -628,11 +628,30 @@ class MPEPIndex:
         )
         return chunks
 
+    @staticmethod
+    def _guidelines_locator(url: str) -> Optional[str]:
+        """'.../guidelines-epc/2026/d_v_5_1.html' -> 'Part D, Chapter V, 5.1'."""
+        import re
+
+        m = re.search(r"/([a-h])(?:_([ivxlc]+))?((?:_\d+)*)\.html$", url or "")
+        if not m:
+            return None
+        part, chapter, numbers = m.group(1), m.group(2), m.group(3)
+        bits = [f"Part {part.upper()}"]
+        if chapter:
+            bits.append(f"Chapter {chapter.upper()}")
+        if numbers:
+            bits.append(".".join(n for n in numbers.split("_") if n))
+        return ", ".join(bits)
+
     def extract_text_from_epo_guidelines(self, text_path: Path) -> list[dict[str, Any]]:
         """Extract text from EPO Guidelines for Examination (text file from HTML scrape).
 
-        The Guidelines are organized into 8 parts (A-H), each with chapters and
-        sections. This method detects the Part/Chapter/Section structure.
+        The scraper writes each official page as "### <title>" then
+        "Source: <url>" then its text. Every chunk carries that page's URL and
+        its Part/Chapter/section locator (derived from the URL), so a
+        continuation chunk cites the same official page as the first one. A
+        "PART A - ..." header (PDF-derived text) sets the part as before.
         """
         import re
 
@@ -642,85 +661,67 @@ class MPEPIndex:
             if not text.strip():
                 return chunks
 
-            # Split by part headers
             current_part = "EPO Guidelines"
             current_section = "EPO Guidelines"
+            current_url: Optional[str] = None
+            page_title: Optional[str] = None
+            buffer: list[str] = []
 
-            # Process line by line, detecting headers
-            lines = text.split("\n")
-            buffer = []
+            def flush():
+                if not buffer:
+                    return
+                meta = {
+                    "source": "EPO_GUIDELINES",
+                    "file": text_path.name,
+                    "section": current_section,
+                    "part": current_part,
+                    "is_statute": False,
+                    "is_regulation": False,
+                    "is_update": False,
+                }
+                if current_url:
+                    meta["source_url"] = current_url
+                chunks.extend(
+                    self._chunk_text_with_metadata(
+                        text="\n".join(buffer), section_label=current_section, base_metadata=meta
+                    )
+                )
+                buffer.clear()
 
-            for line in lines:
-                # Detect part headers: "PART A - FORMALITIES EXAMINATION"
+            for line in text.split("\n"):
                 part_match = re.match(r"PART\s+([A-H])\s*[-–]\s*(.+)", line, re.IGNORECASE)
                 if part_match:
-                    # Flush buffer
-                    if buffer:
-                        buffer_text = "\n".join(buffer)
-                        page_chunks = self._chunk_text_with_metadata(
-                            text=buffer_text,
-                            section_label=current_section,
-                            base_metadata={
-                                "source": "EPO_GUIDELINES",
-                                "file": text_path.name,
-                                "section": current_section,
-                                "part": current_part,
-                                "is_statute": False,
-                                "is_regulation": False,
-                                "is_update": False,
-                            },
-                        )
-                        chunks.extend(page_chunks)
-                        buffer = []
-
-                    current_part = f"Part {part_match.group(1)}"
+                    flush()
+                    current_part = f"Part {part_match.group(1).upper()}"
                     current_section = f"EPO Guidelines {current_part} - {part_match.group(2).strip()}"
                     continue
 
-                # Detect chapter/section headers
+                source_match = re.match(r"Source:\s*(https?://\S+)\s*$", line)
+                if source_match:
+                    flush()
+                    current_url = source_match.group(1)
+                    locator = self._guidelines_locator(current_url)
+                    if locator:
+                        current_part = locator.split(",")[0]
+                        title = page_title or "Guidelines"
+                        current_section = f"EPO Guidelines {locator} - {title}"
+                    continue
+
                 section_match = re.match(r"(?:###+|####)\s*(.+)", line)
                 if section_match:
-                    # Flush buffer
-                    if buffer:
-                        buffer_text = "\n".join(buffer)
-                        page_chunks = self._chunk_text_with_metadata(
-                            text=buffer_text,
-                            section_label=current_section,
-                            base_metadata={
-                                "source": "EPO_GUIDELINES",
-                                "file": text_path.name,
-                                "section": current_section,
-                                "part": current_part,
-                                "is_statute": False,
-                                "is_regulation": False,
-                                "is_update": False,
-                            },
-                        )
-                        chunks.extend(page_chunks)
-                        buffer = []
-
-                    current_section = f"EPO Guidelines {current_part} - {section_match.group(1).strip()}"
+                    flush()
+                    heading = section_match.group(1).strip()
+                    if line.startswith("### ") and not line.startswith("#### "):
+                        # A page title; its Source line follows and sets the URL.
+                        page_title = heading
+                    locator = self._guidelines_locator(current_url) if current_url else None
+                    where = locator or current_part
+                    current_section = f"EPO Guidelines {where} - {heading}"
                     continue
 
                 buffer.append(line)
 
-            # Flush remaining buffer
-            if buffer:
-                buffer_text = "\n".join(buffer)
-                page_chunks = self._chunk_text_with_metadata(
-                    text=buffer_text,
-                    section_label=current_section,
-                    base_metadata={
-                        "source": "EPO_GUIDELINES",
-                        "file": text_path.name,
-                        "section": current_section,
-                        "part": current_part,
-                        "is_statute": False,
-                        "is_regulation": False,
-                        "is_update": False,
-                    },
-                )
-                chunks.extend(page_chunks)
+            flush()
 
         except Exception as e:
             _log_error(f"Error processing EPO Guidelines {text_path}: {e}", exc_info=True)
@@ -1048,8 +1049,14 @@ class MPEPIndex:
             _log_info(f"Extracted {len(pct_guide_chunks)} PCT Guidelines chunks", chunk_count=len(pct_guide_chunks))
 
         if not all_chunks:
+            try:
+                from cli_command import render as _render_cmd
+            except ImportError:
+                from mcp_server.cli_command import render as _render_cmd
             raise ValueError(
-                "No chunks extracted from any sources. Run patent-creator setup to download sources."
+                _render_cmd(
+                    "No chunks extracted from any sources. Run patent-creator setup to download sources."
+                )
             )
 
         # Create embeddings (no prefix for documents with BGE)

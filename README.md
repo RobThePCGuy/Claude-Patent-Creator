@@ -261,7 +261,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | Tool | What it does |
 |---|---|
 | `search_mpep` | Hybrid RAG search across MPEP, 35 USC, and 37 CFR with filters |
-| `get_mpep_section` | Pull full content of a specific MPEP section |
+| `get_mpep_section` | Pull the text of an MPEP section (e.g. 608.01(b)) from its chapter; says when boundaries are approximate or the text is cut off |
 | `search_patents_google` | Full-text keyword search worldwide, claims included (recommended; free SerpApi key, 250 searches/month) |
 | `search_patents_bigquery` | Keyword search fallback when no SerpApi key is set (~$2 a search past the free monthly TiB) |
 | `search_non_patent_literature` | Papers and preprints as prior art (OpenAlex, arXiv, Semantic Scholar), free with no key, filter by priority date |

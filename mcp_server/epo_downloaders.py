@@ -7,6 +7,7 @@ Patent Cooperation Treaty (PCT) systems for indexing in the RAG pipeline.
 """
 
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -264,7 +265,7 @@ def _scrape_epo_guidelines_html(dest_path: Path, year: Optional[int] = None) -> 
     text. Never install a partial crawl as the complete Guidelines source.
     """
     import datetime
-    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from urllib.parse import urldefrag, urljoin
 
     if not BS4_AVAILABLE or not REQUESTS_AVAILABLE:
@@ -314,13 +315,22 @@ def _scrape_epo_guidelines_html(dest_path: Path, year: Optional[int] = None) -> 
                 break
             seen.update(batch)
             pending = set()
-            for url, text, links, error in pool.map(fetch, batch):
+            # Report while the batch runs, not only after it: one batch can
+            # be ~850 pages and minutes long, which looked like a hang.
+            last_report = time.monotonic()
+            futures = [pool.submit(fetch, u) for u in batch]
+            for done_count, future in enumerate(as_completed(futures), start=1):
+                url, text, links, error = future.result()
                 if error:
                     failures.append(url)
                     _log_error(f"Guidelines HTML failed: {url}: {error}")
                 else:
                     pages[url] = text
                     pending.update(links - seen)
+                if time.monotonic() - last_report >= 20 and done_count < len(batch):
+                    _log_info(f"Guidelines HTML: {len(pages)} pages retrieved; "
+                              f"{len(failures)} failed; {len(batch) - done_count} left in this batch")
+                    last_report = time.monotonic()
             _log_info(f"Guidelines HTML: {len(pages)} pages retrieved; "
                       f"{len(failures)} failed; {len(pending)} pending")
     required = {base + part + "_i.html" for part in "abcdefgh"}
