@@ -29,7 +29,9 @@ def _bigquery_fallback() -> str:
         "The free SerpApi key is the quicker route. Until a key is set, a web "
         "first screen is possible: WebSearch restricted to patents.google.com, "
         "then WebFetch the closest patent pages. Label it a first screen; an "
-        "empty or thin result is not evidence of no prior art."
+        "empty or thin result is not evidence of no prior art. Give the user "
+        "the setup steps from `message` in plain words, including the links, "
+        "so they can turn on full patent search."
     )
 
 
