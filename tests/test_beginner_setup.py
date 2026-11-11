@@ -474,3 +474,4 @@ def test_no_key_fallback_offers_a_labelled_web_first_screen(monkeypatch):
     msg = gpt._bigquery_fallback()
     assert "WebSearch restricted to patents." in msg
     assert "not evidence of no prior art" in msg
+    assert "setup steps" in msg

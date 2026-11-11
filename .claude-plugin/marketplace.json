@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "USPTO patent creation and analysis system with hybrid RAG search, worldwide Google Patents search, automated compliance checking, prior art search, and diagram generation.",
-    "version": "1.1.13"
+    "version": "1.1.14"
   },
   "plugins": [
     {
       "name": "claude-patent-creator-standalone",
       "source": "./",
       "description": "Patent drafting, prior-art search, USPTO rule search and compliance checks for Claude Code. Needs the companion patent-creator tool (README Quick Start, Step 1) for search and checks.",
-      "version": "1.1.13",
+      "version": "1.1.14",
       "author": {
         "name": "RobThePCGuy"
       },
