@@ -58,7 +58,7 @@ password databases.
 
 ### Step 2: Keyword Search
 
-I'll search 100M+ patents with Google Patents (`search_patents_google`, free SerpApi key) or, if that isn't set up and BigQuery is, `search_patents_bigquery`, using keywords derived from your description. I'll also search research papers published before your priority date (`search_non_patent_literature`). If no patent search is set up, I'll say so and point you to the free key (README Quick Start, Step 3) instead of reporting no prior art.
+I'll search 100M+ patents with Google Patents (`search_patents_google`, free SerpApi key) or, if that isn't set up and BigQuery is, `search_patents_bigquery`, using keywords derived from your description. I'll also search research papers published before your priority date (`search_non_patent_literature`). If no patent search is set up, I'll point you to the free key (README Quick Start, Step 3) and meanwhile run a quick web first screen of Google Patents. I'll label it as that: it can show close patents exist, but it can't show that none do, so the report gives no novelty or patentability verdict until real patent search runs.
 
 ```python
 # I'll run searches like:

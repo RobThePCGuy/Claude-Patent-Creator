@@ -52,14 +52,14 @@ def test_embedding_speed():
         print("=" * 60)
 
         try:
-            start = time.time()
+            start = time.perf_counter()
             embeddings = model.encode(
                 test_chunks,
                 batch_size=batch_size,
                 show_progress_bar=True,
                 device=device,
             )
-            elapsed = time.time() - start
+            elapsed = max(time.perf_counter() - start, 1e-9)
 
             speed = len(test_chunks) / elapsed
             measurements.append((speed, batch_size))

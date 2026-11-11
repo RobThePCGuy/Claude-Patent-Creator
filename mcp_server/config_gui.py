@@ -7,6 +7,7 @@ only builds widgets. Tkinter is imported lazily inside :func:`launch` so importi
 this module never requires a display.
 """
 
+import os
 import sys
 
 # Work both as a package module (tests: mcp_server.config_gui) and as a bare
@@ -60,6 +61,9 @@ def launch() -> int:
             file=sys.stderr,
         )
         print(f"    {exc}", file=sys.stderr)
+        if sys.platform == "darwin" and "/Cellar/python@" in os.path.realpath(sys.executable):
+            ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+            print(f"    Homebrew Python ships without Tkinter; add it with: brew install python-tk@{ver}", file=sys.stderr)
         try:
             from cli_command import render
         except ImportError:

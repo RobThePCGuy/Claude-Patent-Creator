@@ -137,6 +137,8 @@ Category 3: Use claim (where appropriate)
 - Required under Art. 57 EPC if not obvious from description
 
 ### 3. Problem-Solution Approach
+Only assess inventive step against prior art from a real patent search (Google Patents through SerpApi, BigQuery, or EPO OPS). If the only prior art on hand is a web first screen, or its source is unknown, write "Not assessed: no full patent search was run" for inventive step instead of a verdict.
+
 
 Central to EPO prosecution:
 

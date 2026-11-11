@@ -114,6 +114,8 @@ Where two-part form is appropriate, independent claims contain:
 
 ### Problem-Solution Approach (Art. 56 EPC)
 
+Only assess inventive step against prior art from a real patent search (Google Patents through SerpApi, BigQuery, or EPO OPS). If the only prior art on hand is a web first screen, or its source is unknown, write "Not assessed: no full patent search was run" for inventive step instead of a verdict.
+
 The EPO standard for assessing inventive step:
 1. Determine closest prior art
 2. Identify distinguishing features

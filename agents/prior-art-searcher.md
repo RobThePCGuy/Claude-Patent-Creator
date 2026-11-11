@@ -113,7 +113,7 @@ SEARCH QUERIES (Prioritized):
 **Objective:** Cast wide net to identify relevant prior art
 
 **Tasks:**
-1. Execute primary keyword searches (`search_patents_google`; `search_patents_bigquery` only if Google Patents is not set up and BigQuery is; if neither, stop and say patent search needs a free key)
+1. Execute primary keyword searches (`search_patents_google`; `search_patents_bigquery` only if Google Patents is not set up and BigQuery is; if neither, say patent search needs a free key and run the web first screen described in the prior-art-search skill, labelled as such; every novelty, obviousness and patentability verdict in this report then reads "Not assessed: only a web first screen was run")
 2. Execute secondary keyword searches
 3. Scan results for relevance
 4. Note patent numbers of closest matches
@@ -288,6 +288,8 @@ Grace Period Considerations:
 - `search_mpep` for 35 USC 102/103 guidance
 - `get_mpep_section` for MPEP 2100 (Patentability)
 
+If only a web first screen was run (no patent search set up), skip both analyses below and write "Not assessed: only a web first screen was run; set up patent search and rerun".
+
 **35 USC 102 Analysis (Novelty):**
 ```
 Does any single prior art reference disclose ALL elements of the invention?
@@ -363,6 +365,8 @@ Obviousness (35 USC 103):
     * Unexpected Result: [Surprising benefit]
     * Technical Barrier: [Challenge to combination]
   - Preliminary Assessment: LIKELY NON-OBVIOUS (based on references found in this search)
+
+(If only a web first screen was run: replace CLAIM STRATEGY, NEXT STEPS and CONFIDENCE below with one step, "Set up patent search (README Quick Start, Step 3) and rerun this search before drafting or filing"; confidence is LOW.)
 
 CLAIM STRATEGY RECOMMENDATIONS:
 1. Independent Claim: Cover core invention broadly (Elements A, B, C, D)

@@ -1,6 +1,6 @@
 {
   "name": "claude-patent-creator-standalone",
-  "description": "Complete self-contained patent creation system - NO MCP server required. Uses Claude Code skills, agents, commands, and hooks.",
+  "description": "Patent drafting, prior-art search, USPTO rule search and compliance checks for Claude Code. Needs the companion patent-creator tool (README Quick Start, Step 1) for search and checks.",
   "author": {
     "name": "RobThePCGuy"
   },
@@ -18,5 +18,5 @@
     "bigquery",
     "diagrams"
   ],
-  "version": "1.1.12"
+  "version": "1.1.13"
 }

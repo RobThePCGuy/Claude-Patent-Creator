@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   setup command is easier to find.
 
 ### Fixed
+- With no SerpApi key and no BigQuery, prior-art workflows no longer stop
+  dead. They point at the free key and meanwhile run a web first screen
+  (Google Patents pages found by web search, then read in full), labelled as
+  a first screen that cannot show an absence of prior art.
+- The plugin listing no longer says no MCP server is needed; search and checks
+  come from the companion tool.
+- The settings window's "Tkinter not installed" message now gives the
+  `brew install python-tk@X.Y` fix on Homebrew Python.
 - Setup no longer crashes with `EOFError` on Windows when stdin is NUL (#85).
 - Docs, agents and skills no longer name APIs that don't exist (#86).
 - `get_patent_bigquery` finds patents again and no longer scans about 1.4 TiB
