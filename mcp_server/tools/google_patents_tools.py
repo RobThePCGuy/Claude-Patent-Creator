@@ -26,7 +26,10 @@ def _bigquery_fallback() -> str:
     return (
         "search_patents_bigquery, once the optional BigQuery setup is done "
         "(a Google Cloud project; see 'Setting up BigQuery' in the README). "
-        "The free SerpApi key is the quicker route."
+        "The free SerpApi key is the quicker route. Until a key is set, a web "
+        "first screen is possible: WebSearch restricted to patents.google.com, "
+        "then WebFetch the closest patent pages. Label it a first screen; an "
+        "empty or thin result is not evidence of no prior art."
     )
 
 

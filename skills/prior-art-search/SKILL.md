@@ -96,7 +96,7 @@ Searches (run each separately, then merge/dedupe):
 **Goal**: Cast wide net to find relevant patents
 
 
-**Which patent search to use:** call `check_google_patents_status` first. If it is ready (the free SerpApi key from the README's Quick Start, Step 3), run every keyword search with `search_patents_google`. If not, use `search_patents_bigquery` only when `check_bigquery_status` says BigQuery is configured. If neither is set up, stop and tell the user patent search needs one free key (README Quick Start, Step 3) rather than reporting "no prior art". CPC searches (`search_patents_by_cpc_bigquery`) need BigQuery; without it, say in the report that the CPC step was done as keyword searches only.
+**Which patent search to use:** call `check_google_patents_status` first. If it is ready (the free SerpApi key from the README's Quick Start, Step 3), run every keyword search with `search_patents_google`. If not, use `search_patents_bigquery` only when `check_bigquery_status` says BigQuery is configured. If neither is set up, tell the user patent search needs one free key (README Quick Start, Step 3) and run a no-key first screen in the meantime: several `WebSearch` queries restricted to Google Patents (`allowed_domains: ["patents.google.com"]`), then read the closest patent pages with `WebFetch` for claims, dates, CPC codes and citations. Label everything found this way a web first screen, not a prior-art search: web search ranks pages rather than matching claim text and misses much of the record, so a thin or empty result is never evidence of no prior art. A first screen never supports a novelty, obviousness or patentability verdict: in every later assessment, report section or phase that would give one (including any NOVEL / LIKELY NO verdict), write "Not assessed: only a web first screen was run; set up patent search and rerun" instead. CPC searches (`search_patents_by_cpc_bigquery`) need BigQuery; without it, say in the report that the CPC step was done as keyword searches only.
 
 **Process**:
 1. Run keyword searches (`search_patents_google`, or `search_patents_bigquery` as above)
@@ -185,6 +185,8 @@ search_patents_google(query=QUERY, start_year=2015, end_year=2021)
 ### Step 7: Patentability Report (5-10 min)
 
 **Goal**: Professional assessment and recommendations
+
+If Step 3 ran only a web first screen, the report's novelty, obviousness and patentability lines each read "Not assessed: only a web first screen was run; set up patent search and rerun", and the report is titled a first screen, not a patentability report.
 
 **Process**:
 1. Analyze top 10 closest prior art

@@ -138,6 +138,14 @@ lives in products, open source, standards, and papers. Sweep ALL of:
    for deep reads (free). Fallback without a SerpApi key:
    `search_patents_bigquery` and `search_patents_by_cpc_bigquery`, but a
    keyword search there scans ~341 GiB (about $2, a third of a free month).
+   If neither is set up (`check_google_patents_status` and
+   `check_bigquery_status` both say not ready), the patent outlet has NOT
+   been searched. Tell the user patent search needs one free key (README
+   Quick Start, Step 3). A web first screen of Google Patents pages may
+   still feed the sweep, labelled as such, but no item may be marked
+   CLEAN GROUND, and the decision gate below stops with "Patent search
+   not set up; set up the free key and rerun Phase 2" instead of a go,
+   a no-go, or a filing recommendation.
 2. **Non-patent literature**: start with `search_non_patent_literature`
    (papers and preprints from OpenAlex, arXiv and Semantic Scholar, free;
    set `published_before` to the priority date). Then fan out adversarial web-research agents per
