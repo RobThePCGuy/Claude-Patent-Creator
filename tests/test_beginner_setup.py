@@ -472,5 +472,5 @@ def test_no_key_fallback_offers_a_labelled_web_first_screen(monkeypatch):
 
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
     msg = gpt._bigquery_fallback()
-    assert "patents.google.com" in msg
+    assert "WebSearch restricted to patents." in msg
     assert "not evidence of no prior art" in msg
