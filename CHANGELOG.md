@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   setup command is easier to find.
 
 ### Fixed
+- Setup no longer crashes with `EOFError` on Windows when stdin is NUL (#85).
+- Docs, agents and skills no longer name APIs that don't exist (#86).
+- `get_patent_bigquery` finds patents again and no longer scans about 1.4 TiB
+  per lookup (#87).
+- `PATENT_MPEP_USE_HYDE` is honored and HyDE is off by default, saving about
+  3.5 s per search (#88).
+- PyMuPDF is imported as `pymupdf`, so its deprecation warning no longer
+  corrupts the server's stdio (#89). Reports for #85–#89 by @eoffermann.
 - Plugin docs no longer promise checks the tools don't run (antecedent basis,
   corresponding structure, description support, best mode, physical page
   checks), and analyzer result fields are documented as returned.
