@@ -465,6 +465,18 @@ class SystemHealthChecker:
                     "cuda_version": torch.version.cuda,
                     "performance_impact": "5-10x faster indexing and search",
                 }
+            mps = getattr(torch.backends, "mps", None)
+            if mps is not None and mps.is_available():
+                return {
+                    "status": "cpu_by_default",
+                    "ready": True,
+                    "device": "cpu",
+                    "details": (
+                        "Apple Silicon: CPU is the default because it ran this workload "
+                        "faster than MPS. Set PATENT_MPEP_DEVICE=mps to try the GPU."
+                    ),
+                    "performance_impact": "None; CPU is the faster choice here",
+                }
             else:
                 return {
                     "status": "not_available",

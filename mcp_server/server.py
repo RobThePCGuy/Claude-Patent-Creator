@@ -671,12 +671,18 @@ def _run_health_checks():
 
     print("\nRunning pre-flight health checks...", file=sys.stderr)
     checker = SystemHealthChecker()
-    health_status = checker.check_all_dependencies(verbose=False)
+    # Only the two checks reported below. The full dependency check
+    # loads both AI models and calls HuggingFace, which held the MCP
+    # handshake for over three seconds and discarded the models after.
+    health_status = {
+        "uspto_api": checker._check_uspto_api(),
+        "gpu_status": checker._check_gpu(),
+    }
 
     warnings = []
     if not health_status["uspto_api"].get("available", False):
         warnings.append("USPTO API unavailable. USPTO searches are disabled; Google Patents and BigQuery have separate configuration.")
-    if health_status["gpu_status"].get("status") != "available":
+    if health_status["gpu_status"].get("status") not in ("available", "cpu_by_default"):
         warnings.append(
             f"GPU not available: {health_status['gpu_status'].get('details', 'Using CPU mode')}"
         )
@@ -756,8 +762,11 @@ def main():
     # Register all MCP tools (proxy is captured by closure, not accessed yet)
     _register_all_tools()
 
-    # Run health checks
-    _run_health_checks()
+    # Health warnings go to stderr only; run them beside the server so the
+    # handshake answers at once (the GPU check imports torch, ~1.5s).
+    import threading
+
+    threading.Thread(target=_run_health_checks, name="health-checks", daemon=True).start()
 
     # Run the MCP server
     _log_info("Starting MCP server...")

@@ -37,25 +37,53 @@ except ImportError:
     PYMUPDF_AVAILABLE = False
     fitz = None
 
-# Vector search capabilities
-try:
-    import faiss
-    import numpy as np
-    import torch
-    from sentence_transformers import CrossEncoder, SentenceTransformer
+# Vector search capabilities. torch, faiss and sentence-transformers take about
+# two seconds to import, so only their presence is checked here and the real
+# import waits for _load_vector_libs() in MPEPIndex.__init__. That keeps the MCP
+# server's startup short enough that a question asked right after Claude Code
+# opens still finds the patent tools connected.
+import importlib.util as _importlib_util
 
-    VECTOR_SEARCH_AVAILABLE = True
+try:
+    import numpy as np
 except ImportError:
+    np = None
+faiss = None
+torch = None
+CrossEncoder = None
+SentenceTransformer = None
+
+VECTOR_SEARCH_AVAILABLE = np is not None and all(
+    _importlib_util.find_spec(_mod) is not None for _mod in ("faiss", "torch", "sentence_transformers")
+)
+if not VECTOR_SEARCH_AVAILABLE:
     print(
         _render_cmd("Warning: Required packages not found. Install with: pip install sentence-transformers faiss-cpu numpy torch"),
         file=sys.stderr,
     )
-    VECTOR_SEARCH_AVAILABLE = False
-    faiss = None
-    np = None
-    torch = None
-    CrossEncoder = None
-    SentenceTransformer = None
+
+
+def _load_vector_libs() -> None:
+    """Import the heavy vector-search libraries on first index use."""
+    global faiss, torch, CrossEncoder, SentenceTransformer
+    if SentenceTransformer is not None:
+        return
+    try:
+        import faiss as _faiss
+        import torch as _torch
+        from sentence_transformers import CrossEncoder as _CrossEncoder
+        from sentence_transformers import SentenceTransformer as _SentenceTransformer
+    except ImportError as exc:
+        # Installed but unimportable (broken wheel, ABI mismatch): give the
+        # same install guidance as a missing package, not a raw traceback.
+        raise ImportError(
+            f"Vector search packages failed to load ({exc}). "
+            + _render_cmd("Install with: pip install sentence-transformers faiss-cpu numpy torch")
+        ) from None
+
+    faiss, torch = _faiss, _torch
+    CrossEncoder, SentenceTransformer = _CrossEncoder, _SentenceTransformer
+
 
 # BM25 for hybrid search
 try:
@@ -297,6 +325,7 @@ class MPEPIndex:
             )
         if not PYMUPDF_AVAILABLE:
             raise ImportError(_render_cmd("PyMuPDF not available. Install with: pip install PyMuPDF"))
+        _load_vector_libs()
 
         # Detect and use GPU if available
         self.device = get_device()
@@ -1088,6 +1117,7 @@ class MPEPIndex:
 
     def build_index(self, force_rebuild: bool = False):
         """Build or load the FAISS index with BM25"""
+        _load_vector_libs()
         _log_info("build_index_started", force_rebuild=force_rebuild)
         if not force_rebuild and self.index_file.exists() and self.metadata_file.exists():
             # Load existing index
@@ -1305,6 +1335,7 @@ class MPEPIndex:
             is_regulation: Filter for regulation content (True/False/None)
             is_update: Filter for recent updates (True/False/None)
         """
+        _load_vector_libs()
         if self.index is None:
             raise ValueError("Index not built. Call build_index() first.")
 
