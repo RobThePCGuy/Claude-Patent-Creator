@@ -25,9 +25,9 @@ from typing import Any, Optional
 def _resolve_under_cwd(user_path: str, default_subdir: str) -> Path:
     """Resolve a user-supplied path under cwd, rejecting any escape."""
     cwd = Path.cwd().resolve()
-    if not user_path:
-        return cwd / default_subdir
-    candidate = Path(user_path)
+    # The default goes through the same check: a planted symlink named like the
+    # default folder must not redirect output outside the project directory.
+    candidate = Path(user_path) if user_path else Path(default_subdir)
     candidate = candidate.resolve() if candidate.is_absolute() else (cwd / candidate).resolve()
     try:
         candidate.relative_to(cwd)
