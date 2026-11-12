@@ -55,6 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   setup command is easier to find.
 
 ### Fixed
+- The patent tools now connect in about 0.4 seconds instead of 3.7. Startup
+  had loaded the AI search libraries and run a full health check (both models
+  plus calls to HuggingFace) before answering Claude Code, so a question asked
+  right after opening Claude Code was answered without the patent tools. The
+  libraries now load on first use, the server runs only the two checks it
+  reports in the background, and an installed-but-broken library gives the
+  install steps instead of a raw error. Apple Silicon is no longer told to
+  install CUDA; it reports that CPU is the faster default there.
 - With no SerpApi key and no BigQuery, prior-art workflows no longer stop
   dead. They point at the free key and meanwhile run a web first screen
   (Google Patents pages found by web search, then read in full), labelled as

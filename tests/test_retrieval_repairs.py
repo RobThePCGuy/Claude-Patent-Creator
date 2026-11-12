@@ -212,6 +212,7 @@ def test_index_load_reports_legacy_warning(tmp_path, monkeypatch):
     idx.metadata_file = tmp_path / 'metadata.json'
     idx.metadata_file.write_text(json.dumps({'chunks': ['text'], 'metadata': [{'source': 'EPC_RULES'}]}))
     idx.bm25_file = tmp_path / 'absent.json'
+    ms._load_vector_libs()  # faiss is imported on first index use
     monkeypatch.setattr(ms.faiss, 'read_index', lambda _: object())
     warnings = []
     monkeypatch.setattr(ms, '_log_warning', warnings.append)
