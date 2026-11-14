@@ -8,6 +8,8 @@
 
 **An AI-powered patent creation and analysis system for Claude Code.**
 
+> **Private beta:** Patent Creator Studio puts these tools in a desktop app for Mac and Windows, and I'm looking for testers. [Join here](https://github.com/RobThePCGuy/Claude-Patent-Creator/discussions/121).
+
 I built this because I needed to file a patent myself. I used AI to build the system, used the system to file the patent, and it worked. Now it's open source so anyone can use it. You do not need to be a lawyer or a programmer. If you can describe your idea in a chat window, you can use this.
 
 In plain terms, this tool lets you:
