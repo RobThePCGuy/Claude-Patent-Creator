@@ -1,0 +1,87 @@
+name: Studio beta sign-ups
+
+# When someone comments on the Patent Creator Studio beta post, invite them to
+# the private testers' repo with read-only access and thank them in the thread.
+# Anything unusual is held for Rob as an issue in the testers' repo, and nobody
+# is invited for it.
+#
+# The comment text is never run or passed to a shell. It is read only to see
+# whether the person named Mac or Windows.
+on:
+  discussion_comment:
+    types: [created]
+
+permissions:
+  discussions: write
+
+concurrency:
+  group: studio-beta-signup
+  cancel-in-progress: false
+
+jobs:
+  signup:
+    if: github.event.discussion.number == 121
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Invite and reply
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BETA_TOKEN: ${{ secrets.BETA_INVITE_TOKEN }}
+        with:
+          script: |
+            const OWNER = 'PatentCreatorStudio';
+            const REPO = 'Patent-Creator-Studio-Beta';
+            const MIN_AGE_DAYS = 30;
+            const comment = context.payload.comment;
+            const login = comment.user.login;
+
+            // Replies inside a thread, and Rob's own comments, are conversation, not sign-ups.
+            if (comment.parent_id) return core.info('A reply inside a thread; nothing to do.');
+            if (login === context.repo.owner) return core.info('Rob commented; nothing to do.');
+
+            if (!process.env.BETA_TOKEN) return core.setFailed('The BETA_INVITE_TOKEN secret is missing.');
+            const beta = getOctokit(process.env.BETA_TOKEN);
+
+            const hold = async (why) => {
+              const title = `Held sign-up: ${login}`;
+              const open = await beta.rest.issues.listForRepo({ owner: OWNER, repo: REPO, state: 'all', per_page: 100 });
+              if (open.data.some(i => i.title === title)) return core.info(`Already held: ${login}`);
+              await beta.rest.issues.create({ owner: OWNER, repo: REPO, title,
+                body: `${login} commented on the beta post and was not invited.\n\nWhy: ${why}\n\nComment: ${comment.html_url}\n\nTo let them in, invite them with read access. To decline, close this issue.` });
+              core.notice(`Held ${login}: ${why}`);
+            };
+
+            // 1. A real person's account, old enough not to be a throwaway.
+            const user = (await beta.rest.users.getByUsername({ username: login })).data;
+            if (user.type !== 'User') return hold(`the account is a ${user.type}, not a person`);
+            const ageDays = (Date.now() - Date.parse(user.created_at)) / 86400000;
+            if (ageDays < MIN_AGE_DAYS) return hold(`the account is ${Math.floor(ageDays)} days old (under ${MIN_AGE_DAYS})`);
+
+            // 2. Not already in, and not already invited.
+            const invites = await beta.paginate(beta.rest.repos.listInvitations, { owner: OWNER, repo: REPO });
+            if (invites.some(i => i.invitee?.login?.toLowerCase() === login.toLowerCase())) return core.info(`${login} already has an invitation.`);
+            try {
+              await beta.rest.repos.checkCollaborator({ owner: OWNER, repo: REPO, username: login });
+              return core.info(`${login} already has access.`);
+            } catch (e) { if (e.status !== 404) throw e; }
+
+            // 3. Invite read-only, then read the invitation back and undo it if it isn't read.
+            const res = await beta.rest.repos.addCollaborator({ owner: OWNER, repo: REPO, username: login, permission: 'pull' });
+            if (res.status !== 201) return hold(`GitHub answered the invitation with status ${res.status}`);
+            if (res.data.permissions !== 'read') {
+              await beta.rest.repos.deleteInvitation({ owner: OWNER, repo: REPO, invitation_id: res.data.id });
+              return hold(`the invitation came back as "${res.data.permissions}", not read, so it was cancelled`);
+            }
+
+            // 4. Thank them in the thread.
+            const text = comment.body || '';
+            const mac = /\bmac(os|book)?\b/i.test(text), win = /\bwin(dows)?\b|\bpc\b/i.test(text);
+            const where = mac && !win ? 'The Mac download is'
+              : win && !mac ? 'The Windows download is'
+              : 'The downloads for Mac and Windows are';
+            const reply = `Thanks for signing up. You're in. GitHub sent you an invitation to ${REPO}, so check your GitHub notifications or email and accept it. ${where} under Releases there, and the README walks you through the install. If something breaks or confuses you, open an issue in that repo and tell me what you were doing. I read every one.`;
+            await github.graphql(
+              'mutation($d:ID!,$c:ID!,$b:String!){addDiscussionComment(input:{discussionId:$d,replyToId:$c,body:$b}){comment{url}}}',
+              { d: context.payload.discussion.node_id, c: comment.node_id, b: reply });
+            core.notice(`Invited ${login} (read) and replied.`);
