@@ -69,9 +69,13 @@ jobs:
             // 3. Invite read-only, then read the invitation back and undo it if it isn't read.
             const res = await beta.rest.repos.addCollaborator({ owner: OWNER, repo: REPO, username: login, permission: 'pull' });
             if (res.status !== 201) return hold(`GitHub answered the invitation with status ${res.status}`);
-            if (res.data.permissions !== 'read') {
-              await beta.rest.repos.deleteInvitation({ owner: OWNER, repo: REPO, invitation_id: res.data.id });
-              return hold(`the invitation came back as "${res.data.permissions}", not read, so it was cancelled`);
+            // Look the invitation up again, separately from the answer above, and trust only that.
+            const recheck = await beta.paginate(beta.rest.repos.listInvitations, { owner: OWNER, repo: REPO });
+            const mine = recheck.find(i => i.id === res.data.id);
+            if (!mine || mine.permissions !== 'read') {
+              await beta.rest.repos.deleteInvitation({ owner: OWNER, repo: REPO, invitation_id: res.data.id }).catch(() => {});
+              return hold(mine ? `the invitation read back as "${mine.permissions}", not read, so it was cancelled`
+                               : 'the invitation could not be found when read back, so it was cancelled');
             }
 
             // 4. Thank them in the thread.
