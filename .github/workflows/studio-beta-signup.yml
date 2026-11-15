@@ -15,7 +15,8 @@ permissions:
   discussions: write
 
 concurrency:
-  group: studio-beta-signup
+  # One queue per commenter: a sign-up never cancels someone else's pending sign-up.
+  group: studio-beta-signup-${{ github.event.comment.user.login }}
   cancel-in-progress: false
 
 jobs:

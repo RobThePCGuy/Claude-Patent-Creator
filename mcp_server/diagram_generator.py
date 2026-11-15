@@ -44,6 +44,22 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).parent.parent
 DIAGRAMS_DIR = diagrams_dir()
 
+# A tspan with its own x, y or dy starts a new line; one without them continues
+# the same line (inline formatting or a subscript).
+_LINE_ATTRS = ("x", "y", "dy")
+
+
+def _rendered_text(element) -> str:
+    """The text an SVG <text> element shows: inline pieces joined as rendered,
+    with a space only where a tspan starts a new line."""
+    parts = [element.text or ""]
+    for child in element:
+        if child.tag.endswith("tspan") and any(a in child.attrib for a in _LINE_ATTRS):
+            parts.append(" ")
+        parts.append(_rendered_text(child))
+        parts.append(child.tail or "")
+    return "".join(parts)
+
 
 class PatentDiagramGenerator:
     """Generate patent-style technical diagrams"""
@@ -325,7 +341,7 @@ class PatentDiagramGenerator:
         matched = set()
         count = 0
         for texts in groups:
-            label = " ".join(" ".join(t.itertext()) for t in texts)
+            label = " ".join(_rendered_text(t) for t in texts)
             label = " ".join(label.split()).casefold()
             for pattern, ref_num in reference_map.items():
                 normalized = " ".join(pattern.split()).casefold()

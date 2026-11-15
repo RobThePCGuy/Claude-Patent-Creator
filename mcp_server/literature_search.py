@@ -593,7 +593,10 @@ def merge_results(
     later copies only fill its empty fields and add their source name."""
     merged: list[dict[str, Any]] = []
     index: dict[str, dict[str, Any]] = {}
-    depth = max((len(v) for v in per_source.values()), default=0)
+    # Different papers can share a title, so each title keeps every paper seen
+    # under it and a new record is compared with all of them.
+    by_title: dict[str, list[dict[str, Any]]] = {}
+    depth =max((len(v) for v in per_source.values()), default=0)
     for i in range(depth):
         for name in SOURCES:
             rows = per_source.get(name) or []
@@ -611,10 +614,7 @@ def merge_results(
             ]
             existing = next((index[k] for k in id_keys if k in index), None)
             if existing is None and len(title_key) >= MIN_TITLE_KEY:
-                candidate = index.get(f"title:{title_key}")
-                if candidate is not None and _same_paper(candidate, rec):
-                    existing = candidate
-            keys = id_keys + ([f"title:{title_key}"] if len(title_key) >= MIN_TITLE_KEY else [])
+                existing = next((c for c in by_title.get(title_key, []) if _same_paper(c, rec)), None)
             if existing is None:
                 existing = {**rec, "found_in": [name], "dates_by_source": {name: rec.get("publication_date")}}
                 merged.append(existing)
@@ -625,8 +625,12 @@ def merge_results(
                 if name not in existing["found_in"]:
                     existing["found_in"].append(name)
                 existing["dates_by_source"].setdefault(name, rec.get("publication_date"))
-            for k in keys:
+            for k in id_keys:
                 index.setdefault(k, existing)
+            if len(title_key) >= MIN_TITLE_KEY:
+                same_title = by_title.setdefault(title_key, [])
+                if not any(c is existing for c in same_title):
+                    same_title.append(existing)
     return merged[:limit]
 
 
