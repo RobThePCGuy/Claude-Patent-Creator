@@ -39,7 +39,11 @@ if _pkg_dir not in sys.path:
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(Path(__file__).parent.parent / ".env", override=False)
+    # Same files, same order as server.py: the project root .env, then the
+    # legacy mcp_server/.env. Otherwise setup and the server could disagree on
+    # settings such as PATENT_DATA_DIR.
+    for _env_path in (Path(__file__).parent.parent / ".env", Path(__file__).parent / ".env"):
+        load_dotenv(_env_path, override=False)
 except ImportError:
     pass
 try:

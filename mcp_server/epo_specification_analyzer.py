@@ -499,13 +499,25 @@ class EPOSpecificationAnalyzer(BaseAnalyzer):
             if isinstance(i, EPOSpecSupportIssue) and i.severity == "CRITICAL" and i.issue_type == "sufficiency"
         }
         claims_with_critical &= claim_numbers
-        supported_claims = len(claim_numbers) - len(claims_with_critical)
+        # A dependent claim contains every limitation of its parent, so it is
+        # insufficiently disclosed whenever any claim up its dependency chain is.
+        parent = {c["number"]: c.get("depends_on") for c in claims}
+        unsupported = set()
+        for number in claim_numbers:
+            seen, current = set(), number
+            while current is not None and current not in seen:
+                if current in claims_with_critical:
+                    unsupported.add(number)
+                    break
+                seen.add(current)
+                current = parent.get(current)
+        supported_claims = len(claim_numbers) - len(unsupported)
 
         return {
             "percentage": int((supported_claims / len(claim_numbers)) * 100),
             "supported_claims": supported_claims,
             "total_claims": len(claim_numbers),
-            "unsupported_claims": list(claims_with_critical),
+            "unsupported_claims": sorted(unsupported),
         }
 
     def _generate_spec_summary(self, critical: int, important: int, warnings: list[dict]) -> str:

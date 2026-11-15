@@ -65,11 +65,27 @@ def register_google_patents_tools(
                 "fallback": _bigquery_fallback(),
             }
         try:
-            return {"ready": True, **searcher.account()}
+            account = searcher.account()
         except Exception as e:
             # account() raises key-redacted messages with no chain; no traceback logged.
             log_error("check_google_patents_status_failed", error=str(e))
             return {"ready": False, "error": str(e)}
+        left = account.get("searches_left")
+        if isinstance(left, (int, float)) and left <= 0:
+            # A search now can only return a quota error until the monthly reset.
+            return {
+                "ready": False,
+                **account,
+                "message": "No Google Patents searches are left this month on this SerpApi account.",
+                "fallback": _bigquery_fallback() if os.environ.get("GOOGLE_CLOUD_PROJECT") else (
+                    "search_patents_bigquery, once the optional BigQuery setup is done (see "
+                    "'Setting up BigQuery' in the README), or wait for the monthly reset. Until "
+                    "then, a web first screen is possible: WebSearch restricted to "
+                    "patents.google.com, then WebFetch the closest patent pages. Label it a "
+                    "first screen; an empty or thin result is not evidence of no prior art."
+                ),
+            }
+        return {"ready": True, **account}
 
     @mcp.tool()
     @track_performance("tool_search_patents_google")
