@@ -73,9 +73,18 @@ jobs:
             const recheck = await beta.paginate(beta.rest.repos.listInvitations, { owner: OWNER, repo: REPO });
             const mine = recheck.find(i => i.id === res.data.id);
             if (!mine || mine.permissions !== 'read') {
-              await beta.rest.repos.deleteInvitation({ owner: OWNER, repo: REPO, invitation_id: res.data.id }).catch(() => {});
-              return hold(mine ? `the invitation read back as "${mine.permissions}", not read, so it was cancelled`
-                               : 'the invitation could not be found when read back, so it was cancelled');
+              const problem = mine ? `the invitation read back as "${mine.permissions}", not read`
+                                   : 'the invitation could not be found when read back';
+              try {
+                await beta.rest.repos.deleteInvitation({ owner: OWNER, repo: REPO, invitation_id: res.data.id });
+              } catch (e) {
+                // A 404 means there is no invitation left to cancel. Anything else means it may still be live.
+                if (e.status !== 404) {
+                  await hold(`${problem}, and cancelling it FAILED (${e.status || e.message}). The invitation may still be live: revoke it by hand under Settings > Collaborators.`);
+                  return core.setFailed(`Could not cancel the invitation for ${login}; revoke it by hand.`);
+                }
+              }
+              return hold(`${problem}, so it was cancelled`);
             }
 
             // 4. Thank them in the thread.
