@@ -36,6 +36,171 @@ class TestPluralDependencyUS:
         assert claims[0]["depends_on"] is None
 
 
+class TestMultipleDependentParents:
+    TEXT = (
+        "1. A widget comprising a frame with a handle.\n"
+        "2. A widget comprising a wheel with a hub.\n"
+        "3. The widget of any one of claims 1 or 2, wherein the frame is steel.\n"
+        "4. The widget of claims 1 to 3, further comprising a brake.\n"
+        "5. The widget of claims 1, 2 and 4, wherein the brake is hydraulic."
+    )
+
+    def test_us_parser_keeps_every_parent(self):
+        claims = {c["number"]: c for c in ClaimsAnalyzer()._parse_claims(self.TEXT)}
+        assert claims[3]["depends_on"] == 1 and claims[3]["depends_on_all"] == [1, 2]
+        assert claims[4]["depends_on_all"] == [1, 2, 3]
+        assert claims[5]["depends_on_all"] == [1, 2, 4]
+        assert claims[1]["depends_on_all"] == []
+
+    def test_epo_parser_keeps_every_parent(self):
+        claims = {c["number"]: c for c in EPOClaimsAnalyzer()._parse_claims(self.TEXT)}
+        assert claims[3]["depends_on_all"] == [1, 2]
+        assert claims[4]["depends_on_all"] == [1, 2, 3]
+
+    def test_unsupported_non_first_parent_flags_the_dependent(self):
+        from mcp_server.analyzer_base import unsupported_through_chain
+
+        claims = ClaimsAnalyzer()._parse_claims(self.TEXT)
+        # Only claim 2 (the second alternative of claim 3) lacks support.
+        assert unsupported_through_chain(claims, {2}) == {2, 3, 4, 5}
+        assert unsupported_through_chain(claims, set()) == set()
+
+    def test_antecedent_basis_must_hold_under_each_parent(self, monkeypatch):
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        result = ClaimsAnalyzer().analyze_claims(self.TEXT)
+        terms = {i["term"] for i in result["issues"] if i["claim"] == 3}
+        # "the frame" has basis in claim 1 but not under the claim-2 alternative.
+        assert "the frame" in terms
+
+    def test_antecedent_basis_found_in_every_parent_is_accepted(self, monkeypatch):
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        text = (
+            "1. A widget comprising a frame with a handle.\n"
+            "2. A widget comprising a frame with a hub.\n"
+            "3. The widget of claims 1 or 2, wherein the frame is steel."
+        )
+        result = ClaimsAnalyzer().analyze_claims(text)
+        assert not [i for i in result["issues"] if i["claim"] == 3]
+
+
+    def test_measurement_after_reference_is_not_a_parent(self):
+        text = (
+            "1. A widget comprising a frame with a handle.\n"
+            "2. A widget comprising a wheel with a hub.\n"
+            "3. The widget of claim 1, 2 mm thick, wherein the frame is steel.\n"
+            "4. The widget of claim 1, 2.5 mm wide, wherein the frame is steel.\n"
+            "5. The widget of claims 1-3 cm long, wherein the frame is steel."
+        )
+        for parser in (ClaimsAnalyzer()._parse_claims, EPOClaimsAnalyzer()._parse_claims):
+            claims = {c["number"]: c for c in parser(text)}
+            assert claims[3]["depends_on_all"] == [1]
+            assert claims[4]["depends_on_all"] == [1]
+            assert claims[5]["depends_on_all"] == [1]
+
+    def test_every_multiple_dependent_form_keeps_all_parents(self):
+        forms = {
+            "of claim 1 or claim 2, wherein the frame is steel": [1, 2],
+            "of claims 1 or 2 configured to detect light": [1, 2],
+            "of claims 1, 2 or 3, wherein the frame is steel": [1, 2, 3],
+            "of any one of claims 1-3.": [1, 2, 3],
+            "according to claims 1 to 3 characterised in that the frame is steel": [1, 2, 3],
+            "of claim 1, 2 or 3 mm thick": [1],
+            "of claim 1, 2 in thickness": [1],
+            "of claims 1 or 2 in combination with a handle": [1, 2],
+            "of claims 1 or 2, 3 mm thick": [1, 2],
+            "of claim 1, 3D printed from polymer": [1],
+            "of claim 1, 20mm thick": [1],
+            "of claim 1, 20th order filter": [1],
+            "of claim 1, 3/4 inch thick": [1],
+            "of claim 1, 3-D printed from polymer": [1],
+            "of claim 1-claim 3, wherein": [1, 2, 3],
+            "of claim 1-Claim 3, wherein": [1, 2, 3],
+            "of claim 1, 2 or more of the sensors being mounted": [1],
+            "of claim 1, 3 of the sensors being mounted": [1],
+            "of claim 1, 2 adjacent sensors sharing a housing": [1],
+            "of claim 1, 2 to 4 adjacent sensors sharing a housing": [1],
+            "of claim 1, 2 or 3 sensors being mounted on the frame": [1],
+            "of claims 1, 2 to 3, wherein": [1, 2, 3],
+            "of claims 1, 2, and 3, wherein": [1, 2, 3],
+            "of claim 1 \u2014 wherein the frame is steel": [1],
+            "of claim 1 - wherein the frame is steel": [1],
+            "of claims 1\u20113.": [1, 2, 3],
+            "of claims 1\u20143.": [1, 2, 3],
+        }
+        for tail, parents in forms.items():
+            text = "1. A widget.\n2. A widget.\n3. A widget.\n4. The widget " + tail
+            for parser in (ClaimsAnalyzer()._parse_claims, EPOClaimsAnalyzer()._parse_claims):
+                claim = {c["number"]: c for c in parser(text)}[4]
+                assert claim["depends_on_all"] == parents, tail
+
+    def test_epo_prose_mention_of_claims_is_not_a_dependency(self):
+        text = "1. A frame.\n2. A wheel.\n3. A processor comprising: a memory storing the text of claims 1 or 2; and a display."
+        claim = {c["number"]: c for c in EPOClaimsAnalyzer()._parse_claims(text)}[3]
+        assert claim["is_independent"] is True and claim["depends_on_all"] == []
+
+    def test_ratio_in_opening_keeps_the_reference(self):
+        text = (
+            "1. A 2:1 multiplexer comprising an input and an output.\n"
+            "2. The 2:1 multiplexer according to claim 1, wherein the output is buffered."
+        )
+        for parser in (ClaimsAnalyzer()._parse_claims, EPOClaimsAnalyzer()._parse_claims):
+            claim = {c["number"]: c for c in parser(text)}[2]
+            assert claim["is_independent"] is False and claim["depends_on_all"] == [1]
+
+    def test_very_long_chains_stay_fast_and_do_not_overflow(self, monkeypatch):
+        import time
+
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        for template in ("{n}. The widget of claims 1 to {p}, wherein the frame is steel.",
+                         "{n}. The widget of claims 1 or {p}, wherein the frame is steel."):
+            lines = ["1. A widget comprising a frame with a hub."]
+            lines += [template.format(n=n, p=n - 1) for n in range(2, 1101 if " or " in template else 151)]
+            start = time.perf_counter()
+            ClaimsAnalyzer().analyze_claims("\n".join(lines))
+            assert time.perf_counter() - start < 10
+
+    def test_long_circular_chain_stays_fast(self, monkeypatch):
+        import time
+
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        lines = ["1. The widget of claim 2, comprising a frame with a hub."]
+        lines += [f"{n}. The widget of claims 1 to {n - 1}, comprising a frame with a hub." for n in range(2, 41)]
+        start = time.perf_counter()
+        ClaimsAnalyzer().analyze_claims("\n".join(lines))
+        assert time.perf_counter() - start < 5
+
+    def test_circular_chain_gives_the_same_answer_in_any_order(self, monkeypatch):
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        base = (
+            "1. The device of claim 2, comprising a sensor configured to detect light.\n"
+            "2. The device of claim 1, comprising a frame configured to support the sensor.\n"
+        )
+        def terms(order):
+            result = ClaimsAnalyzer().analyze_claims(base + f"3. The device of claims {order}, wherein the sensor is optical.")
+            return {i["term"] for i in result["issues"] if i["claim"] == 3}
+        assert terms("1 or 2") == terms("2 or 1")
+
+    def test_singular_and_plural_parents_both_give_basis(self, monkeypatch):
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        text = (
+            "1. A widget comprising a sensor configured to detect light.\n"
+            "2. A widget comprising one or more sensors configured to detect light.\n"
+            "3. The widget of claims 1 or 2, wherein the sensor is optical."
+        )
+        result = ClaimsAnalyzer().analyze_claims(text)
+        assert not [i for i in result["issues"] if i["claim"] == 3]
+
+    def test_long_chain_of_shared_parents_stays_fast(self, monkeypatch):
+        import time
+
+        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
+        lines = ["1. A widget comprising a frame with a hub."]
+        lines += [f"{n}. The widget of claims 1 to {n - 1}, wherein the frame is steel." for n in range(2, 41)]
+        start = time.perf_counter()
+        ClaimsAnalyzer().analyze_claims("\n".join(lines))
+        assert time.perf_counter() - start < 5
+
+
 class TestPluralDependencyEPO:
     def test_plural_reference_is_dependent(self):
         text = (

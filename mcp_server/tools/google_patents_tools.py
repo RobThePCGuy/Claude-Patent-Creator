@@ -76,7 +76,7 @@ def register_google_patents_tools(
             return {
                 "ready": False,
                 **account,
-                "message": "No Google Patents searches are left this month on this SerpApi account.",
+                "message": "No Google Patents searches are left on this SerpApi account (monthly plan and extra credits).",
                 "fallback": _bigquery_fallback() if os.environ.get("GOOGLE_CLOUD_PROJECT") else (
                     "search_patents_bigquery, once the optional BigQuery setup is done (see "
                     "'Setting up BigQuery' in the README), or wait for the monthly reset. Until "

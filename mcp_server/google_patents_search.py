@@ -113,7 +113,15 @@ class GooglePatentsSearch:
         return {
             "plan": data.get("plan_name"),
             "searches_per_month": data.get("searches_per_month"),
-            "searches_left": data.get("plan_searches_left", data.get("total_searches_left")),
+            # Usable balance: the monthly plan plus any extra credits. An account
+            # can use up its plan and still search on extra credits, so the
+            # total decides readiness; the plan figure is only a fallback.
+            "searches_left": (
+                data["total_searches_left"]
+                if data.get("total_searches_left") is not None
+                else data.get("plan_searches_left")
+            ),
+            "plan_searches_left": data.get("plan_searches_left"),
             "used_this_month": data.get("this_month_usage"),
         }
 

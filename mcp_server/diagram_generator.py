@@ -44,19 +44,134 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).parent.parent
 DIAGRAMS_DIR = diagrams_dir()
 
-# A tspan with its own x, y or dy starts a new line; one without them continues
-# the same line (inline formatting or a subscript).
-_LINE_ATTRS = ("x", "y", "dy")
+_LENGTH = re.compile(r"\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)\s*(em|ex|px|pt|%)?\s*$", re.IGNORECASE)
 
 
-def _rendered_text(element) -> str:
+def _length(value: str, font_size: float) -> Optional[float]:
+    """An SVG length in px, or None when it cannot be read. dx, dy and y may
+    list several values; the first applies to the tspan's first character."""
+    first = value.replace(",", " ").split()
+    match = _LENGTH.match(first[0]) if first else None
+    if not match:
+        return None
+    number = float(match.group(1))
+    unit = (match.group(2) or "px").lower()
+    if unit == "%":
+        return None
+    return {"em": number * font_size, "ex": number * font_size / 2, "pt": number * 4 / 3}.get(unit, number)
+
+
+def _font_size(element, inherited: float) -> float:
+    """The element's font size in px (font-size attribute or style), else inherited."""
+    value = element.get("font-size", "")
+    style = re.search(r"font-size\s*:\s*([^;]+)", element.get("style", ""))
+    if style:
+        value = style.group(1)
+    size = _length(value, inherited) if value else None
+    return size if size and size > 0 else inherited
+
+
+def _inherited_font_size(element, parent_of: dict) -> float:
+    """The font size a <text> inherits from its enclosing groups (default 14px)."""
+    chain = []
+    node = parent_of.get(element)
+    while node is not None:
+        chain.append(node)
+        node = parent_of.get(node)
+    size = 14.0
+    for ancestor in reversed(chain):
+        size = _font_size(ancestor, size)
+    return size
+
+
+# Attributes Graphviz changes between styled runs of one label line.
+_RUN_STYLE = ("font-weight", "font-style", "font-family", "font-size", "baseline-shift",
+              "fill", "text-decoration", "style")
+
+
+def _join_text_elements(texts: list, parent_of: dict) -> tuple[str, str]:
+    """One node's label from its <text> elements, read two ways.
+
+    Graphviz writes each line of a multiline label as its own <text>, each
+    record field or table cell as its own <text>, and also each styled run of
+    one line (a subscript, a bold or italic word) as its own <text>. A new
+    line, or a neighbour in the same style (a separate field or cell), always
+    gets a space. A neighbour on the same baseline in a different style is
+    either a styled run of the same line ("V" + subscript "out" reads "Vout")
+    or a differently styled table cell ("Input" | bold "Sensor"); the SVG does
+    not say which, so the label is returned both joined and spaced at those
+    points, and a reference matching either reading counts.
+    """
+    joined, spaced = [], []
+    previous = None
+    previous_y = None
+    for text in texts:
+        size = _inherited_font_size(text, parent_of)
+        rendered = _rendered_text(text, size)
+        own_size = _font_size(text, size)
+        y = _length(text.get("y", ""), own_size)
+        maybe_run = (
+            previous is not None
+            and y is not None and previous_y is not None
+            and abs(y - previous_y) < 0.8 * own_size
+            and any(previous.get(a) != text.get(a) for a in _RUN_STYLE)
+        )
+        if joined:
+            spaced.append(" ")
+            if not maybe_run:
+                joined.append(" ")
+        joined.append(rendered)
+        spaced.append(rendered)
+        previous, previous_y = text, y
+    return "".join(joined), "".join(spaced)
+
+
+def _starts_new_line(tspan, font_size: float, baseline: Optional[float]) -> bool:
+    """Whether a tspan begins a new rendered line.
+
+    A tspan that sets x starts a new line. So does a move of the baseline by
+    about a line height (0.8em or more), whether through dy or an absolute y.
+    A horizontal nudge alone (dx, as kerning uses) stays on the line. Smaller shifts (dy="0",
+    subscripts) and inline formatting continue the same line:
+    <tspan>Pro</tspan><tspan dy="0">cessor</tspan> renders as "Processor".
+    """
+    if "x" in tspan.attrib:
+        return True
+    shift = _length(tspan.get("dy", ""), font_size)
+    y = _length(tspan.get("y", ""), font_size)
+    # A shift the reader cannot measure (calc(), a percentage) is treated as a
+    # new line, so the label keeps a separating space.
+    if (shift is None and tspan.get("dy", "").strip()) or (y is None and tspan.get("y", "").strip()):
+        return True
+    if y is not None:
+        if baseline is None:
+            return True
+        shift = (shift or 0) + y - baseline
+    return shift is not None and abs(shift) >= 0.8 * font_size
+
+
+def _rendered_text(element, font_size: float = 14.0, baseline: Optional[float] = None) -> str:
     """The text an SVG <text> element shows: inline pieces joined as rendered,
     with a space only where a tspan starts a new line."""
+    font_size = _font_size(element, font_size)
+    own_y = _length(element.get("y", ""), font_size)
+    if own_y is not None:
+        baseline = own_y
     parts = [element.text or ""]
     for child in element:
-        if child.tag.endswith("tspan") and any(a in child.attrib for a in _LINE_ATTRS):
-            parts.append(" ")
-        parts.append(_rendered_text(child))
+        if child.tag.endswith("tspan"):
+            size = _font_size(child, font_size)
+            if _starts_new_line(child, size, baseline):
+                parts.append(" ")
+            # Track where the baseline now sits: an absolute y sets it, a
+            # relative dy moves it.
+            child_y = _length(child.get("y", ""), size)
+            child_dy = _length(child.get("dy", ""), size)
+            if child_y is not None:
+                baseline = child_y + (child_dy or 0)
+            elif child_dy is not None and baseline is not None:
+                baseline += child_dy
+        parts.append(_rendered_text(child, font_size, baseline))
         parts.append(child.tail or "")
     return "".join(parts)
 
@@ -338,22 +453,43 @@ class PatentDiagramGenerator:
                     groups.append(texts)
                     grouped.update(texts)
         groups.extend([text] for text in root.findall(".//svg:text", ns) if text not in grouped)
+        parent_of = {child: parent for parent in root.iter() for child in parent}
         matched = set()
         count = 0
-        for texts in groups:
-            label = " ".join(_rendered_text(t) for t in texts)
-            label = " ".join(label.split()).casefold()
+        readings = [
+            tuple(" ".join(label.split()).casefold() for label in _join_text_elements(texts, parent_of))
+            for texts in groups
+        ]
+
+        def first_match(label: str, allowed) -> Optional[tuple[str, int]]:
             for pattern, ref_num in reference_map.items():
                 normalized = " ".join(pattern.split()).casefold()
-                if normalized and normalized in label:
-                    target = texts[-1]
-                    tspans = target.findall(".//svg:tspan", ns)
-                    if tspans:
-                        target = tspans[-1]
-                    target.text = f"{target.text or ''} ({ref_num})"
-                    matched.add(pattern)
-                    count += 1
-                    break
+                if normalized and normalized in label and allowed(pattern):
+                    return pattern, ref_num
+            return None
+
+        # The spaced reading of every node is certain, so it is matched first
+        # across the whole drawing. The joined reading (styled runs read as one
+        # word) is a fallback for nodes still unmatched, and only for
+        # references no node matched exactly, so a guess never takes a label
+        # that belongs to another node.
+        choices = [first_match(spaced, lambda _p: True) for _joined, spaced in readings]
+        exact = {c[0] for c in choices if c}
+        for i, (joined, spaced) in enumerate(readings):
+            if choices[i] is None and joined != spaced:
+                choices[i] = first_match(joined, lambda p: p not in exact)
+
+        for texts, choice in zip(groups, choices):
+            if not choice:
+                continue
+            pattern, ref_num = choice
+            target = texts[-1]
+            tspans = target.findall(".//svg:tspan", ns)
+            if tspans:
+                target = tspans[-1]
+            target.text = f"{target.text or ''} ({ref_num})"
+            matched.add(pattern)
+            count += 1
 
         # Save annotated SVG
         output_path = svg_path.parent / f"{svg_path.stem}_annotated{svg_path.suffix}"
