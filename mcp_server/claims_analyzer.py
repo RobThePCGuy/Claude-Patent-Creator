@@ -9,12 +9,72 @@ import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 try:
-    from analyzer_base import BaseAnalyzer, BaseIssue
+    from analyzer_base import (
+        BaseAnalyzer,
+        BaseIssue,
+        claim_opening,
+        claim_parents,
+        claim_reference_numbers,
+    )
 except ImportError:
-    from mcp_server.analyzer_base import BaseAnalyzer, BaseIssue
+    from mcp_server.analyzer_base import (
+        BaseAnalyzer,
+        BaseIssue,
+        claim_opening,
+        claim_parents,
+        claim_reference_numbers,
+    )
+
+
+def _loop_groups(parents: dict[int, list[int]]) -> dict[int, int]:
+    """Label each claim with the loop it belongs to (Tarjan's strongly
+    connected components, iterative). Claims outside any loop get their own
+    label, so two claims share a label only when each depends on the other
+    through some chain."""
+    index: dict[int, int] = {}
+    low: dict[int, int] = {}
+    on_stack: set[int] = set()
+    stack: list[int] = []
+    group: dict[int, int] = {}
+    counter = 0
+    for root in parents:
+        if root in index:
+            continue
+        work = [(root, iter(parents[root]))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, children = work[-1]
+            advanced = False
+            for child in children:
+                if child not in index:
+                    index[child] = low[child] = counter
+                    counter += 1
+                    stack.append(child)
+                    on_stack.add(child)
+                    work.append((child, iter(parents[child])))
+                    advanced = True
+                    break
+                if child in on_stack:
+                    low[node] = min(low[node], index[child])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[node])
+            if low[node] == index[node]:
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    group[member] = node
+                    if member == node:
+                        break
+    return group
 
 
 @dataclass
@@ -106,6 +166,7 @@ class ClaimsAnalyzer(BaseAnalyzer):
             Dictionary with analysis results and issues
         """
         self.issues = []
+        self._registry_state = None
 
         # Parse claims into structured format
         claims = self._parse_claims(claims_text)
@@ -141,24 +202,26 @@ class ClaimsAnalyzer(BaseAnalyzer):
             # "of any one of claims 1 to 5"; searching only the preamble
             # (text before the first colon, capped at 300 chars) keeps
             # later prose out of the classification.
-            preamble = claim_body.split(":", 1)[0][:300]
+            preamble = claim_opening(claim_body)
             dep_match = re.search(
                 r"\b(?:of|according to|as\s+(?:claimed|recited|defined|set\s+forth)\s+in)\s+"
-                r"(?:any\s+(?:one\s+)?of\s+(?:the\s+)?(?:preceding\s+)?)?claims?\s+(\d+)",
+                r"(?:any\s+(?:one\s+)?of\s+(?:the\s+)?(?:preceding\s+)?)?claims?\s+(?=\d)",
                 preamble,
                 re.IGNORECASE,
             )
-            depends_on = None
-            if dep_match:
-                dep_num = int(dep_match.group(1))
-                if dep_num != int(claim_num):  # Prevent self-referencing
-                    depends_on = dep_num
+            # A multiple-dependent claim names several parents; keep them all.
+            # The list is read from the full body so a reference that runs
+            # past the preamble's first colon is still read whole.
+            parents = [n for n in claim_reference_numbers(claim_body, dep_match.end())
+                       if n != int(claim_num)] if dep_match else []  # no self-reference
+            depends_on = parents[0] if parents else None
 
             claim = {
                 "number": int(claim_num),
                 "text": claim_body.strip(),
                 "is_independent": depends_on is None,
                 "depends_on": depends_on,
+                "depends_on_all": parents,
                 "elements": {},
                 "limitations": [],
             }
@@ -247,31 +310,67 @@ class ClaimsAnalyzer(BaseAnalyzer):
                     )
                 )
 
-    def _build_element_registry(self, claim: dict, all_claims: list[dict], visited: Optional[set[int]] = None) -> set[str]:
-        """Build set of all known elements from claim and its dependencies"""
-        if visited is None:
-            visited = set()
+    def _build_element_registry(self, claim: dict, all_claims: list[dict]) -> set[str]:
+        """Build set of all known elements from claim and its dependencies.
 
-        known = set()
+        The registries for one claim set are built once and reused for every
+        claim in it, so a long chain of claims stays linear.
+        """
+        state = getattr(self, "_registry_state", None)
+        if state is None or state[0] is not all_claims or state[1] != len(all_claims):
+            state = (all_claims, len(all_claims), self._element_registries(all_claims))
+            self._registry_state = state
+        registries = state[2]
+        if claim["number"] in registries:
+            return registries[claim["number"]]
+        return {self._normalize_element(m.group(2)) for m in self.NEW_ELEMENT_PATTERN.finditer(claim["text"])}
 
-        # Guard against circular dependency chains
-        if claim["number"] in visited:
-            return known
-        visited.add(claim["number"])
+    def _element_registries(self, all_claims: list[dict]) -> dict[int, set[str]]:
+        """Known elements for every claim, walking parents before children."""
+        by_number = {c["number"]: c for c in all_claims}
+        parents = {n: [p for p in dict.fromkeys(claim_parents(c)) if p in by_number] for n, c in by_number.items()}
 
-        # Add elements from dependent claims
-        if claim["depends_on"]:
-            parent = next((c for c in all_claims if c["number"] == claim["depends_on"]), None)
-            if parent:
-                known.update(self._build_element_registry(parent, all_claims, visited))
+        # A circular dependency ("claim 1 of claim 2", "claim 2 of claim 1") is
+        # malformed. Links between claims of the same loop are ignored, so the
+        # walk is over plain parents: each registry is computed once, and the
+        # answer never depends on which claim the walk started from.
+        loop = _loop_groups(parents)
+        acyclic = {n: [p for p in ps if loop[p] != loop[n]] for n, ps in parents.items()}
 
-        # Extract new elements from this claim
-        new_matches = self.NEW_ELEMENT_PATTERN.finditer(claim["text"])
-        for match in new_matches:
-            element = self._normalize_element(match.group(2))
-            known.add(element)
+        registries: dict[int, set[str]] = {}
+        for root in by_number:
+            stack = [(root, False)]
+            while stack:  # iterative, so a chain of any length cannot overflow
+                number, ready = stack.pop()
+                if number in registries:
+                    continue
+                if not ready:
+                    stack.append((number, True))
+                    stack.extend((p, False) for p in acyclic[number] if p not in registries)
+                    continue
+                # Inherit elements from the parent claims. A multiple-dependent
+                # claim must have antecedent basis under EACH alternative
+                # parent, so only elements every parent introduces count as
+                # known. Singular and plural forms count as the same element,
+                # as they do in the basis check.
+                inherited = None
+                for parent_num in acyclic[number]:
+                    elements = registries[parent_num]
+                    if inherited is None:
+                        inherited = set(elements)
+                    else:
+                        inherited = {e for e in inherited if self._has_form(e, elements)} | {
+                            e for e in elements if self._has_form(e, inherited)
+                        }
+                known = set(inherited or ())
+                for match in self.NEW_ELEMENT_PATTERN.finditer(by_number[number]["text"]):
+                    known.add(self._normalize_element(match.group(2)))
+                registries[number] = known
+        return registries
 
-        return known
+    def _has_form(self, element: str, elements: set[str]) -> bool:
+        """True when elements holds this element in singular or plural form."""
+        return element in elements or self._singularize(element) in elements or self._pluralize(element) in elements
 
     def _check_definiteness(self, claim: dict):
         """Check for definiteness issues under 35 USC 112(b)"""

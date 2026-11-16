@@ -17,9 +17,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 try:
-    from analyzer_base import BaseAnalyzer, BaseIssue
+    from analyzer_base import BaseAnalyzer, BaseIssue, claim_opening, claim_reference_numbers
 except ImportError:
-    from mcp_server.analyzer_base import BaseAnalyzer, BaseIssue
+    from mcp_server.analyzer_base import (
+        BaseAnalyzer,
+        BaseIssue,
+        claim_opening,
+        claim_reference_numbers,
+    )
 
 
 @dataclass
@@ -141,21 +146,30 @@ class EPOClaimsAnalyzer(BaseAnalyzer):
             claim = {
                 "number": int(claim_num),
                 "text": claim_body.strip(),
-                # Match plural "claims 1 to 5" too — the EPO multiple-dependent
-                # form — which `claim \d+` missed, mislabeling dependent claims
-                # as independent and triggering false Rule 43(2) issues.
-                "is_independent": not bool(re.search(r"\bclaims?\s+\d+", claim_body, re.IGNORECASE)),
+                # Set from the claim reference below. Plural "claims 1 to 5" counts
+                # too: the EPO multiple-dependent form, which `claim \d+` once
+                # missed, mislabeling dependent claims as independent and
+                # triggering false Rule 43(2) issues.
+                "is_independent": True,
                 "depends_on": None,
+                "depends_on_all": [],
                 "category": self._determine_claim_category(claim_body),
                 "limitations": [],
             }
 
             # Check for dependency
-            dep_match = re.search(r"\bclaims?\s+(\d+)", claim_body, re.IGNORECASE)
+            # A multiple-dependent claim ("any one of claims 1 or 2") names
+            # several parents; keep them all.
+            # The reference sits in the claim's opening ("Device according to
+            # claim 1, characterised..."); a later mention of other claims in the
+            # claim's own wording is not a dependency. Same window as the US parser.
+            opening = claim_opening(claim_body)
+            dep_match = re.search(r"\bclaims?\s+(?=\d)", opening, re.IGNORECASE)
             if dep_match:
-                dep_num = int(dep_match.group(1))
-                if dep_num != int(claim_num):
-                    claim["depends_on"] = dep_num
+                claim["is_independent"] = False
+                parents = [n for n in claim_reference_numbers(claim_body, dep_match.end()) if n != int(claim_num)]
+                claim["depends_on_all"] = parents
+                claim["depends_on"] = parents[0] if parents else None
 
             # Extract limitations (a), (b), (c), etc.
             lim_pattern = re.compile(r"\n\s*([a-z])\)\s+(.+?)(?=\n\s*[a-z]\)|$)", re.DOTALL)

@@ -17,9 +17,9 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 try:
-    from analyzer_base import BaseAnalyzer, BaseIssue
+    from analyzer_base import BaseAnalyzer, BaseIssue, unsupported_through_chain
 except ImportError:
-    from mcp_server.analyzer_base import BaseAnalyzer, BaseIssue
+    from mcp_server.analyzer_base import BaseAnalyzer, BaseIssue, unsupported_through_chain
 
 
 @dataclass
@@ -500,17 +500,8 @@ class EPOSpecificationAnalyzer(BaseAnalyzer):
         }
         claims_with_critical &= claim_numbers
         # A dependent claim contains every limitation of its parent, so it is
-        # insufficiently disclosed whenever any claim up its dependency chain is.
-        parent = {c["number"]: c.get("depends_on") for c in claims}
-        unsupported = set()
-        for number in claim_numbers:
-            seen, current = set(), number
-            while current is not None and current not in seen:
-                if current in claims_with_critical:
-                    unsupported.add(number)
-                    break
-                seen.add(current)
-                current = parent.get(current)
+        # insufficiently disclosed whenever any claim up any of its dependency branches is.
+        unsupported = unsupported_through_chain(claims, claims_with_critical) & claim_numbers
         supported_claims = len(claim_numbers) - len(unsupported)
 
         return {
