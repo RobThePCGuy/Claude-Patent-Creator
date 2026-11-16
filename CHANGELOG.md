@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-15
+
+This version collects everything merged since 0.2.0. From here on, every
+change to the installed tools raises the version (CI enforces it) and each
+version gets a release tag, so an installed copy can tell whether it is
+current: `patent-creator --version`, `mcp_server.__version__` and the MCP
+handshake's server version all report it, from `pyproject.toml` alone.
+
+### Fixed (since #126)
+- Google Patents readiness counts extra SerpApi credits, not only the
+  monthly plan (#127).
+- Diagram labels: subscripts, zero offsets, kerning, Graphviz styled runs
+  and table cells read as drawn, so reference numbers land (#127).
+- Multiple-dependent claims ("any one of claims 1 or 2") check every parent
+  for support and antecedent basis; measurements and counts after a claim
+  reference are not read as claim numbers (#127).
+
 ### Added
 - `search_non_patent_literature`: papers and preprints as prior art, from
   OpenAlex, arXiv and Semantic Scholar at once, free with no key. Filters by

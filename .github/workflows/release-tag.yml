@@ -1,0 +1,54 @@
+name: Release tag
+
+# Every version of the package that reaches main gets a tag (v0.3.0) and a
+# GitHub release, so an app can install an exact version from
+# https://github.com/RobThePCGuy/Claude-Patent-Creator/archive/refs/tags/vX.Y.Z.zip
+# without needing git, and so each release is findable later. Runs are not
+# queued against each other (a queue keeps only one pending run and would
+# drop a version); each run handles its own version, and reruns are safe: a
+# tag that exists is kept, and a missing release is created for it.
+on:
+  push:
+    branches: [main]
+    paths: [pyproject.toml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    if: github.repository == 'RobThePCGuy/Claude-Patent-Creator'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Tag and release the version in pyproject.toml
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION=$(python scripts/release_version.py)
+          [ -n "$VERSION" ] || { echo "::error::No [project].version in pyproject.toml"; exit 1; }
+          TAG="v$VERSION"
+          git fetch -q --tags
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already exists at $(git rev-list -n1 "$TAG")."
+          else
+            git tag "$TAG" "$GITHUB_SHA"
+            # Two runs for one version may race; whichever pushes second
+            # finds the tag already there and goes on to the release.
+            git push origin "refs/tags/$TAG" || git ls-remote --exit-code --tags origin "refs/tags/$TAG"
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+            exit 0
+          fi
+          # The release notes are this version's CHANGELOG section.
+          python scripts/release_version.py notes "$VERSION" > notes.md
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag || gh release view "$TAG"
