@@ -1541,6 +1541,19 @@ def config_command(args):
     return config_list_command(args)
 
 
+def _own_version(this_file: str) -> str:
+    """The version of the package copy this file belongs to, loaded from the
+    _version.py beside it by path, so another installed copy never answers."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_patent_creator_version", Path(this_file).resolve().with_name("_version.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.load_version(this_file)
+
+
 def main():
     """
     Main CLI entry point
@@ -1564,6 +1577,8 @@ Examples:
 For more information: https://github.com/RobThePCGuy/Claude-Patent-Creator
         """),
     )
+
+    parser.add_argument("--version", action="version", version=f"patent-creator {_own_version(__file__)}")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 

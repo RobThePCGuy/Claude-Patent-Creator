@@ -38,6 +38,31 @@ jobs:
           echo "Bump the version in .claude-plugin/marketplace.json (and plugin.json) or installed users never receive this change."
           exit 1
 
+  package-version-guard:
+    # Apps that install these tools (Patent Creator Studio among them) decide
+    # whether an installed copy is current by comparing the package version.
+    # A PR that changes what gets installed without raising the version in
+    # pyproject.toml would leave every existing install looking current.
+    # Dependabot is exempt: its PRs only raise other libraries' minimum
+    # versions, which a same-version reinstall would not pick up anyway; the
+    # next real version carries them.
+    name: Package version raised when installed code changes
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Require a version bump for installed-code changes
+        run: |
+          pip install -q packaging
+          git fetch -q origin "${{ github.base_ref }}"
+          python scripts/check_package_version.py "origin/${{ github.base_ref }}"
+
   lint-and-test:
     name: Lint, type-check, and test
     runs-on: ubuntu-latest

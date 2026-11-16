@@ -3,10 +3,12 @@ MPEP RAG MCP Server
 Provides intelligent retrieval from patent law sources for examiner-level review
 """
 
-__version__ = "0.2.0"
-__author__ = "Maintainers"
-
 from pathlib import Path
+
+from ._version import load_version
+
+__version__ = load_version(__file__)
+__author__ = "Maintainers"
 
 # Package root directory
 PACKAGE_ROOT = Path(__file__).parent
