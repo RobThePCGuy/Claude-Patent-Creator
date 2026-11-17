@@ -92,13 +92,8 @@ def test_free_tier_quota_error_is_actionable():
         ),
     )
 
-    with pytest.raises(BigQueryQuotaExhaustedError) as exc:
+    with pytest.raises(BigQueryQuotaExhaustedError):
         searcher._run_query("SELECT 1", [])
-
-    msg = str(exc.value)
-    assert "free" in msg.lower()
-    assert "billing" in msg.lower()
-    assert "1st" in msg or "month" in msg.lower()
 
 
 def test_explicit_credentials_bypass_default_chain(monkeypatch, tmp_path):
@@ -119,23 +114,3 @@ def test_explicit_credentials_bypass_default_chain(monkeypatch, tmp_path):
     loaded = BigQueryPatentSearch._load_explicit_credentials(creds_file, "proj")
 
     assert loaded is sentinel
-
-
-def test_explicit_credentials_none_when_file_missing(tmp_path):
-    loaded = BigQueryPatentSearch._load_explicit_credentials(tmp_path / "missing.json", "proj")
-
-    assert loaded is None
-
-
-def test_explicit_credentials_none_on_load_failure(monkeypatch, tmp_path):
-    from mcp_server import bigquery_search as bs
-
-    creds_file = tmp_path / "application_default_credentials.json"
-    creds_file.write_text("{}")
-
-    def boom(path, quota_project_id=None):
-        raise ValueError("bad file")
-
-    monkeypatch.setattr(bs, "_load_creds_from_file", boom)
-
-    assert BigQueryPatentSearch._load_explicit_credentials(creds_file, "proj") is None

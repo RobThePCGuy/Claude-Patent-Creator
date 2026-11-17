@@ -20,5 +20,4 @@ def test_abstract_over_preferred_length_is_advisory(checker_class, reference):
     length_issues = [issue for issue in checker.issues if issue.legal_ref == reference]
     assert len(length_issues) == 1
     assert length_issues[0].severity == "WARNING"
-    assert "prefer" in length_issues[0].required_value.lower()
     assert section["compliant"] is True

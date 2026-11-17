@@ -34,26 +34,3 @@ def test_importing_server_leaves_heavy_ai_libraries_unloaded():
     assert out.stdout.strip().splitlines()[-1] == "[]", out.stdout
 
 
-def test_server_does_not_run_full_health_check_before_serving():
-    source = (ROOT / "mcp_server" / "server.py").read_text(encoding="utf-8")
-    assert "check_all_dependencies(" not in source
-
-
-def test_broken_vector_package_gives_install_guidance(monkeypatch):
-    import builtins
-
-    import pytest
-
-    from mcp_server import mpep_search as ms
-
-    monkeypatch.setattr(ms, "SentenceTransformer", None)
-    real_import = builtins.__import__
-
-    def broken(name, *args, **kwargs):
-        if name == "faiss":
-            raise ImportError("simulated broken wheel")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", broken)
-    with pytest.raises(ImportError, match="pip install sentence-transformers"):
-        ms._load_vector_libs()

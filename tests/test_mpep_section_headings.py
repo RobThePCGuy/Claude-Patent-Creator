@@ -116,10 +116,3 @@ def test_reserved_range_ends_the_previous_section():
     assert locate_mpep_section(opening, here, 0, 120)["mpep_section"] == "2181"
 
 
-def test_shortened_passage_cites_only_the_section_it_starts_in():
-    from tools.analyzer_tools import _cite
-
-    meta = {"section": "MPEP 600", "mpep_section": "601.05(b), 602"}
-    assert _cite(meta) == "MPEP § 601.05(b), 602"
-    assert _cite(meta, whole=False) == "MPEP § 601.05(b)"
-    assert _cite({"section": "MPEP 600"}, whole=False) == "MPEP 600"

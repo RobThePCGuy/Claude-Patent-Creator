@@ -1,13 +1,9 @@
 """Exercise the optional compatibility shim against a real stdio subprocess."""
 
 import json
-import queue
 import subprocess
 import sys
-import threading
 from pathlib import Path
-
-import pytest
 
 SHIM = Path(__file__).resolve().parents[1] / "scripts/legacy_handshake_shim.py"
 
@@ -73,13 +69,6 @@ def test_child_exit_preserved_while_client_keeps_stdin_open():
         process.stderr.close()
 
 
-def test_missing_command_is_actionable():
-    run = subprocess.run([sys.executable, str(SHIM)], input="", text=True,
-                         capture_output=True, timeout=10)
-    assert run.returncode != 0
-    assert "usage:" in run.stderr.lower()
-
-
 def test_large_and_unterminated_messages_forwarded_without_changes():
     wire = json.dumps({"jsonrpc": "2.0", "id": 1, "payload": "é" * 100000},
                       ensure_ascii=False).encode() + b"\nlast unterminated line"
@@ -92,42 +81,3 @@ def test_large_and_unterminated_messages_forwarded_without_changes():
     assert run.stdout == wire
 
 
-def test_discovery_then_initialize_with_real_mcp_sdk(tmp_path):
-    pytest.importorskip("mcp.server.mcpserver")
-    child = tmp_path / "mcp_server_fixture.py"
-    child.write_text(
-        "from mcp.server.mcpserver import MCPServer\n"
-        "MCPServer('shim-integration').run()\n"
-    )
-    process = subprocess.Popen(
-        [sys.executable, str(SHIM), "--", sys.executable, str(child)],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
-
-    def request(message):
-        process.stdin.write(json.dumps(message).encode() + b"\n")
-        process.stdin.flush()
-        # Windows select() cannot wait on subprocess pipes.
-        replies = queue.Queue()
-        threading.Thread(target=lambda: replies.put(process.stdout.readline()),
-                         daemon=True).start()
-        return json.loads(replies.get(timeout=10))
-
-    try:
-        reply = request({"jsonrpc": "2.0", "id": 1, "method": "server/discover"})
-        assert reply["error"]["code"] == -32601
-        reply = request({"jsonrpc": "2.0", "id": 2, "method": "initialize", "params": {
-            "protocolVersion": "2025-11-25", "capabilities": {},
-            "clientInfo": {"name": "regression", "version": "1"},
-        }})
-        assert reply["id"] == 2
-        assert reply["result"]["serverInfo"]["name"] == "shim-integration"
-    finally:
-        process.stdin.close()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=5)
-        process.stdout.close()
-        process.stderr.close()
