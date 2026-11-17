@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-17
+
+### Added
+- `check_web_history`: when a web page was first public, from the Internet
+  Archive's capture index. Disclosure audits can date the inventor's own
+  pages without a manual Wayback Machine lookup; web fetch tools are often
+  refused by web.archive.org.
+
+### Changed
+- The campaign skill's intake finds facts in the material before asking the
+  inventor for them.
+
 ## [0.3.0] - 2026-11-15
 
 This version collects everything merged since 0.2.0. From here on, every

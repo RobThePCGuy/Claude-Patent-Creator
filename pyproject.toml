@@ -1,6 +1,6 @@
 [project]
 name = "claude-patent-creator"
-version = "0.3.0"
+version = "0.3.1"
 description = "MPEP-based Patent Creator for patent creation with examiner-level accuracy"
 readme = "README.md"
 requires-python = ">=3.10"

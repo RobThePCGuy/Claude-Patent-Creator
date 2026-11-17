@@ -365,6 +365,7 @@ from tools.package_tools import register_package_tools  # noqa: E402
 from tools.patent_law_tools import register_patent_law_tools  # noqa: E402
 from tools.system_tools import register_system_tools  # noqa: E402
 from tools.uspto_search_tools import register_uspto_tools  # noqa: E402
+from tools.web_history_tools import register_web_history_tools  # noqa: E402
 
 
 def _register_all_tools():
@@ -459,6 +460,13 @@ def _register_all_tools():
         log_error=_log_error,
         validate_input=validate_input,
         SearchGooglePatentsInput=SearchGooglePatentsInput,
+        track_performance=track_performance,
+    )
+
+    register_web_history_tools(
+        mcp=mcp,
+        log_info=_log_info,
+        log_error=_log_error,
         track_performance=track_performance,
     )
 
