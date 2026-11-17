@@ -205,7 +205,8 @@ Related CPC Codes (for consideration):
 - Comprehensive: Include all matching patents
 
 **Tools Used:**
-- `search_patents_by_cpc_bigquery` for each CPC code (needs BigQuery; without it, run keyword searches built from the CPC titles and state that in SEARCH LIMITATIONS)
+- `search_patents_google` with `CPC=<code>` in the query for each CPC code, alone and with 2-4 keywords (needs only the SerpApi key; write `CPC=` exactly, since `cpc:` silently finds almost nothing)
+- `search_patents_by_cpc_bigquery` as an alternative when BigQuery is configured
 
 **Output:**
 ```
@@ -385,7 +386,7 @@ CONFIDENCE LEVEL: HIGH/MEDIUM/LOW
 [Reasoning for confidence level]
 
 SEARCH LIMITATIONS:
-- Patent sources searched: [Google Patents via SerpApi and/or BigQuery, whichever answered]. CPC step: [BigQuery CPC search, or keyword-only because BigQuery is not configured]
+- Patent sources searched: [Google Patents via SerpApi and/or BigQuery, whichever answered]. CPC step: [the CPC codes searched and the tool used; keyword-only only if neither Google Patents nor BigQuery answered]
 - Papers searched in: [sources that answered, e.g. OpenAlex, arXiv]. NOT searched: white papers, product documentation, and any paper source reported busy or failed
 - NOT searched: unpublished patent applications (18-month publication delay)
 - NOT searched: foreign-language patents without English abstracts

@@ -135,9 +135,13 @@ Patents alone are NOT sufficient for software: the killing art usually
 lives in products, open source, standards, and papers. Sweep ALL of:
 
 1. **Patents**: `search_patents_google` (full text worldwide, claims
-   included; all words must match, so lead with distinctive terms; add
-   `CPC=G06F16/00`-style terms to stay inside a class), Google Patents pages
-   for deep reads (free). Fallback without a SerpApi key:
+   included; all words must match, so use 2-5 distinctive terms per query),
+   Google Patents pages for deep reads (free). **Class searches are
+   required, and need no BigQuery:** take the CPC groups of the closest
+   patents found and run `search_patents_google` with `CPC=<code>` alone
+   and with 2-4 keywords (e.g. `CPC=G06F40/166 anchor`). Write `CPC=`
+   exactly; `cpc:` silently finds almost nothing through this API. Never
+   report class search as unavailable while Google Patents is ready. Fallback without a SerpApi key:
    `search_patents_bigquery` and `search_patents_by_cpc_bigquery`, but a
    keyword search there scans ~341 GiB (about $2, a third of a free month).
    If neither is set up (`check_google_patents_status` and

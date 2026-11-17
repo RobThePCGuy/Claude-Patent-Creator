@@ -107,10 +107,22 @@ def register_google_patents_tools(
 
         Writing queries:
             - All words must match. Put "double quotes" around exact phrases.
+            - Keep each query to 2-5 terms. Every extra word must also match,
+              so long queries usually return nothing.
             - Lead with the invention's distinctive terms. Common words
               ("device", "system", "heart valve") match thousands of patents and
               can push the closest art below the first page.
             - Run several searches with synonyms; there is no stemming.
+
+        Searching by patent class (CPC), no BigQuery needed:
+            - Put CPC=<code> in the query, e.g. "CPC=G06F40/166" alone, or
+              "CPC=G06F40/166 annotation anchor" to stay inside a class.
+              Child classes are included.
+            - Write it exactly as CPC=. The form "cpc:G06F40/166" is matched
+              as plain text through this API and silently finds almost nothing.
+            - Class searches find art that uses different words for the same
+              idea. Take the classes from the closest patents you have found
+              and run them in every prior-art sweep.
 
         Results carry a matching snippet, not the full abstract or claims. Get
         full claims with get_patents_bigquery (US) or get_epo_patent (EP).

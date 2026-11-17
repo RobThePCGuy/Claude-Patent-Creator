@@ -152,10 +152,12 @@ search_non_patent_literature(query="blockchain authentication", published_before
 4. Document closest prior art
 5. Note key differences from invention
 
-**Tool call** (needs BigQuery; without it, run `search_patents_google` with keywords from the CPC titles and note "CPC step keyword-only" in the report):
+**Tool call** (needs only the SerpApi key; write `CPC=` exactly, since `cpc:` silently finds almost nothing):
 ```
-search_patents_by_cpc_bigquery(cpc_code="G06F21/", limit=100, country="US")
+search_patents_google(query="CPC=G06F21/00", limit=100)
+search_patents_google(query="CPC=G06F21/00 access token", limit=100)
 ```
+With BigQuery configured, `search_patents_by_cpc_bigquery(cpc_code="G06F21/", limit=100, country="US")` is an alternative.
 
 **Output**: Comprehensive list of potentially blocking patents
 
