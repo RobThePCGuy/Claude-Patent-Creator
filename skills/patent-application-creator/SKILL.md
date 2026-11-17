@@ -40,11 +40,13 @@ it cost something in that campaign.
 ## Phase 0 — Intake (any raw material)
 
 Accept the rough ask as-is. If the material is a codebase, do NOT ask for a
-disclosure — mining is Phase 1's job. Ask only what cannot be derived:
-inventor name(s), and whether any of it has been publicly disclosed or sold
-(statutory bar dates). Then AUDIT the inventor's own public footprint —
-released products, demos, public repositories, marketing pages — and record
-first-disclosure dates: the inventor's own disclosures start the US
+disclosure — mining is Phase 1's job. Find facts before asking for them:
+inventor names, filings and dates are often already in the material. Ask
+only what nothing you can reach establishes: inventor name(s), and whether
+any of it has been publicly disclosed or sold (statutory bar dates). Then
+AUDIT the inventor's own public footprint — released products, demos, public
+repositories, marketing pages — and record first-disclosure dates (date web
+pages with `check_web_history`, which reads the Internet Archive directly): the inventor's own disclosures start the US
 grace-period clock and can immediately forfeit foreign rights. Do this
 before drafting, not after.
 
