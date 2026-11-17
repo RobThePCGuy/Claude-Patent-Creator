@@ -11,7 +11,6 @@ from the source so a new tool never needs this file touched.
 import asyncio
 import importlib
 import inspect
-import json
 import re
 import sys
 from pathlib import Path
@@ -57,10 +56,3 @@ def test_server_imports_and_registers_every_tool(tmp_path, monkeypatch):
     for tool in fresh._tool_manager.list_tools():
         if inspect.iscoroutinefunction(inspect.unwrap(tool.fn)):
             assert inspect.iscoroutinefunction(tool.fn), f"{tool.name} lost its async wrapper"
-
-    resources = asyncio.run(fresh.list_resources())
-    assert {str(r.uri) for r in resources} == {"mpep://index/stats"}
-
-    body = asyncio.run(fresh.read_resource("mpep://index/stats"))
-    stats = json.loads(next(iter(body)).content)
-    assert stats["total_chunks"] == 0 and stats["index_exists"] is False

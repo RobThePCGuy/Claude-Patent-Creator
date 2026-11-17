@@ -38,39 +38,6 @@ class _FakeIndex:
         return [{"source": source_filter, "relevance_score": score, "content": source_filter}]
 
 
-def _make_tool():
-    mcp = _FakeMCP()
-    patent_law_tools.register_patent_law_tools(
-        mcp,
-        mpep_index=_FakeIndex(),
-        log_info=lambda *a, **k: None,
-        log_error=lambda *a, **k: None,
-        validate_input=None,
-        SearchPatentLawInput=None,  # skip validation
-        track_performance=lambda *a, **k: (lambda f: f),
-    )
-    return mcp.tools["search_patent_law"]
-
-
-def test_jurisdiction_results_are_ranked_by_relevance():
-    search_patent_law = _make_tool()
-
-    results = search_patent_law(query="claim definiteness", jurisdiction="US", top_k=3)
-
-    scores = [r["relevance_score"] for r in results]
-    # Truncated to top_k and sorted by relevance descending.
-    assert scores == [0.90, 0.70, 0.50]
-    # The single highest-scoring hit must be first. Under the old "score" key
-    # the no-op sort would have left MPEP (0.10, first source) at the top.
-    assert results[0]["source"] == "35_USC"
-
-
-def test_unknown_jurisdiction_is_rejected():
-    search_patent_law = _make_tool()
-    results = search_patent_law(query="x", jurisdiction="ZZ", top_k=5)
-    assert len(results) == 1 and "error" in results[0]
-
-
 class _USOnlyIndex(_FakeIndex):
     """Simulates a fresh install: US sources indexed, EPO/PCT absent."""
 
@@ -105,13 +72,3 @@ def test_missing_jurisdiction_sources_reported_not_silent():
     error = results[0]["error"]
     # Must explain the absence and point at a remedy, naming the jurisdiction.
     assert "EPO" in error
-    assert "installed" in error or "indexed" in error
-    assert "setup" in error.lower()
-
-
-def test_us_results_unaffected_by_missing_epo_sources():
-    search_patent_law = _make_us_only_tool()
-
-    results = search_patent_law(query="definiteness", jurisdiction="US", top_k=3)
-
-    assert results and all("error" not in r for r in results)

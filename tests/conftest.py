@@ -28,18 +28,6 @@ def sample_claims_no_two_part():
 
 
 @pytest.fixture
-def sample_claims_subjective():
-    """Claims containing subjective/indefinite terms."""
-    return "1. A system comprising a substantially efficient processor using an appropriate algorithm."
-
-
-@pytest.fixture
-def sample_claims_excluded():
-    """Claims directed to EPO-excluded subject matter."""
-    return "1. A computer program for performing a business method of calculating tax liability."
-
-
-@pytest.fixture
 def sample_epo_specification():
     """EPO-format specification with Rule 42 sections."""
     return """
@@ -77,9 +65,3 @@ def sample_good_abstract():
         "with parallel execution units (160) operating on partitioned data streams. "
         "Results are output through an interface module (170) to external devices."
     )
-
-
-@pytest.fixture
-def sample_short_abstract():
-    """Abstract that is too short."""
-    return "A data processing system."

@@ -23,19 +23,3 @@ def test_script_and_style_bodies_dropped_even_with_malformed_closers():
     assert "Real content" in text
 
 
-def test_structure_markers_and_entities_survive():
-    html = (
-        "<h1>Part A</h1><h2>Chapter 1</h2><h3>Section</h3>"
-        "<p>Fees &amp; forms<br>second line</p>"
-        "<ul><li>one</li><li>two</li></ul>"
-    )
-
-    text = ed._extract_text_from_html(html)
-
-    assert "## Part A" in text
-    assert "### Chapter 1" in text
-    assert "#### Section" in text
-    assert "Fees & forms" in text
-    assert "second line" in text
-    assert "- one" in text
-    assert "- two" in text

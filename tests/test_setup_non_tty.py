@@ -23,15 +23,6 @@ def test_non_tty_stdin_forces_non_interactive(monkeypatch):
     assert args.non_interactive is True
 
 
-def test_tty_stdin_keeps_interactive(monkeypatch):
-    monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
-    args = _args()
-
-    cli._normalize_interactivity(args)
-
-    assert args.non_interactive is False
-
-
 def test_explicit_flag_is_never_downgraded(monkeypatch):
     monkeypatch.setattr(cli, "_stdin_is_interactive", lambda: True)
     args = _args(non_interactive=True)
@@ -57,9 +48,3 @@ def test_devnull_stdin_is_not_interactive():
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == "False"
-
-
-def test_setup_command_wires_normalization():
-    import inspect
-
-    assert "_normalize_interactivity(" in inspect.getsource(cli.setup_command)

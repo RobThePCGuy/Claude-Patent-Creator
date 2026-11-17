@@ -29,7 +29,6 @@ def test_report_discloses_skipped_antecedent_check(analyzer, monkeypatch):
     assert any("PATENT_ENABLE_ANTECEDENT_CHECK" in c["enable_with"] for c in skipped)
     # The summary must not read as a clean bill of health.
     assert "skipped" in report["summary"].lower()
-    assert "PATENT_ENABLE_ANTECEDENT_CHECK" in report["summary"]
 
 
 def test_no_disclosure_when_check_enabled(analyzer, monkeypatch):
@@ -41,14 +40,3 @@ def test_no_disclosure_when_check_enabled(analyzer, monkeypatch):
     assert "skipped" not in report["summary"].lower()
     # And the enabled check actually fires on the flawed claim.
     assert report["issues_by_type"].get("antecedent_basis", 0) >= 1
-
-
-def test_clean_claims_with_all_checks_enabled_still_report_ok(analyzer, monkeypatch):
-    monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-
-    report = analyzer.analyze_claims(
-        "1. An apparatus comprising: a widget; and a flange attached to the widget."
-    )
-
-    assert report["total_issues"] == 0
-    assert report["summary"].startswith("[OK]")

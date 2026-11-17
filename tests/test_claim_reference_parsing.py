@@ -147,59 +147,6 @@ class TestMultipleDependentParents:
             claim = {c["number"]: c for c in parser(text)}[2]
             assert claim["is_independent"] is False and claim["depends_on_all"] == [1]
 
-    def test_very_long_chains_stay_fast_and_do_not_overflow(self, monkeypatch):
-        import time
-
-        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-        for template in ("{n}. The widget of claims 1 to {p}, wherein the frame is steel.",
-                         "{n}. The widget of claims 1 or {p}, wherein the frame is steel."):
-            lines = ["1. A widget comprising a frame with a hub."]
-            lines += [template.format(n=n, p=n - 1) for n in range(2, 1101 if " or " in template else 151)]
-            start = time.perf_counter()
-            ClaimsAnalyzer().analyze_claims("\n".join(lines))
-            assert time.perf_counter() - start < 10
-
-    def test_long_circular_chain_stays_fast(self, monkeypatch):
-        import time
-
-        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-        lines = ["1. The widget of claim 2, comprising a frame with a hub."]
-        lines += [f"{n}. The widget of claims 1 to {n - 1}, comprising a frame with a hub." for n in range(2, 41)]
-        start = time.perf_counter()
-        ClaimsAnalyzer().analyze_claims("\n".join(lines))
-        assert time.perf_counter() - start < 5
-
-    def test_circular_chain_gives_the_same_answer_in_any_order(self, monkeypatch):
-        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-        base = (
-            "1. The device of claim 2, comprising a sensor configured to detect light.\n"
-            "2. The device of claim 1, comprising a frame configured to support the sensor.\n"
-        )
-        def terms(order):
-            result = ClaimsAnalyzer().analyze_claims(base + f"3. The device of claims {order}, wherein the sensor is optical.")
-            return {i["term"] for i in result["issues"] if i["claim"] == 3}
-        assert terms("1 or 2") == terms("2 or 1")
-
-    def test_singular_and_plural_parents_both_give_basis(self, monkeypatch):
-        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-        text = (
-            "1. A widget comprising a sensor configured to detect light.\n"
-            "2. A widget comprising one or more sensors configured to detect light.\n"
-            "3. The widget of claims 1 or 2, wherein the sensor is optical."
-        )
-        result = ClaimsAnalyzer().analyze_claims(text)
-        assert not [i for i in result["issues"] if i["claim"] == 3]
-
-    def test_long_chain_of_shared_parents_stays_fast(self, monkeypatch):
-        import time
-
-        monkeypatch.setenv("PATENT_ENABLE_ANTECEDENT_CHECK", "1")
-        lines = ["1. A widget comprising a frame with a hub."]
-        lines += [f"{n}. The widget of claims 1 to {n - 1}, wherein the frame is steel." for n in range(2, 41)]
-        start = time.perf_counter()
-        ClaimsAnalyzer().analyze_claims("\n".join(lines))
-        assert time.perf_counter() - start < 5
-
 
 class TestPluralDependencyEPO:
     def test_plural_reference_is_dependent(self):

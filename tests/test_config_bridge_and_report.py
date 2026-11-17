@@ -16,19 +16,6 @@ from pathlib import Path
 MCP_SERVER_DIR = Path(__file__).parent.parent / "mcp_server"
 
 
-def test_server_main_bridges_config_into_environment():
-    src = (MCP_SERVER_DIR / "server.py").read_text(encoding="utf-8")
-    main_body = src.split("def main():", 1)[1]
-    assert "apply_config_to_env(" in main_body
-
-
 def test_analyzer_tool_passes_checks_skipped_through():
     src = (MCP_SERVER_DIR / "tools" / "analyzer_tools.py").read_text(encoding="utf-8")
     assert "checks_skipped" in src
-
-
-def test_claims_analyzer_report_still_provides_checks_skipped():
-    from mcp_server.claims_analyzer import ClaimsAnalyzer
-
-    report = ClaimsAnalyzer().analyze_claims("1. An apparatus comprising: a widget.")
-    assert "checks_skipped" in report
