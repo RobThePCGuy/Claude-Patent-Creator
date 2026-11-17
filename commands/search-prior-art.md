@@ -220,7 +220,7 @@ prior-art-search-[date]/
 
 **Must Have** (one of):
 1. **A free SerpApi key** (recommended): README Quick Start, Step 3.
-2. **BigQuery**: a Google Cloud project, `gcloud auth application-default login`, and `~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id`. Needed for the CPC classification step; without it that step runs as keyword searches and the report says so.
+2. **BigQuery**: a Google Cloud project, `gcloud auth application-default login`, and `~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id`. Optional: the CPC classification step runs through Google Patents (`CPC=<code>` queries) with only the SerpApi key.
 
 **Optional**:
 - USPTO API key (for additional coverage)

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-17
+
+### Fixed
+- Patent-class (CPC) searches no longer need BigQuery. `search_patents_google`
+  accepts `CPC=<code>` (child classes included), verified live; `cpc:` is
+  matched as plain text through SerpApi and finds almost nothing, so the tool
+  says so. The BigQuery CPC tool points to this route when BigQuery is not
+  set up, and the campaign, prior-art skill, searcher agent and command no
+  longer say class searches need BigQuery. A real sweep had run 24 keyword
+  searches and no class search, reporting class search unavailable.
+- Query guidance: 2-5 terms per query, since every word must match.
+
 ## [0.3.1] - 2026-11-17
 
 ### Added

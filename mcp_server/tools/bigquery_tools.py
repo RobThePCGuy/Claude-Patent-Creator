@@ -24,6 +24,11 @@ from typing import Any, Optional
 
 import anyio
 
+_CPC_FALLBACK = (
+    'Search this class with search_patents_google instead: query "CPC={code}" '
+    "(add 2-4 keywords to narrow it). It needs only the SerpApi key, not BigQuery."
+)
+
 
 def _render_install(message: str) -> str:
     from cli_command import render
@@ -316,6 +321,10 @@ def register_bigquery_tools(
         """
         Search patents by CPC classification code using BigQuery.
 
+        Without BigQuery, search by class with search_patents_google instead:
+        put CPC=<code> in its query (e.g. "CPC=G06F40/166"). A missing
+        BigQuery setup is never a reason to skip class searches.
+
         Args:
             cpc_code: CPC code or prefix (e.g., "G06F", "G06F16/", "H04L29/06")
             limit: Maximum results (default 20, max 100)
@@ -349,10 +358,10 @@ def register_bigquery_tools(
 
         except ValueError as e:
             log_error("search_patents_by_cpc_bigquery ValueError", exc_info=True, error=str(e))
-            return [{"error": str(e)}]
+            return [{"error": str(e), "fallback": _CPC_FALLBACK.format(code=cpc_code)}]
         except Exception as e:
             log_error("search_patents_by_cpc_bigquery exception", exc_info=True, error=str(e))
-            return [{"error": f"CPC search failed: {str(e)}"}]
+            return [{"error": f"CPC search failed: {str(e)}", "fallback": _CPC_FALLBACK.format(code=cpc_code)}]
 
     @mcp.tool()
     async def search_patents_by_ipc_bigquery(
