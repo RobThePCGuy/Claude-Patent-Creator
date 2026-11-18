@@ -2,8 +2,8 @@
 """EPO Open Patent Services (OPS) API client for patent search and retrieval.
 
 Provides access to the EPO OPS v3.2 REST API for searching and retrieving
-European patent data including bibliographic information, full-text claims,
-descriptions, and patent family information.
+worldwide bibliographic and patent family information, plus claims and
+descriptions where OPS supplies full text.
 
 Authentication uses OAuth2 client credentials flow.
 Requires EPO_OPS_KEY and EPO_OPS_SECRET environment variables.
@@ -578,7 +578,7 @@ class EPOClient:
         range_begin: int = 1,
         range_end: int = 25,
     ) -> list[dict[str, Any]]:
-        """Search published EP patents using CQL query syntax.
+        """Search worldwide published patents using CQL query syntax.
 
         Uses the OPS published-data search endpoint with biblio retrieval.
 
@@ -588,7 +588,7 @@ class EPOClient:
             - in="Smith"                  (inventor name)
             - pa="Google"                 (applicant/assignee)
             - pd=20240101                 (publication date)
-            - cl="semiconductor"          (claims text)
+            - cpc="G06F21/00"            (CPC code)
             - ic="G06F"                   (IPC code)
 
         Args:

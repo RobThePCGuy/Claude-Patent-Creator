@@ -1,14 +1,14 @@
 """
 EPO OPS API Search Tools
 
-Provides MCP tools for searching European patents via the EPO Open Patent
+Provides MCP tools for searching worldwide patents via the EPO Open Patent
 Services (OPS) API v3.2. Supports bibliographic search, full-text claims
 and description retrieval, and patent family lookups.
 
 Tools:
     - check_epo_api_status: Check EPO OPS API availability and credential status
-    - search_epo_patents: Search European patents via CQL query syntax
-    - get_epo_patent: Get EP patent details including full-text claims and description
+    - search_epo_patents: Search worldwide patents via CQL query syntax
+    - get_epo_patent: Get patent details and available claims and description
     - get_epo_patent_family: Get patent family members across all jurisdictions
 
 Dependencies:
@@ -16,8 +16,8 @@ Dependencies:
     - format_epo_result helper from epo_api module
     - Logging and monitoring from logging_config.py and monitoring.py
 
-Note: EPO OPS is the ONLY way to get full-text claims for EP patents.
-BigQuery only contains full claims text for US patents.
+Note: OPS full-text coverage is narrower than its bibliographic coverage.
+Claims and descriptions are available for EP, WO and selected national publications.
 """
 
 import threading
@@ -76,10 +76,11 @@ def register_epo_tools(
     @mcp.tool()
     @track_performance("tool_check_epo_api_status")
     def check_epo_api_status() -> dict[str, Any]:
-        """Check EPO OPS API availability, credential status, and quota information.
+        """Check EPO OPS credentials, XML parser availability, and authentication.
 
         Returns connectivity status and whether EPO_OPS_KEY and EPO_OPS_SECRET
-        are configured. Use this before attempting EPO searches.
+        are configured. Use this before attempting EPO searches. A ready result
+        does not verify search/full-text access or remaining quota.
         """
         try:
             log_info("check_epo_api_status_tool_called")
@@ -130,6 +131,7 @@ def register_epo_tools(
             - in="Smith"            (inventor)
             - pa="Google"           (applicant)
             - ic="G06F"            (IPC code)
+            - cpc="G06F21/00"      (CPC code)
             - pd=20240101          (publication date)
 
         Args:
@@ -218,11 +220,13 @@ def register_epo_tools(
     @mcp.tool()
     @track_performance("tool_get_epo_patent")
     async def get_epo_patent(patent_number: str) -> dict[str, Any]:
-        """Get EP patent details including full-text claims and description via EPO OPS.
+        """Get patent details and available claims and description via EPO OPS.
 
-        This is the ONLY way to get full-text claims for EP patents (BigQuery only
-        has full claims text for US patents). Returns bibliographic data plus
-        complete claims and description text.
+        Accepts any country-prefixed publication; there is no EP-only restriction.
+        Full text is available for EP, WO and selected national publications,
+        not every worldwide bibliographic hit. claims_text and description_text
+        may be empty or contain missing-text/error messages; a positive length
+        alone does not prove that patent text was retrieved.
 
         Args:
             patent_number: Patent number with country prefix (e.g., "EP1234567",

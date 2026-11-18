@@ -6,7 +6,7 @@ Complete guide for setting up the USPTO Open Data Portal API to access 11M+ pate
 
 ## Overview
 
-The USPTO API provides live access to the patent database, allowing you to search recent patents and retrieve specific patents by number through a network connection.
+This integration searches ODP application metadata (including titles, parties and status) and retrieves records by patent number. It forwards free-form or field-specific queries to `applications/search`; it does not search or retrieve claims/description full text. Use it as a supplement to Google Patents, EPO OPS or BigQuery patent searches.
 
 ## Why Use the USPTO API?
 
@@ -84,7 +84,7 @@ Once configured, the USPTO API is used automatically for:
 
 ## Other Search Options
 
-Google Patents through SerpApi and Google BigQuery are separate remote patent
+Google Patents through SerpApi, EPO OPS and Google BigQuery are separate remote patent
 search backends. They require their own configuration and have their own quotas.
 This package does not implement offline bulk-patent search. Its local index
 searches legal references such as the MPEP, statutes and regulations.

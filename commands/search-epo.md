@@ -2,6 +2,9 @@
 description: Search European patents using EPO OPS API and BigQuery (100M+ patents filtered for EP)
 argument-hint: "query [optional: --cpc CODE] [--year-range START-END] [--applicant NAME] [--limit N]"
 allowed-tools:
+  - check_epo_api_status
+  - check_google_patents_status
+  - check_bigquery_status
   - search_epo_patents
   - get_epo_patent
   - get_epo_patent_family
@@ -15,7 +18,7 @@ model: claude-sonnet-4-5-20250929
 
 # EPO Patent Search
 
-`search_epo_patents` searches the worldwide OPS collection. Plain keywords do not restrict results to EP publications. For EP-only discovery, use `search_patents_google` or `search_patents_bigquery` with `country="EP"`, and verify the returned country/publication numbers. Do not label unrestricted OPS results as EP-only.
+`search_epo_patents` searches the worldwide OPS collection. Plain keywords do not restrict results to EP publications. For EP-only discovery, use `search_patents_google` or `search_patents_bigquery` with `country="EP"`, and verify the returned country/publication numbers. When Google Patents is not ready, check `check_epo_api_status` and use OPS `ta=` keyword and `cpc=` / `ic=` class searches as a real worldwide fallback, verifying publication countries and recording the scope. Do not label unrestricted OPS results as EP-only. USPTO ODP is a supplement only.
 
 This integration does not retrieve register events, in-force status, designated states, or national validation. Those fields remain unknown until checked separately in the [European Patent Register](https://register.epo.org/) and relevant national registers. A B publication or family record alone does not establish current rights.
 
@@ -87,9 +90,9 @@ Best for:
 
 For comprehensive EP patent research:
 
-1. **Start with BigQuery** - Broad keyword search, filter country="EP"
+1. **Choose a ready provider** - Google Patents with `country="EP"`, OPS worldwide `ta=` fallback with publication countries verified, or optional BigQuery with `country="EP"`; check provider status first
 2. **Identify CPC codes** - Extract from relevant results
-3. **Deep CPC search** - BigQuery CPC search for thorough coverage
+3. **Deep CPC search** - Google Patents `CPC=`, OPS `cpc=`, or BigQuery CPC search, using a ready provider
 4. **EPO OPS details** - Get available full text and family data; check legal status separately
 5. **Family analysis** - Use family_id to find related filings worldwide
 

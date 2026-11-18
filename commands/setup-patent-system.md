@@ -71,7 +71,7 @@ Windows PowerShell:
 
 Restart Claude Code and call `check_google_patents_status`, then try a patent search. The accepted config key is `SERPAPI_API_KEY`.
 
-BigQuery is optional. Use `/configure-bigquery` only when wanted. Missing patent-search credentials do not prevent legal-reference searches or analyzer use; describe patent search as unconfigured.
+If Google Patents is not ready, EPO OPS is a patent-search fallback: configure `EPO_OPS_KEY` and `EPO_OPS_SECRET`, restart and call `check_epo_api_status`. USPTO ODP is a supplement only. BigQuery is optional; use `/configure-bigquery` only when wanted. Missing patent-search credentials do not prevent legal-reference searches or analyzer use; describe patent search as unconfigured.
 
 ## Recovery
 

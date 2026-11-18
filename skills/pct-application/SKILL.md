@@ -60,7 +60,7 @@ Provides comprehensive PCT application support:
 **MCP Tools Available**:
 - `check_pct_formalities` - PCT Rules 5-12 formalities checking
 - `search_patent_law` - Search indexed PCT treaty, regulations, and examination guidance. Administrative Instructions and full WIPO standards are not downloaded; consult WIPO directly
-- `search_patents_google` - Prior art search for unity assessment (fallback: `search_patents_bigquery`)
+- `search_patents_google` - Prior art search for unity assessment (fallback: `search_epo_patents` with CQL after its status check; BigQuery is optional)
 
 ## How to Use
 
@@ -298,7 +298,7 @@ Works with other skills/agents:
 - Uses **EPO Patent Analyzer** skill for Euro-PCT quality
 - Coordinates with **EPO Patent Search** for EP prior art
 - Invokes **EPC Search** skill for PCT rule research
-- Uses **BigQuery Patent Search** for worldwide prior art
+- Uses **Patent Search** provider readiness/fallback rules for worldwide prior art; USPTO ODP is a supplement only
 
 ## Tools Available
 

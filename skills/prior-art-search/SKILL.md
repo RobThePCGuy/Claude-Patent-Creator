@@ -1,6 +1,6 @@
 ---
 name: prior-art-search
-description: Systematic 7-step methodology for comprehensive patent prior art searches and patentability assessments using Google Patents (SerpApi) or BigQuery, CPC classification and research-paper search
+description: Systematic 7-step methodology for comprehensive patent prior art searches and patentability assessments using Google Patents (SerpApi), EPO OPS or BigQuery, CPC classification and research-paper search
 tools: Bash, Read, Write
 model: sonnet
 ---
@@ -22,7 +22,7 @@ Invoke this skill when users ask to:
 ## What This Skill Does
 
 Implements a professional 7-step prior art search methodology combining:
-- Keyword searches across 100M+ patents (Google Patents via SerpApi, or BigQuery)
+- Keyword searches across 100M+ patents (Google Patents via SerpApi, EPO OPS, or BigQuery)
 - Research papers before the priority date (`search_non_patent_literature`)
 - CPC classification searches
 - USPTO API searches
@@ -96,10 +96,10 @@ Searches (run each separately, then merge/dedupe):
 **Goal**: Cast wide net to find relevant patents
 
 
-**Which patent search to use:** call `check_google_patents_status` first. If it is ready (the free SerpApi key from the README's Quick Start, Step 3), run every keyword search with `search_patents_google`. If not, use `search_patents_bigquery` only when `check_bigquery_status` says BigQuery is configured. If neither is set up, tell the user patent search needs one free key (README Quick Start, Step 3) and run a no-key first screen in the meantime: several `WebSearch` queries restricted to Google Patents (`allowed_domains: ["patents.google.com"]`), then read the closest patent pages with `WebFetch` for claims, dates, CPC codes and citations. Label everything found this way a web first screen, not a prior-art search: web search ranks pages rather than matching claim text and misses much of the record, so a thin or empty result is never evidence of no prior art. A first screen never supports a novelty, obviousness or patentability verdict: in every later assessment, report section or phase that would give one (including any NOVEL / LIKELY NO verdict), write "Not assessed: only a web first screen was run; set up patent search and rerun" instead. CPC searches (`search_patents_by_cpc_bigquery`) need BigQuery; without it, say in the report that the CPC step was done as keyword searches only.
+**Which patent search to use:** call `check_google_patents_status` first. If it is ready (the free SerpApi key from the README's Quick Start, Step 3), run every keyword search with `search_patents_google`. If not, call `check_epo_api_status`; when EPO OPS is ready, run the keyword searches with `search_epo_patents` (worldwide titles and abstracts, CQL `ta=`) and the CPC step with `cpc=` codes, reading available claims/description with `get_epo_patent` (EP, WO and selected national publications). Empty text and not-found/error messages are not a successful read; record coverage limits. Use `search_patents_bigquery` only when `check_bigquery_status` says BigQuery is configured; each keyword search there scans about 341 GiB. `search_uspto_api` (after `check_uspto_api_status`) searches ODP application metadata (including titles, parties and status), without claims/description full-text search; use it only as a supplement. If none of Google Patents, EPO OPS and BigQuery is ready, report status errors and restore a provider or set up SerpApi (README Quick Start, Step 3) and run a no-key first screen in the meantime: several `WebSearch` queries restricted to Google Patents (`allowed_domains: ["patents.google.com"]`), then read the closest patent pages with `WebFetch` for claims, dates, CPC codes and citations. Label everything found this way a web first screen, not a prior-art search: web search ranks pages rather than matching claim text and misses much of the record, so a thin or empty result is never evidence of no prior art. A first screen never supports a novelty, obviousness or patentability verdict: in every later assessment, report section or phase that would give one (including any NOVEL / LIKELY NO verdict), write "Not assessed: only a web first screen was run; set up patent search and rerun" instead. CPC searches run through Google Patents (`CPC=`), EPO OPS (`cpc=`) or BigQuery (`search_patents_by_cpc_bigquery`); with none ready, mark the CPC step unverified and describe only the web queries actually run.
 
 **Process**:
-1. Run keyword searches (`search_patents_google`, or `search_patents_bigquery` as above)
+1. Run keyword searches (`search_patents_google`, `search_epo_patents`, or `search_patents_bigquery` as above)
 2. Review top 20-30 results per query
 3. Identify most relevant patents
 4. Refine keyword strategy based on results
@@ -108,7 +108,9 @@ Searches (run each separately, then merge/dedupe):
 **Tool calls** (MCP tools, not Python imports):
 ```
 search_patents_google(query="blockchain authentication", limit=30, start_year=2015)
-# fallback when SerpApi isn't set up but BigQuery is:
+# OPS fallback after check_epo_api_status reports ready (title/abstract search):
+search_epo_patents(query='ta="blockchain" and ta="authentication"', limit=30)
+# Alternative only when check_bigquery_status reports ready:
 search_patents_bigquery(query="blockchain authentication", limit=30, country="US", start_year=2015)
 # papers count as prior art too; set published_before to the priority date:
 search_non_patent_literature(query="blockchain authentication", published_before="2024-01-15")
@@ -157,7 +159,7 @@ search_non_patent_literature(query="blockchain authentication", published_before
 search_patents_google(query="CPC=G06F21/00", limit=100)
 search_patents_google(query="CPC=G06F21/00 access token", limit=100)
 ```
-With BigQuery configured, `search_patents_by_cpc_bigquery(cpc_code="G06F21/", limit=100, country="US")` is an alternative.
+With OPS ready, use `search_epo_patents(query='cpc="G06F21/00"', limit=100)`, alone and combined with `ta=` keywords. With BigQuery configured, `search_patents_by_cpc_bigquery(cpc_code="G06F21/", limit=100, country="US")` is an alternative.
 
 **Output**: Comprehensive list of potentially blocking patents
 
@@ -211,7 +213,7 @@ If Step 3 ran only a web first screen, the report's novelty, obviousness and pat
 - Invention: [Brief description]
 - Search Date: [Date]
 - Searcher: Claude Patent Creator
-- Databases: whichever answered: Google Patents (SerpApi) or BigQuery, plus the paper sources `search_non_patent_literature` reports as searched
+- Databases: whichever answered: Google Patents (SerpApi), EPO OPS or BigQuery, plus the paper sources `search_non_patent_literature` reports as searched
 - Time Period: [Year range]
 
 ## Patentability Assessment
@@ -338,8 +340,8 @@ This skill integrates with:
 
 ## Required Data Access
 
-- Google Patents through SerpApi (default), or Google Cloud BigQuery (optional)
-- USPTO API (optional, for additional coverage)
+- Google Patents through SerpApi (default), EPO OPS (fallback), or Google Cloud BigQuery (optional)
+- USPTO ODP (optional application metadata supplement only)
 - Internet access for patent retrieval
 
 ## Estimated Time
