@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-17
+
+### Changed
+- EPO OPS is a patent-search fallback when Google Patents (SerpApi) is not
+  ready: `search_epo_patents` covers worldwide titles and abstracts (CQL
+  `ta=`) and classes (`cpc=`, `ic=`), and `get_epo_patent` reads claims and
+  description where OPS holds full text (EP, WO and selected national
+  publications). The campaign, search skills, agents and commands check
+  `check_epo_api_status` and count EPO as a searched patent outlet. A free
+  SerpApi plan ran out mid-campaign, and the instructions offered only
+  BigQuery, where a keyword search uses about a third of the free month.
+- `search_uspto_api` is described as US application metadata search and used
+  as a supplement only, never as the patent outlet.
+- EPO tool descriptions no longer claim EP-only search or full text for every
+  result, and drop the unsupported `cl=` example.
+
 ## [0.3.2] - 2026-11-17
 
 ### Fixed

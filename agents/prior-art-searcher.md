@@ -21,12 +21,18 @@ DO NOT use when:
 - User wants quick preliminary search (use main conversation with patent-search skill)
 - User wants to review results at each search phase
 
+## Patent search providers
+
+Follow the readiness checks and fallback rules in `skills/prior-art-search/SKILL.md`: Google Patents first, EPO OPS when Google Patents is not ready, and BigQuery only after its status check succeeds. USPTO ODP is a supplement only. OPS searches titles/abstracts and classes; retrieve available claims/description separately and record missing text.
+
 ## Available MCP Tools
 
 This subagent has access to patent search and MPEP tools:
 
 **Patent Search:**
 - `search_patents_google` - Full-text search worldwide, claims included (recommended)
+- `check_epo_api_status`, `search_epo_patents` - OPS fallback: worldwide title/abstract (`ta=`) and class (`cpc=` / `ic=`) search
+- `get_epo_patent`, `get_epo_patent_family` - Available text and family records
 - `search_patents_bigquery` - Fallback keyword search (~$2 a search)
 - `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
@@ -113,7 +119,7 @@ SEARCH QUERIES (Prioritized):
 **Objective:** Cast wide net to identify relevant prior art
 
 **Tasks:**
-1. Execute primary keyword searches (`search_patents_google`; `search_patents_bigquery` only if Google Patents is not set up and BigQuery is; if neither, say patent search needs a free key and run the web first screen described in the prior-art-search skill, labelled as such; every novelty, obviousness and patentability verdict in this report then reads "Not assessed: only a web first screen was run")
+1. Execute primary keyword searches (`search_patents_google`; `search_epo_patents` with `ta=` CQL if Google Patents is not ready and OPS is; `search_patents_bigquery` only if its status check succeeds; if none is ready, report status errors and run the web first screen described in the prior-art-search skill, labelled as such; every novelty, obviousness and patentability verdict in this report then reads "Not assessed: only a web first screen was run")
 2. Execute secondary keyword searches
 3. Scan results for relevance
 4. Note patent numbers of closest matches
@@ -122,10 +128,10 @@ SEARCH QUERIES (Prioritized):
 **Search Parameters:**
 - Limit: 50 patents per query
 - Sort: By relevance
-- Fields: Title, abstract, claims
+- Fields: Provider-dependent; OPS keyword search covers titles/abstracts, with claims read separately when available
 
 **Tools Used:**
-- `search_patents_google` with several keyword combinations, limit=100 (fallback: `search_patents_bigquery`)
+- `search_patents_google` with several keyword combinations, limit=100 (fallback: `search_epo_patents` with CQL after its status check; BigQuery is optional)
 - `search_non_patent_literature` with the same concepts in academic wording, `published_before` set to the priority date. Papers are prior art too; list the closest ones beside the patents. Record which sources answered (the `sources` field); a source reported busy or failed was not searched. A paper with a `date_check` has a date that may be wrong or too close to call; say so beside it and never present it as confirmed prior art.
 
 **Output:**
@@ -206,6 +212,7 @@ Related CPC Codes (for consideration):
 
 **Tools Used:**
 - `search_patents_google` with `CPC=<code>` in the query for each CPC code, alone and with 2-4 keywords (needs only the SerpApi key; write `CPC=` exactly, since `cpc:` silently finds almost nothing)
+- `search_epo_patents` with `cpc=` CQL when OPS is ready
 - `search_patents_by_cpc_bigquery` as an alternative when BigQuery is configured
 
 **Output:**
@@ -386,7 +393,7 @@ CONFIDENCE LEVEL: HIGH/MEDIUM/LOW
 [Reasoning for confidence level]
 
 SEARCH LIMITATIONS:
-- Patent sources searched: [Google Patents via SerpApi and/or BigQuery, whichever answered]. CPC step: [the CPC codes searched and the tool used; keyword-only only if neither Google Patents nor BigQuery answered]
+- Patent sources searched: [Google Patents via SerpApi, EPO OPS and/or BigQuery, whichever answered]. CPC step: [the CPC codes searched and the tool used; unverified if none of Google Patents, EPO OPS or BigQuery answered]
 - Papers searched in: [sources that answered, e.g. OpenAlex, arXiv]. NOT searched: white papers, product documentation, and any paper source reported busy or failed
 - NOT searched: unpublished patent applications (18-month publication delay)
 - NOT searched: foreign-language patents without English abstracts

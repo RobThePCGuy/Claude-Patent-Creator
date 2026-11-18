@@ -11,7 +11,7 @@ Expert autonomous system for drafting complete utility patent applications from 
 
 ## Patent search providers
 
-Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, read the returned patent links for details, CPC codes and family members; use Google Patents keyword/CPC queries for follow-up searches. Mark unavailable details, family coverage and classification searches as unverified. If neither provider is configured, say patent search needs one free key (README Quick Start, Step 3) and run a no-key first screen in the meantime: several `WebSearch` queries restricted to Google Patents (`allowed_domains: ["patents.google.com"]`), then read the closest patent pages with `WebFetch` for claims, dates, CPC codes and citations. Label everything found this way a web first screen, not a prior-art search: web search ranks pages rather than matching claim text and misses much of the record, so a thin or empty result is never evidence of no prior art. A first screen never supports a novelty, obviousness or patentability verdict: in every later assessment, report section or phase that would give one (including any NOVEL / LIKELY NO verdict), write "Not assessed: only a web first screen was run; set up patent search and rerun" instead.
+Use `check_google_patents_status` first, then `search_patents_google` when SerpApi is configured. If Google Patents is not ready, call `check_epo_api_status`: when it is ready, `search_epo_patents` searches worldwide patent titles and abstracts (CQL `ta=` keywords) and classes (`cpc=` or `ic=` codes), and `get_epo_patent` retrieves claims and description where OPS supplies full text (EP, WO and selected national publications; not every worldwide hit). Check the actual text: empty fields or "not found/not available" messages are not a successful read. Successful OPS keyword/class searches count as patent search, with coverage limits recorded. `search_uspto_api` (after `check_uspto_api_status`) adds US application records via ODP application metadata queries (including titles, parties and status), without claims/description full-text search; use it only as a supplement. BigQuery is optional: call any `*_bigquery` tool only after `check_bigquery_status` confirms it is available. Without BigQuery, use the ready provider: Google Patents links and keyword/CPC queries, or OPS results, `get_epo_patent`, `get_epo_patent_family` and CQL keyword/class queries. OPS search results contain publication numbers, not document URLs. Mark unavailable details, family coverage and classification searches as unverified. If none of Google Patents, EPO OPS and BigQuery is ready, report the status errors and explain how to restore a provider or set up SerpApi (README Quick Start, Step 3) and run a no-key first screen in the meantime: several `WebSearch` queries restricted to Google Patents (`allowed_domains: ["patents.google.com"]`), then read the closest patent pages with `WebFetch` for claims, dates, CPC codes and citations. Label everything found this way a web first screen, not a prior-art search: web search ranks pages rather than matching claim text and misses much of the record, so a thin or empty result is never evidence of no prior art. A first screen never supports a novelty, obviousness or patentability verdict: in every later assessment, report section or phase that would give one (including any NOVEL / LIKELY NO verdict), write "Not assessed: only a web first screen was run; set up patent search and rerun" instead.
 
 ## When to Use This Subagent
 
@@ -36,6 +36,8 @@ This subagent has access to all patent creator MCP tools:
 
 **Patent Search:**
 - `search_patents_google` - Full-text prior art search worldwide, claims included (recommended)
+- `check_epo_api_status`, `search_epo_patents` - OPS fallback: worldwide title/abstract (`ta=`) and class (`cpc=` / `ic=`) search
+- `get_epo_patent`, `get_epo_patent_family` - Available text and family records
 - `search_patents_bigquery` - Fallback keyword search when Google Patents search is not configured
 - `get_patent_bigquery` - Get patent details (claims by default; abstract/description opt-in)
 - `get_patents_bigquery` - Details for up to 50 patents in one query, same cost as one
@@ -79,7 +81,7 @@ This subagent has access to all patent creator MCP tools:
 
 **Tasks:**
 1. Search MPEP for relevant guidance (35 USC 101, 102, 103)
-2. Conduct preliminary Google Patents prior art search (BigQuery only if configured)
+2. Conduct preliminary prior art search with a ready provider, following the provider rules above
 3. Identify relevant CPC classifications
 4. Assess novelty (35 USC 102)
 5. Assess non-obviousness (35 USC 103)
@@ -87,8 +89,8 @@ This subagent has access to all patent creator MCP tools:
 
 **Tools Used:**
 - `search_mpep` for 35 USC 101/102/103 requirements
-- `search_patents_google` for prior art (fallback: `search_patents_bigquery`)
-- `search_patents_by_cpc_bigquery` for classification search
+- `search_patents_google` for prior art (fallback: `search_epo_patents` with CQL after its status check; BigQuery is optional)
+- Google Patents `CPC=` or OPS `cpc=` for classification search; `search_patents_by_cpc_bigquery` only when ready
 
 **Output:** Patentability assessment with prior art references
 

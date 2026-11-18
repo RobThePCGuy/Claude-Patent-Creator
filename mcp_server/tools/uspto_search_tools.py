@@ -63,7 +63,13 @@ def register_uspto_tools(
         application_type: Optional[str] = None,
         status: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """Search USPTO Open Data Portal API (live database). Requires USPTO_API_KEY environment variable. Supports year range and application type filters."""
+        """Search USPTO ODP application metadata, not claims/description full text.
+
+        Passes free-form or field-specific query text to applications/search;
+        matches are not restricted to titles. Requires USPTO_API_KEY. Supports
+        filing-year, application-type and status filters. Use as a supplement
+        to patent prior-art search, not a replacement.
+        """
         try:
             # Validate inputs
             validated = validate_input(

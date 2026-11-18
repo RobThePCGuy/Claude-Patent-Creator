@@ -120,7 +120,7 @@ You should get rule excerpts, each labeled with the MPEP chapter, the PDF file a
 
 ### Step 3: Turn on patent search (free key)
 
-Rule search, claim checks and research-paper search work now with no keys, and so do drawings if you said yes to Graphviz. Searching existing **patents** needs one free key:
+Rule search, claim checks and research-paper search work now with no keys, and so do drawings if you said yes to Graphviz. The recommended way to search existing **patents** uses a free SerpApi key:
 
 1. Sign up at [serpapi.com](https://serpapi.com/users/sign_up) (250 free searches a month).
 2. Copy your key from [serpapi.com/manage-api-key](https://serpapi.com/manage-api-key).
@@ -128,6 +128,8 @@ Rule search, claim checks and research-paper search work now with no keys, and s
    - Mac/Linux: `~/patent-creator-venv/bin/patent-creator config set SERPAPI_API_KEY "YOUR_KEY"`
    - Windows: `.\patent-creator-venv\Scripts\patent-creator config set SERPAPI_API_KEY "YOUR_KEY"` (run `cd ~` first)
 4. Restart Claude Code.
+
+If Google Patents is not ready, configured EPO OPS is a patent-search fallback: save `EPO_OPS_KEY` and `EPO_OPS_SECRET` from [developers.epo.org](https://developers.epo.org/) with the same `config set` command, restart, and run `check_epo_api_status`. OPS searches worldwide titles/abstracts and classifications; full text is available for selected publications. BigQuery is another optional provider. USPTO ODP searches application metadata and is a supplement only.
 
 Now ask: *"Is my idea of a self-heating coffee mug new?"*
 
@@ -200,7 +202,7 @@ The system has two modes that can work independently or together:
 
 **Claude Code Plugin** adds the interactive layer. Skills activate automatically based on what you're doing. Agents handle long-running tasks in the background. Slash commands give you quick access to common workflows.
 
-Under the hood, patent regulation search uses a hybrid approach: FAISS vector search finds semantically similar content, BM25 lexical search catches exact terminology matches, and a cross-encoder reranker sorts the combined results by relevance. Patent keyword search goes through Google Patents via SerpApi (free key, recommended) or, optionally, Google BigQuery's public patent dataset.
+Under the hood, patent regulation search uses a hybrid approach: FAISS vector search finds semantically similar content, BM25 lexical search catches exact terminology matches, and a cross-encoder reranker sorts the combined results by relevance. Patent keyword search goes through Google Patents via SerpApi (free key, recommended) with EPO OPS as a worldwide title/abstract and classification fallback, or optionally Google BigQuery's public patent dataset.
 
 ```
 You (Claude Code) ──> MCP Server ──> Search / Analysis / Diagrams
@@ -209,7 +211,7 @@ You (Claude Code) ──> MCP Server ──> Search / Analysis / Diagrams
             v              v              v
      MPEP/USC/CFR   Google Patents     Graphviz
      EPC/PCT        (SerpApi) or        (diagrams)
-     (hybrid RAG)   BigQuery
+     (hybrid RAG)   EPO OPS / BigQuery
                     + papers (OpenAlex,
                       arXiv, Semantic Scholar)
 ```
@@ -270,14 +272,14 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `get_patent_bigquery` | Get details on a specific patent (claims by default; abstract/description opt-in) |
 | `get_patents_bigquery` | Get details on up to 50 patents in one query, same cost as one |
 | `search_patents_by_cpc_bigquery` | Search by CPC classification code |
-| `search_uspto_api` | Search via the USPTO API |
+| `search_uspto_api` | Search ODP application metadata; supplement only, not claims/description full text |
 | `get_uspto_patent` | Get patent details from USPTO |
 | `get_recent_uspto_patents` | Pull recent filings |
 | `search_patent_law` | Law search across US (MPEP/USC/CFR), EPO (EPC/Guidelines) and PCT sources |
 | `search_patents_by_ipc_bigquery` | Search by IPC classification code |
 | `search_patent_family_bigquery` | Every publication in a patent family, across countries |
-| `search_epo_patents` | European patent search through EPO OPS (free EPO key) |
-| `get_epo_patent` | EP patent details, claims and description through EPO OPS |
+| `search_epo_patents` | Worldwide title/abstract and classification search through EPO OPS (key and secret; no implicit EP filter) |
+| `get_epo_patent` | Bibliographic data and available claims/description through EPO OPS; full-text coverage varies |
 | `get_epo_patent_family` | Patent family members through EPO OPS |
 
 ### Analysis
@@ -311,7 +313,7 @@ patent-creator check-bigquery    # Test BigQuery connection
 | `check_google_patents_status` | Whether SerpApi patent search is set up and how many searches are left |
 | `check_diagram_tools_status` | Graphviz availability |
 | `check_uspto_api_status` | USPTO API connectivity |
-| `check_epo_api_status` | EPO OPS credentials and quota |
+| `check_epo_api_status` | EPO OPS credentials and authentication readiness |
 
 Search index statistics are available as the MCP resource `mpep://index/stats`.
 
@@ -328,7 +330,7 @@ You don't need to call these directly. Just describe what you want to do and the
 | **setup-assistant** | Installing, configuring, or troubleshooting | Full setup lifecycle guidance |
 | **patent-reviewer** | Reviewing a complete application for compliance | Comprehensive review (claims + spec + formalities) |
 | **patent-claims-analyzer** | Reviewing claims specifically for 35 USC 112(b) | Deep-dive claims analysis (definiteness, antecedent basis, structure) |
-| **patent-search** | Searching patents or prior art | BigQuery search workflows via the MCP tools |
+| **patent-search** | Searching patents or prior art | Google Patents, EPO OPS fallback and optional BigQuery workflows |
 | **bigquery-patent-search** | Quick BigQuery-only patent search | Keyword, CPC, and patent detail retrieval across 100M+ patents |
 | **mpep-search** | Finding MPEP sections or regulations | Hybrid RAG search |
 | **patent-diagram-generator** | Creating technical diagrams | Flowcharts, block diagrams, system architectures via Graphviz |
@@ -340,7 +342,7 @@ You don't need to call these directly. Just describe what you want to do and the
 | **testing-assistant** | Running tests or validation | Test suite execution |
 | **epc-search** | European or PCT law questions | Search of the EPC, EPO Guidelines and PCT rules |
 | **epo-patent-analyzer** | Checking an application for EPO filing | Art. 84 and Art. 83 EPC checks |
-| **epo-patent-search** | Searching European patents | EPO OPS and BigQuery search with an EP filter |
+| **epo-patent-search** | Searching European patents | Worldwide EPO OPS search; Google Patents/BigQuery support an explicit EP filter |
 | **pct-application** | Preparing an international (PCT) application | PCT Rules 5-12, unity of invention, national phase deadlines |
 
 ### Agents (long-running, work independently)
@@ -392,7 +394,7 @@ patent-creator config list
 | `GOOGLE_CLOUD_PROJECT` | BigQuery patent search (optional) | Your Google Cloud project ID, see below |
 | `OPENALEX_API_KEY` | More daily paper searches (works without it) | Free: [openalex.org](https://openalex.org/settings/api-key) |
 | `SEMANTIC_SCHOLAR_API_KEY` | Steadier Semantic Scholar paper search (works without it) | Free, by request: [semanticscholar.org](https://www.semanticscholar.org/product/api#api-key-form) |
-| `EPO_OPS_KEY`, `EPO_OPS_SECRET` | European patent full text | Free registration: [developers.epo.org](https://developers.epo.org) |
+| `EPO_OPS_KEY`, `EPO_OPS_SECRET` | Worldwide patent search and available full text | Free registration: [developers.epo.org](https://developers.epo.org) |
 | `USPTO_API_KEY` | USPTO Open Data Portal search | [data.uspto.gov](https://data.uspto.gov/myodp) |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | Only for HyDE query expansion with `HYDE_BACKEND=api` and `PATENT_MPEP_USE_HYDE=true`. Install the optional `llm` extra or run your environment's Python with `-m pip install anthropic openai` first. HyDE is off by default | Your API account |
 | `PATENT_LOG_LEVEL`, `PATENT_LOG_FORMAT` | Server logging detail and format | `INFO`; format `json` for the server and readable lines for the `patent-creator` command unless you set it |
@@ -535,7 +537,7 @@ Resource usage: the loaded search index takes about 2-4GB of RAM and the index f
 Things to be aware of:
 
 - **NVIDIA users: PyTorch install order matters.** Setup handles it. On a hand-made install, install the CUDA build of PyTorch before `sentence-transformers`, or you get the CPU-only build.
-- **Patent search needs one setup step.** A free SerpApi key (Quick Start, Step 3) or a Google Cloud project for BigQuery. Everything else works with no keys.
+- **Patent search needs one setup step.** A free SerpApi key (Quick Start, Step 3), EPO OPS key and secret, or a Google Cloud project for BigQuery. USPTO ODP supplements these providers.
 - **Diagrams need Graphviz**, a free program outside Python. Setup offers to install it.
 - **The claims check skips the antecedent-basis check by default** (terms like "the controller" used before "a controller"). Its pattern matcher flags too many correct claims. Every claims report names this skipped check; turn it on with `patent-creator config set PATENT_ENABLE_ANTECEDENT_CHECK 1` and review its findings by hand.
 - **Windows users need Git Bash** for Claude Code's `claude mcp add`. See [Windows setup notes](#configuration).
@@ -604,7 +606,7 @@ This project builds on excellent open source work: [MCP Python SDK](https://gith
 
 ### Data Sources
 
-MPEP, 35 USC, and 37 CFR are published by the USPTO. Patent data comes from Google Patents (through [SerpApi](https://serpapi.com)) and Google BigQuery's `patents-public-data` dataset (100M+ patents). Paper search uses [OpenAlex](https://openalex.org), [arXiv](https://arxiv.org) and [Semantic Scholar](https://www.semanticscholar.org), with dates checked against [Crossref](https://www.crossref.org). Embedding models are [BGE-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5) (BAAI) and [MS-MARCO MiniLM-L-6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (Microsoft).
+MPEP, 35 USC, and 37 CFR are published by the USPTO. Patent data comes from Google Patents (through [SerpApi](https://serpapi.com)), EPO OPS and Google BigQuery's `patents-public-data` dataset (100M+ patents), with USPTO ODP application metadata as a supplement. Paper search uses [OpenAlex](https://openalex.org), [arXiv](https://arxiv.org) and [Semantic Scholar](https://www.semanticscholar.org), with dates checked against [Crossref](https://www.crossref.org). Embedding models are [BGE-base-en-v1.5](https://huggingface.co/BAAI/bge-base-en-v1.5) (BAAI) and [MS-MARCO MiniLM-L-6-v2](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) (Microsoft).
 
 ### Trademark Notice
 

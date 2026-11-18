@@ -341,7 +341,7 @@ Works with other skills/agents:
 - Uses **EPO Patent Analyzer** agent for Euro-PCT quality
 - Coordinates with **EPO Patent Drafter** agent for EP-style claims
 - Invokes **EPC Search** skill for PCT rule research
-- Uses **BigQuery Patent Search** for worldwide prior art
+- Uses **Patent Search** provider readiness/fallback rules for worldwide prior art; USPTO ODP is a supplement only
 - Leverages **Patent Diagram Generator** for figures
 
 ## Example Invocations

@@ -7,12 +7,12 @@ model: sonnet
 
 # EPO Patent Search Skill
 
-`search_epo_patents` searches the worldwide OPS collection. Plain keywords do not restrict results to EP publications. For EP-only discovery, use `search_patents_google` or `search_patents_bigquery` with `country="EP"`, and verify the returned country/publication numbers. Do not label unrestricted OPS results as EP-only.
+`search_epo_patents` searches the worldwide OPS collection. Plain keywords do not restrict results to EP publications. For EP-only discovery, use `search_patents_google` or `search_patents_bigquery` with `country="EP"`, and verify the returned country/publication numbers. When Google Patents is not ready, check `check_epo_api_status` and use OPS `ta=` keyword and `cpc=` / `ic=` class searches as a real worldwide fallback, verifying publication countries and recording the scope. Do not label unrestricted OPS results as EP-only. USPTO ODP is a supplement only.
 
 This integration does not retrieve register events, in-force status, designated states, or national validation. Those fields remain unknown until checked separately in the [European Patent Register](https://register.epo.org/) and relevant national registers. A B publication or family record alone does not establish current rights.
 
 
-Search European patents with Google Patents through SerpApi by default. EPO OPS and BigQuery are optional providers for additional coverage.
+Search European patents with Google Patents through SerpApi by default. EPO OPS is the fallback when Google Patents is not ready; BigQuery is an optional alternative after its status check succeeds.
 
 ## When to Use
 
@@ -58,7 +58,7 @@ gcloud auth application-default login
 "$HOME/patent-creator-venv/bin/patent-creator" config set GOOGLE_CLOUD_PROJECT your-project-id
 ```
 
-### EPO OPS API (Optional, for full text and families)
+### EPO OPS API (Fallback search, available full text and families)
 
 **Prerequisites**:
 1. Register at https://developers.epo.org/
@@ -86,16 +86,17 @@ Restart Claude Code afterwards. Check with the `check_epo_api_status` tool.
 When this skill is invoked:
 
 1. **Determine search type**:
-   - Keyword search: check `check_google_patents_status`, then use Google Patents with `country="EP"`; use BigQuery only after `check_bigquery_status` succeeds
-   - Full-text retrieval: use EPO OPS for complete claims/description
+   - Keyword search: check `check_google_patents_status`, then use Google Patents with `country="EP"`; if unavailable, check OPS and search worldwide with `ta=` CQL, verifying publication countries; use BigQuery only after `check_bigquery_status` succeeds
+   - Full-text retrieval: use EPO OPS for available claims/description; empty text or not-found/error messages are not successful reads
    - Legal status: review the European Patent Register and relevant national registers separately
    - Family search: use EPO OPS INPADOC family service
-   - CPC search: use a full CPC group in a Google Patents query, or BigQuery when configured; report any missing coverage
+   - CPC search: use a full CPC group in a Google Patents query, OPS `cpc=` when ready, or BigQuery when configured; report any missing coverage
 
 2. **Execute search**:
 
-   **Full-text keyword search (EP patents)**, falling back to
-   `search_patents_bigquery` with the same arguments only if BigQuery is configured:
+   **Full-text keyword search (EP patents)**. If unavailable, use the OPS
+   fallback above; `search_patents_bigquery` with the same arguments is
+   another alternative only if BigQuery is ready:
    ```python
    results = search_patents_google(
        query="blockchain authentication",
@@ -218,9 +219,9 @@ Top CPC Codes in Results:
 ## Common Use Cases
 
 ### EP Prior Art Search
-1. BigQuery keyword search (country="EP")
+1. Keyword search with a ready provider as above (Google Patents, OPS fallback, or optional BigQuery); record country scope
 2. Identify relevant CPC codes
-3. BigQuery CPC search (country="EP")
+3. CPC search with the ready provider (Google Patents `CPC=`, OPS `cpc=`, or optional BigQuery)
 4. EPO OPS full-text for top results
 5. Document findings with citations
 

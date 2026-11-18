@@ -131,7 +131,7 @@ Present a clean summary table showing what's ready. Do NOT dump manual setup ins
 - Patent diagram generation (once Graphviz is installed)
 - Patent application drafting
 
-Patent search needs a free SerpApi key (recommended) or BigQuery. If one is configured, list patent search as available. If not, say it is one free key away (README Quick Start, Step 3) rather than presenting it as a failure.
+Patent search needs SerpApi (recommended), EPO OPS, or BigQuery. Use the matching status tool before reporting readiness; EPO OPS is a real fallback when Google Patents is not ready. USPTO ODP only supplements this search. If none is ready, report the status errors and point to setup (README Quick Start, Step 3 for SerpApi).
 
 **Test with:**
 ```

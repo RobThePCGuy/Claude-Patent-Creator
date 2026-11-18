@@ -1,11 +1,11 @@
 ---
-description: Conduct comprehensive prior art search using 7-step methodology across 100M+ patents (Google Patents via SerpApi, or BigQuery) and research papers
+description: Conduct comprehensive prior art search using 7-step methodology across 100M+ patents (Google Patents via SerpApi, EPO OPS, or BigQuery) and research papers
 allowed-tools: Bash, Read, Write
 ---
 
 # Search for Prior Art
 
-Professional patent prior art search with patentability assessment.
+Professional patent prior art search with patentability assessment. Follow the provider readiness checks and fallback rules in `skills/prior-art-search/SKILL.md`; USPTO ODP is a supplement only.
 
 ## What This Command Does
 
@@ -125,7 +125,7 @@ I'll create a comprehensive report with:
 - Invention: [Description]
 - Searcher: Claude Patent Creator
 - Date: [Date]
-- Databases: Google Patents (SerpApi) or BigQuery, whichever is set up, plus research papers
+- Databases: Google Patents (SerpApi), EPO OPS or BigQuery, whichever actually answered, plus research papers
 - Conclusion: [Patentability assessment]
 
 ## Patentability Assessment
@@ -220,10 +220,11 @@ prior-art-search-[date]/
 
 **Must Have** (one of):
 1. **A free SerpApi key** (recommended): README Quick Start, Step 3.
-2. **BigQuery**: a Google Cloud project, `gcloud auth application-default login`, and `~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id`. Optional: the CPC classification step runs through Google Patents (`CPC=<code>` queries) with only the SerpApi key.
+2. **EPO OPS** (fallback): configure `EPO_OPS_KEY` and `EPO_OPS_SECRET`, then check `check_epo_api_status`. Supports worldwide title/abstract and CPC/IPC searches.
+3. **BigQuery**: a Google Cloud project, `gcloud auth application-default login`, and `~/patent-creator-venv/bin/patent-creator config set GOOGLE_CLOUD_PROJECT your-project-id`. Optional: the CPC classification step runs through Google Patents (`CPC=<code>` queries) with only the SerpApi key.
 
 **Optional**:
-- USPTO API key (for additional coverage)
+- USPTO API key (application metadata supplement only)
 
 ## Search Depth Options
 

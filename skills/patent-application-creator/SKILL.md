@@ -141,16 +141,27 @@ lives in products, open source, standards, and papers. Sweep ALL of:
    patents found and run `search_patents_google` with `CPC=<code>` alone
    and with 2-4 keywords (e.g. `CPC=G06F40/166 anchor`). Write `CPC=`
    exactly; `cpc:` silently finds almost nothing through this API. Never
-   report class search as unavailable while Google Patents is ready. Fallback without a SerpApi key:
-   `search_patents_bigquery` and `search_patents_by_cpc_bigquery`, but a
-   keyword search there scans ~341 GiB (about $2, a third of a free month).
-   If neither is set up (`check_google_patents_status` and
-   `check_bigquery_status` both say not ready), the patent outlet has NOT
-   been searched. Tell the user patent search needs one free key (README
-   Quick Start, Step 3). A web first screen of Google Patents pages may
+   report class search as unavailable while Google Patents is ready.
+   Fallback when Google Patents is not ready: when `check_epo_api_status` is ready,
+   `search_epo_patents` covers worldwide titles and abstracts (CQL `ta=`)
+   and classes (`cpc=` or `ic=` codes). Run the keyword and class sweep
+   there; use `get_epo_patent` for available claims/description (EP, WO
+   and selected national publications). Empty text and not-found/error
+   messages do not count as a read; record those coverage limits.
+   `search_patents_bigquery` and `search_patents_by_cpc_bigquery` are
+   alternatives only after `check_bigquery_status` says ready; a keyword
+   search there scans ~341 GiB (about $2, a third
+   of a free month). `search_uspto_api` (after `check_uspto_api_status`)
+   searches ODP application metadata (including titles, parties and status),
+   without claims/description full-text search; it
+   supplements the patent outlet and never stands in for it.
+   If none is ready (`check_google_patents_status`, `check_epo_api_status`
+   and `check_bigquery_status` all say not ready), the patent outlet has NOT
+   been searched. Report status errors; restore a provider or set up SerpApi
+   (README Quick Start, Step 3). A web first screen of Google Patents pages may
    still feed the sweep, labelled as such, but no item may be marked
    CLEAN GROUND, and the decision gate below stops with "Patent search
-   not set up; set up the free key and rerun Phase 2" instead of a go,
+   unavailable; restore a provider and rerun Phase 2" instead of a go,
    a no-go, or a filing recommendation.
 2. **Non-patent literature**: start with `search_non_patent_literature`
    (papers and preprints from OpenAlex, arXiv and Semantic Scholar, free;
