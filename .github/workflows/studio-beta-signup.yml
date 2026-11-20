@@ -32,7 +32,7 @@ jobs:
         with:
           script: |
             const OWNER = 'PatentCreatorStudio';
-            const REPO = 'Patent-Creator-Studio-Beta';
+            const REPO = 'Patent-Creator-Studio';
             const MIN_AGE_DAYS = 30;
             const comment = context.payload.comment;
             const login = comment.user.login;

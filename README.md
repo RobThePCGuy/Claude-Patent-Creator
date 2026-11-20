@@ -8,7 +8,7 @@
 
 **An AI-powered patent creation and analysis system for Claude Code.**
 
-> **New: [Patent Creator Studio](#the-easy-way-patent-creator-studio), a free desktop app for Mac and Windows.** Everything below, with no terminal and no Python setup. [Download it here](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/releases).
+> **New: [Patent Creator Studio](#the-easy-way-patent-creator-studio), a free desktop app for Mac and Windows.** Everything below, with no terminal and no Python setup. [Download it here](https://github.com/PatentCreatorStudio/Patent-Creator-Studio/releases).
 
 I built this because I needed to file a patent myself. I used AI to build the system, used the system to file the patent, and it worked. Now it's open source so anyone can use it. You do not need to be a lawyer or a programmer. If you can describe your idea in a chat window, you can use this.
 
@@ -28,9 +28,9 @@ New to the vocabulary? Every term this page uses is explained in the [Glossary](
 
 ![Patent Creator Studio's welcome screen](docs/images/studio-welcome.png)
 
-- **[Download Patent Creator Studio](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/releases)**: Mac (Apple Silicon or Intel) or Windows 10 and newer.
+- **[Download Patent Creator Studio](https://github.com/PatentCreatorStudio/Patent-Creator-Studio/releases)**: Mac (Apple Silicon or Intel) or Windows 10 and newer.
 - **You need:** a Claude Pro plan or higher, or a ChatGPT plan that includes Codex (an API key for either works too), plus a free [SerpApi](https://serpapi.com/users/sign_up) or [EPO](https://developers.epo.org) key for patent search. With both Claude and Codex, each one checks the other's work.
-- **It's a beta.** It's free and MIT licensed. If something breaks or confuses you, [open an issue there](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/issues) and say what you were doing.
+- **It's a beta.** It's free and MIT licensed. If something breaks or confuses you, [open an issue there](https://github.com/PatentCreatorStudio/Patent-Creator-Studio/issues) and say what you were doing.
 
 Already use Claude Code and like the terminal? The [Quick Start](#quick-start) below sets the same tools up inside Claude Code.
 
