@@ -8,7 +8,7 @@
 
 **An AI-powered patent creation and analysis system for Claude Code.**
 
-> **Private beta:** Patent Creator Studio puts these tools in a desktop app for Mac and Windows, and I'm looking for testers. [Join here](https://github.com/RobThePCGuy/Claude-Patent-Creator/discussions/121).
+> **New: [Patent Creator Studio](#the-easy-way-patent-creator-studio), a free desktop app for Mac and Windows.** Everything below, with no terminal and no Python setup. [Download it here](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/releases).
 
 I built this because I needed to file a patent myself. I used AI to build the system, used the system to file the patent, and it worked. Now it's open source so anyone can use it. You do not need to be a lawyer or a programmer. If you can describe your idea in a chat window, you can use this.
 
@@ -21,6 +21,18 @@ In plain terms, this tool lets you:
 - **Go from "here is my idea" to a reviewable draft application.** A guided workflow takes your description (or even your source code), hunts for prior art, drafts claims and a specification, checks everything, and hands you a package a patent professional can review quickly, for US or European filing.
 
 New to the vocabulary? Every term this page uses is explained in the [Glossary](#glossary) in plain English.
+
+## The easy way: Patent Creator Studio
+
+**Patent Creator Studio** is a free desktop app for Mac and Windows that runs this whole system for you. You never open a terminal: the app installs Claude Code or Codex, Python, these tools and the patent rulebook itself, then walks you through your invention one step at a time. It searches for anything like your idea, gives you an honest answer on whether it's worth filing, and if it is, drafts the claims, description and drawings, checks them, and has a second AI attack the draft before it calls anything ready for a professional's review.
+
+![Patent Creator Studio's welcome screen](docs/images/studio-welcome.png)
+
+- **[Download Patent Creator Studio](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/releases)**: Mac (Apple Silicon or Intel) or Windows 10 and newer.
+- **You need:** a Claude Pro plan or higher, or a ChatGPT plan that includes Codex (an API key for either works too), plus a free [SerpApi](https://serpapi.com/users/sign_up) or [EPO](https://developers.epo.org) key for patent search. With both Claude and Codex, each one checks the other's work.
+- **It's a beta.** It's free and MIT licensed. If something breaks or confuses you, [open an issue there](https://github.com/PatentCreatorStudio/Patent-Creator-Studio-Beta/issues) and say what you were doing.
+
+Already use Claude Code and like the terminal? The [Quick Start](#quick-start) below sets the same tools up inside Claude Code.
 
 ---
 
@@ -39,6 +51,7 @@ This tool is built for people who cannot afford a mistake, so it is honest to a 
 ## Table of Contents
 
 - [What this tool will and will not do](#read-this-first-what-this-tool-will-and-will-not-do)
+- [The easy way: Patent Creator Studio](#the-easy-way-patent-creator-studio)
 - [Quick Start](#quick-start)
 - [What Can I Actually Do With This?](#what-can-i-actually-do-with-this)
 - [How It Works](#how-it-works)
