@@ -212,6 +212,7 @@ def test_saved_settings_reach_the_server_claude_code_starts(tmp_path):
 def test_no_key_fallback_offers_a_labelled_web_first_screen(monkeypatch):
     from tools import google_patents_tools as gpt
 
-    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    msg = gpt._bigquery_fallback()
+    for name in ("GOOGLE_CLOUD_PROJECT", "EPO_OPS_KEY", "EPO_OPS_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+    msg = gpt._fallback()
     assert "not evidence of no prior art" in msg

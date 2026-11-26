@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-26
+
+### Fixed
+- When Google Patents can't search (no key, or no searches left this month),
+  `search_patents_google` and `check_google_patents_status` now name
+  `search_epo_patents` as the fallback whenever EPO OPS keys are set, and say
+  not to switch to web search for patents. The old message named only
+  BigQuery or a web first screen, so a helper agent that never saw the
+  campaign instructions had no pointer to the free EPO search that was ready.
+  Without EPO keys, the message now offers the free
+  EPO keys first, then BigQuery, then the labelled web first screen.
+
 ## [0.3.3] - 2026-11-17
 
 ### Changed
