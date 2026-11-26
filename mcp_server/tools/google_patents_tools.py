@@ -19,19 +19,32 @@ from typing import Any, Optional
 import anyio
 
 
-def _bigquery_fallback() -> str:
-    """Only point at BigQuery as a ready fallback when it is set up."""
+def _epo_ready() -> bool:
+    return bool(os.environ.get("EPO_OPS_KEY") and os.environ.get("EPO_OPS_SECRET"))
+
+
+def _fallback(quota: bool = False) -> str:
+    """Where to search when Google Patents can't, best ready option first."""
+    if _epo_ready():
+        return (
+            "search_epo_patents: free, worldwide titles, abstracts and patent "
+            "classes. Use it now for every patent search Google Patents would "
+            "have run, including CPC-class queries, and get_epo_patent for "
+            "claims and full text. Do not switch to web search for patents."
+        )
     if os.environ.get("GOOGLE_CLOUD_PROJECT"):
         return "search_patents_bigquery (about $2 a search past Google's free monthly TiB)"
     return (
-        "search_patents_bigquery, once the optional BigQuery setup is done "
-        "(a Google Cloud project; see 'Setting up BigQuery' in the README). "
-        "The free SerpApi key is the quicker route. Until a key is set, a web "
-        "first screen is possible: WebSearch restricted to patents.google.com, "
-        "then WebFetch the closest patent pages. Label it a first screen; an "
-        "empty or thin result is not evidence of no prior art. Give the user "
-        "the setup steps from `message` in plain words, including the links, "
-        "so they can turn on full patent search."
+        "search_epo_patents, once free EPO OPS keys are set (EPO_OPS_KEY and "
+        "EPO_OPS_SECRET from https://developers.epo.org/), or "
+        "search_patents_bigquery once the optional BigQuery setup is done (see "
+        "'Setting up BigQuery' in the README)"
+        + (", or wait for the monthly reset" if quota else "")
+        + ". Until then, a web first screen is possible: WebSearch restricted to "
+        "patents.google.com, then WebFetch the closest patent pages. Label it a "
+        "first screen; an empty or thin result is not evidence of no prior art. "
+        "Give the user the setup steps in plain words, including the links, so "
+        "they can turn on full patent search."
     )
 
 
@@ -62,7 +75,7 @@ def register_google_patents_tools(
             return {
                 "ready": False,
                 "message": GooglePatentsSearch.setup_message(),
-                "fallback": _bigquery_fallback(),
+                "fallback": _fallback(),
             }
         try:
             account = searcher.account()
@@ -77,13 +90,7 @@ def register_google_patents_tools(
                 "ready": False,
                 **account,
                 "message": "No Google Patents searches are left on this SerpApi account (monthly plan and extra credits).",
-                "fallback": _bigquery_fallback() if os.environ.get("GOOGLE_CLOUD_PROJECT") else (
-                    "search_patents_bigquery, once the optional BigQuery setup is done (see "
-                    "'Setting up BigQuery' in the README), or wait for the monthly reset. Until "
-                    "then, a web first screen is possible: WebSearch restricted to "
-                    "patents.google.com, then WebFetch the closest patent pages. Label it a "
-                    "first screen; an empty or thin result is not evidence of no prior art."
-                ),
+                "fallback": _fallback(quota=True),
             }
         return {"ready": True, **account}
 
@@ -127,8 +134,9 @@ def register_google_patents_tools(
         Results carry a matching snippet, not the full abstract or claims. Get
         full claims with get_patents_bigquery (US) or get_epo_patent (EP).
 
-        If no key is configured this returns setup instructions; fall back to
-        search_patents_bigquery (about $2 a search past the free monthly TiB).
+        If no key is configured or no searches are left, this returns an error
+        and a `fallback` naming the best ready source; with EPO keys set that is
+        search_epo_patents (free).
 
         Args:
             query: Search keywords or "quoted phrases"
@@ -164,13 +172,15 @@ def register_google_patents_tools(
 
         try:
             results = await anyio.to_thread.run_sync(_do_search)
-        except (GooglePatentsNotConfiguredError, GooglePatentsQuotaError) as e:
-            return [{"error": str(e), "fallback": _bigquery_fallback()}]
+        except GooglePatentsNotConfiguredError as e:
+            return [{"error": str(e), "fallback": _fallback()}]
+        except GooglePatentsQuotaError as e:
+            return [{"error": str(e), "fallback": _fallback(quota=True)}]
         except Exception as e:
             # Messages from GooglePatentsSearch are already key-redacted and
             # carry no exception chain; no traceback is logged for that reason.
             log_error("search_patents_google_failed", error=str(e))
-            return [{"error": str(e), "fallback": _bigquery_fallback()}]
+            return [{"error": str(e), "fallback": _fallback()}]
 
         log_info("search_patents_google: got results", count=len(results))
         return results
